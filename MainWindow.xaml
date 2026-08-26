@@ -3,10 +3,100 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:QuanLyHoSo"
         mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800">
+        Title="Phần mềm quản lý hồ sơ"
+        Width="1360"
+        Height="820"
+        MinWidth="1180"
+        MinHeight="720"
+        Background="{StaticResource AppBackgroundBrush}"
+        FontFamily="Segoe UI"
+        WindowStartupLocation="CenterScreen">
     <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="220" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
 
+        <Border Grid.Column="0" Background="{StaticResource PrimaryDarkBrush}">
+            <Grid Margin="12,22">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <StackPanel HorizontalAlignment="Center" Margin="0,0,0,30">
+                    <Border Width="64" Height="64" Background="#145DCC" CornerRadius="32" Margin="0,0,0,14">
+                        <TextBlock Text="&#xE8A5;"
+                                   FontFamily="Segoe MDL2 Assets"
+                                   FontSize="30"
+                                   Foreground="White"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center" />
+                    </Border>
+                    <TextBlock Text="QUẢN LÝ HỒ SƠ"
+                               Foreground="White"
+                               FontSize="19"
+                               FontWeight="Bold"
+                               HorizontalAlignment="Center" />
+                </StackPanel>
+
+                <ItemsControl Grid.Row="1" ItemsSource="{Binding NavigationItems}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Button Command="{Binding Command}"
+                                    Height="52"
+                                    Margin="0,0,0,8"
+                                    Padding="14,0"
+                                    HorizontalContentAlignment="Stretch"
+                                    Background="{Binding IsSelected, Converter={StaticResource BooleanToNavBrushConverter}}"
+                                    BorderThickness="0"
+                                    Cursor="Hand">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="34" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="{Binding IconGlyph}"
+                                               FontFamily="Segoe MDL2 Assets"
+                                               FontSize="20"
+                                               Foreground="White"
+                                               VerticalAlignment="Center" />
+                                    <TextBlock Grid.Column="1"
+                                               Text="{Binding Title}"
+                                               Foreground="White"
+                                               FontSize="15"
+                                               VerticalAlignment="Center" />
+                                </Grid>
+                            </Button>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <Border Grid.Row="2" Padding="10" Background="#0A397C" CornerRadius="6">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#xE77B;"
+                                   FontFamily="Segoe MDL2 Assets"
+                                   Foreground="#BFD6FF"
+                                   FontSize="16"
+                                   Margin="0,0,8,0" />
+                        <StackPanel>
+                            <TextBlock Text="Người dùng: Quản trị viên"
+                                       Foreground="White"
+                                       FontSize="12" />
+                            <TextBlock Text="Bản thiết kế giao diện"
+                                       Foreground="#BFD6FF"
+                                       FontSize="11" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </Border>
+
+        <ContentControl Grid.Column="1"
+                        Content="{Binding CurrentViewModel}"
+                        Margin="22" />
     </Grid>
 </Window>
+

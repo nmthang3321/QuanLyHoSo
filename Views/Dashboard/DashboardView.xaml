@@ -1,0 +1,166 @@
+﻿<UserControl x:Class="QuanLyHoSo.Views.Dashboard.DashboardView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel>
+            <Grid Margin="0,0,0,18">
+                <StackPanel>
+                    <TextBlock Text="TỔNG QUAN" Style="{StaticResource PageTitleText}" />
+                    <TextBlock Text="Tình hình tiếp nhận và xử lý hồ sơ" Style="{StaticResource MutedText}" Margin="0,4,0,0" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button Style="{StaticResource SecondaryButton}" MinWidth="280">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE787;" FontFamily="Segoe MDL2 Assets" Margin="0,0,10,0" />
+                            <TextBlock Text="Tháng này (01/08/2026 - 31/08/2026)" />
+                        </StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource SecondaryButton}" MinWidth="44" Margin="12,0,0,0">
+                        <TextBlock Text="&#xE72C;" FontFamily="Segoe MDL2 Assets" />
+                    </Button>
+                </StackPanel>
+            </Grid>
+
+            <ItemsControl ItemsSource="{Binding Metrics}" Margin="0,0,0,14">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <UniformGrid Columns="4" />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Border Style="{StaticResource CardBorder}" Margin="0,0,12,0">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="64" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Border Width="52" Height="52" CornerRadius="26" Background="{Binding AccentColor}">
+                                    <TextBlock Text="{Binding IconGlyph}"
+                                               FontFamily="Segoe MDL2 Assets"
+                                               Foreground="White"
+                                               FontSize="24"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center" />
+                                </Border>
+                                <StackPanel Grid.Column="1">
+                                    <TextBlock Text="{Binding Title}" FontSize="14" FontWeight="SemiBold" Foreground="{Binding AccentColor}" />
+                                    <TextBlock Text="{Binding Value}" FontSize="30" FontWeight="Bold" Margin="0,8,0,8" />
+                                    <TextBlock Text="{Binding Delta}" Style="{StaticResource MutedText}" Foreground="#0D8A2A" />
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <Grid Margin="0,0,0,14">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <Border Grid.Column="0" Style="{StaticResource CardBorder}" Margin="0,0,8,0">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                        <TextBlock Text="HỒ SƠ THEO TRẠNG THÁI" Style="{StaticResource SectionTitleText}" />
+                        <Grid Grid.Row="1" Margin="0,18,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="220" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Grid Width="190" Height="190">
+                                <Ellipse Fill="#E9F8EE" Stroke="#24A148" StrokeThickness="26" />
+                                <Ellipse Width="104" Height="104" Fill="White" />
+                                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                                    <TextBlock Text="Tổng" HorizontalAlignment="Center" Style="{StaticResource MutedText}" />
+                                    <TextBlock Text="1.248" HorizontalAlignment="Center" FontSize="24" FontWeight="Bold" />
+                                    <TextBlock Text="hồ sơ" HorizontalAlignment="Center" Style="{StaticResource MutedText}" />
+                                </StackPanel>
+                            </Grid>
+                            <ItemsControl Grid.Column="1" ItemsSource="{Binding StatusStats}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid Margin="0,0,0,10">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="20" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="60" />
+                                                <ColumnDefinition Width="60" />
+                                            </Grid.ColumnDefinitions>
+                                            <Ellipse Width="10" Height="10" Fill="{Binding Color}" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="1" Text="{Binding Name}" />
+                                            <TextBlock Grid.Column="2" Text="{Binding Count}" HorizontalAlignment="Right" />
+                                            <TextBlock Grid.Column="3" Text="{Binding Percentage}" HorizontalAlignment="Right" />
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </Grid>
+                    </Grid>
+                </Border>
+
+                <Border Grid.Column="1" Style="{StaticResource CardBorder}" Margin="8,0,0,0">
+                    <StackPanel>
+                        <TextBlock Text="HỒ SƠ THEO ĐỊA BÀN - TOP 5" Style="{StaticResource SectionTitleText}" Margin="0,0,0,18" />
+                        <ItemsControl ItemsSource="{Binding AreaStats}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Margin="0,0,0,14">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="160" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="45" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="{Binding AreaName}" VerticalAlignment="Center" />
+                                        <Grid Grid.Column="1" Height="18" VerticalAlignment="Center">
+                                            <Border Background="#ECF1F8" CornerRadius="4" />
+                                            <Border Width="{Binding Width}" Background="{StaticResource PrimaryBrush}" CornerRadius="4" HorizontalAlignment="Left" />
+                                        </Grid>
+                                        <TextBlock Grid.Column="2" Text="{Binding Count}" FontWeight="SemiBold" HorizontalAlignment="Right" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+            <Border Style="{StaticResource CardBorder}">
+                <StackPanel>
+                    <TextBlock Text="HỒ SƠ CẬP NHẬT GẦN ĐÂY" Style="{StaticResource SectionTitleText}" Margin="0,0,0,12" />
+                    <DataGrid ItemsSource="{Binding RecentRecords}" Height="190">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Số hồ sơ" Binding="{Binding RecordCode}" Width="120" />
+                            <DataGridTextColumn Header="Người gửi / Tổ chức" Binding="{Binding SenderName}" Width="*" />
+                            <DataGridTextColumn Header="Địa bàn" Binding="{Binding AreaName}" Width="180" />
+                            <DataGridTemplateColumn Header="Trạng thái" Width="170">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Border Background="{Binding Status, Converter={StaticResource StatusToBrushConverter}}"
+                                                CornerRadius="4"
+                                                Height="22"
+                                                Padding="7,1"
+                                                VerticalAlignment="Center"
+                                                HorizontalAlignment="Left">
+                                            <TextBlock Text="{Binding Status}"
+                                                       FontSize="12"
+                                                       FontWeight="SemiBold"
+                                                       Foreground="{Binding Status, Converter={StaticResource StatusToBrushConverter}, ConverterParameter=Foreground}" />
+                                        </Border>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTextColumn Header="Cập nhật cuối" Binding="{Binding UpdatedAt}" Width="170" />
+                            <DataGridTextColumn Header="Người xử lý" Binding="{Binding ProcessorName}" Width="150" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>
+

@@ -1,0 +1,25 @@
+# Build output
+bin/
+obj/
+
+# Visual Studio user files
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Rider/ReSharper
+.idea/
+_ReSharper*/
+*.DotSettings.user
+
+# Logs and local data
+*.log
+Logs/
+Data/
+Backups/
+
+# OS files
+Thumbs.db
+Desktop.ini
