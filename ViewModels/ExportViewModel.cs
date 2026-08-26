@@ -1,4 +1,5 @@
-﻿using System.Collections.ObjectModel;
+using System.Collections.ObjectModel;
+using QuanLyHoSo.Infrastructure.Data;
 using QuanLyHoSo.Models;
 
 namespace QuanLyHoSo.ViewModels
@@ -7,21 +8,28 @@ namespace QuanLyHoSo.ViewModels
     {
         public ExportViewModel()
         {
-            Statuses = new ObservableCollection<string> { "Tất cả", "Đang xác minh", "Phân công", "Đã giải quyết", "Chờ kết quả" };
-            CaseTypes = new ObservableCollection<string> { "Tất cả", "Khiếu nại", "Tố cáo", "Kiến nghị", "Phản ánh" };
-            Fields = new ObservableCollection<string> { "Tất cả", "Quản lý đất đai", "Xây dựng", "Tài nguyên môi trường" };
-            Areas = new ObservableCollection<string> { "Tất cả", "Long Xuyên", "Châu Đốc", "Rạch Giá", "Tịnh Biên", "Hà Tiên" };
-            Processors = new ObservableCollection<string> { "Tất cả", "Trần Văn B", "Trần Văn C", "Lê Thị D" };
-            SortOptions = new ObservableCollection<string> { "Ngày tiếp nhận mới nhất trước", "Ngày tiếp nhận cũ nhất trước", "Trạng thái", "Địa bàn" };
+            var dataService = AppDataService.Instance;
 
-            PreviewRecords = new ObservableCollection<ExportRecordPreview>
+            Statuses = new ObservableCollection<string>
             {
-                new ExportRecordPreview { Index = 1, RecordCode = "HS-2025-000125", ReceivedDate = "25/08/2026", SenderName = "Nguyễn Văn A", AreaName = "Long Xuyên", CaseType = "Khiếu nại", Field = "Quản lý đất đai", Status = "Đang xác minh" },
-                new ExportRecordPreview { Index = 2, RecordCode = "HS-2025-000124", ReceivedDate = "25/08/2026", SenderName = "Trần Văn B", AreaName = "Long Xuyên", CaseType = "Khiếu nại", Field = "Quản lý đất đai", Status = "Phân công" },
-                new ExportRecordPreview { Index = 3, RecordCode = "HS-2025-000123", ReceivedDate = "24/08/2026", SenderName = "Lê Văn C", AreaName = "Châu Phú", CaseType = "Tố cáo", Field = "Tài nguyên môi trường", Status = "Đã giải quyết" },
-                new ExportRecordPreview { Index = 4, RecordCode = "HS-2025-000122", ReceivedDate = "24/08/2026", SenderName = "Phạm Thị D", AreaName = "Tịnh Biên", CaseType = "Kiến nghị", Field = "Xây dựng", Status = "Chờ kết quả" },
-                new ExportRecordPreview { Index = 5, RecordCode = "HS-2025-000121", ReceivedDate = "23/08/2026", SenderName = "Võ Văn E", AreaName = "An Phú", CaseType = "Khiếu nại", Field = "Quản lý đất đai", Status = "Đang xử lý" }
+                "Tất cả",
+                "Mới tiếp nhận",
+                "Đang phân loại",
+                "Đã phân công",
+                "Đang xác minh",
+                "Chờ kết quả",
+                "Đang chờ bổ sung tài liệu",
+                "Đã giải quyết",
+                "Chuyển cơ quan khác"
             };
+            CaseTypes = new ObservableCollection<string>(dataService.GetCatalogValues("CaseType", includeAll: true));
+            Fields = new ObservableCollection<string>(dataService.GetCatalogValues("Field", includeAll: true));
+            Areas = new ObservableCollection<string>(dataService.GetAreaNames(includeAll: true));
+            Processors = new ObservableCollection<string>(dataService.GetProcessorNames(includeAll: true));
+            SortOptions = new ObservableCollection<string> { "Ngày tiếp nhận mới nhất trước", "Ngày tiếp nhận cũ nhất trước", "Trạng thái", "Địa bàn" };
+            PreviewRecords = new ObservableCollection<ExportRecordPreview>(dataService.GetExportPreview());
+            TotalRecordsText = $"Tổng số hồ sơ: {dataService.CountRecords()}";
+            ResultRangeText = $"Hiển thị 1 - {PreviewRecords.Count} của {dataService.CountRecords()} kết quả";
         }
 
         public ObservableCollection<string> Statuses { get; }
@@ -31,6 +39,7 @@ namespace QuanLyHoSo.ViewModels
         public ObservableCollection<string> Processors { get; }
         public ObservableCollection<string> SortOptions { get; }
         public ObservableCollection<ExportRecordPreview> PreviewRecords { get; }
+        public string TotalRecordsText { get; }
+        public string ResultRangeText { get; }
     }
 }
-

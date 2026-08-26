@@ -26,7 +26,7 @@
                             </Border>
                             <StackPanel Margin="76,4,0,0">
                                 <TextBlock Text="Danh mục địa bàn" FontSize="18" FontWeight="Bold" />
-                                <TextBlock Text="Quản lý danh sách 102 xã/phường của tỉnh An Giang" Style="{StaticResource MutedText}" TextWrapping="Wrap" />
+                                <TextBlock Text="Quản lý danh sách địa bàn của tỉnh An Giang từ SQLite" Style="{StaticResource MutedText}" TextWrapping="Wrap" />
                             </StackPanel>
                         </Grid>
                         <ItemsControl ItemsSource="{Binding AreaActions}">
@@ -99,7 +99,7 @@
                         </Grid>
                         <Grid Margin="0,0,0,20">
                             <TextBlock Text="Thư mục sao lưu" />
-                            <TextBlock Text="D:\QuanLyHoSo\Backup" Foreground="{StaticResource PrimaryBrush}" HorizontalAlignment="Right" />
+                            <TextBlock Text="%LocalAppData%\QuanLyHoSo" Foreground="{StaticResource PrimaryBrush}" HorizontalAlignment="Right" />
                         </Grid>
                         <Grid>
                             <Button Style="{StaticResource SecondaryButton}" Content="Sao lưu ngay" HorizontalAlignment="Left" />

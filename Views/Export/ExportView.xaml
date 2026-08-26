@@ -130,7 +130,7 @@
                     <StackPanel>
                         <TextBlock Text="3. XEM TRƯỚC DỮ LIỆU" Style="{StaticResource SectionTitleText}" Foreground="{StaticResource PrimaryBrush}" Margin="0,0,0,14" />
                         <Border Background="#F0F6FF" BorderBrush="{StaticResource LineBrush}" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,0,12">
-                            <TextBlock Text="Tổng số hồ sơ: 248" Foreground="{StaticResource PrimaryBrush}" FontWeight="SemiBold" />
+                            <TextBlock Text="{Binding TotalRecordsText}" Foreground="{StaticResource PrimaryBrush}" FontWeight="SemiBold" />
                         </Border>
                         <DataGrid ItemsSource="{Binding PreviewRecords}" Height="246">
                             <DataGrid.Columns>
@@ -161,7 +161,7 @@
                             </DataGrid.Columns>
                         </DataGrid>
                         <Grid Margin="0,16,0,0">
-                            <TextBlock Text="Hiển thị 1 - 5 của 248 kết quả" Style="{StaticResource MutedText}" VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding ResultRangeText}" Style="{StaticResource MutedText}" VerticalAlignment="Center" />
                             <Button Style="{StaticResource PrimaryButton}" Content="Xuất dữ liệu" HorizontalAlignment="Right" MinWidth="170" />
                         </Grid>
                     </StackPanel>

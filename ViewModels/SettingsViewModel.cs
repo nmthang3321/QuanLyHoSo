@@ -1,4 +1,6 @@
-﻿using System.Collections.ObjectModel;
+using System;
+using System.Collections.ObjectModel;
+using QuanLyHoSo.Infrastructure.Data;
 using QuanLyHoSo.Models;
 
 namespace QuanLyHoSo.ViewModels
@@ -7,9 +9,11 @@ namespace QuanLyHoSo.ViewModels
     {
         public SettingsViewModel()
         {
+            var dataService = AppDataService.Instance;
+
             AreaActions = new ObservableCollection<SettingAction>
             {
-                new SettingAction { Title = "Tổng số xã/phường", Value = "102", IconGlyph = "\uE707", AccentColor = "#0B5CFF" },
+                new SettingAction { Title = "Tổng số xã/phường/đặc khu", Value = dataService.GetAreaCount().ToString(), IconGlyph = "\uE707", AccentColor = "#0B5CFF" },
                 new SettingAction { Title = "Thêm mới địa bàn", IconGlyph = "\uE710", AccentColor = "#0B5CFF" },
                 new SettingAction { Title = "Sửa thông tin địa bàn", IconGlyph = "\uE70F", AccentColor = "#0B5CFF" },
                 new SettingAction { Title = "Xóa địa bàn", IconGlyph = "\uE74D", AccentColor = "#E11414" }
@@ -28,7 +32,8 @@ namespace QuanLyHoSo.ViewModels
                 new SoftwareInfo { Label = "Phiên bản", Value = "1.0.0" },
                 new SoftwareInfo { Label = "Khu vực", Value = "An Giang" },
                 new SoftwareInfo { Label = "Cơ sở dữ liệu", Value = "SQLite (Local)" },
-                new SoftwareInfo { Label = "Ngày cập nhật", Value = "25/08/2026" }
+                new SoftwareInfo { Label = "Đường dẫn DB", Value = dataService.DatabasePath },
+                new SoftwareInfo { Label = "Ngày cập nhật", Value = DateTime.Today.ToString("dd/MM/yyyy") }
             };
         }
 
@@ -37,4 +42,3 @@ namespace QuanLyHoSo.ViewModels
         public ObservableCollection<SoftwareInfo> SoftwareInfos { get; }
     }
 }
-
