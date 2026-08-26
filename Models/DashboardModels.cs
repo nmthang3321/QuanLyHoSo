@@ -14,6 +14,9 @@ namespace QuanLyHoSo.Models
         public string Name { get; set; }
         public int Count { get; set; }
         public string Percentage { get; set; }
+        public int Width { get; set; }
+        public double StartAngle { get; set; }
+        public double SweepAngle { get; set; }
         public string Color { get; set; }
     }
 
@@ -26,6 +29,7 @@ namespace QuanLyHoSo.Models
 
     public sealed class RecentRecord
     {
+        public int Index { get; set; }
         public string RecordCode { get; set; }
         public string SenderName { get; set; }
         public string AreaName { get; set; }

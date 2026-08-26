@@ -1,6 +1,7 @@
 # Build output
 bin/
 obj/
+.verify-build/
 
 # Visual Studio user files
 .vs/
@@ -9,16 +10,29 @@ obj/
 *.userosscache
 *.sln.docstates
 
+# VS Code local settings
+.vscode/*
+!.vscode/settings.json
+!.vscode/launch.json
+!.vscode/tasks.json
+!.vscode/extensions.json
+
 # Rider/ReSharper
 .idea/
 _ReSharper*/
 *.DotSettings.user
 
+# Test and coverage output
+TestResults/
+*.coverage
+*.coveragexml
+coverage/
+
 # Logs and local data
 *.log
-Logs/
-Data/
-Backups/
+/Logs/
+/Data/
+/Backups/
 
 # OS files
 Thumbs.db

@@ -11,6 +11,8 @@
     <Application.Resources>
         <converters:BooleanToNavBrushConverter x:Key="BooleanToNavBrushConverter" />
         <converters:StatusToBrushConverter x:Key="StatusToBrushConverter" />
+        <converters:StatusDonutSegmentConverter x:Key="StatusDonutSegmentConverter" />
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
 
         <Color x:Key="PrimaryColor">#0B5CFF</Color>
         <Color x:Key="PrimaryDarkColor">#062A63</Color>
@@ -100,6 +102,15 @@
             <Setter Property="Padding" Value="8,4" />
             <Setter Property="BorderBrush" Value="{StaticResource LineBrush}" />
             <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+        </Style>
+
+        <Style TargetType="DatePicker">
+            <Setter Property="Height" Value="34" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Padding" Value="8,4" />
+            <Setter Property="BorderBrush" Value="{StaticResource LineBrush}" />
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
         </Style>
 
         <Style TargetType="DataGrid">

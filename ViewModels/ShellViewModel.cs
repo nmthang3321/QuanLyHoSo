@@ -1,21 +1,30 @@
-﻿using System.Collections.ObjectModel;
+using System.Collections.ObjectModel;
+using QuanLyHoSo.Infrastructure.Data;
 using QuanLyHoSo.Models;
 
 namespace QuanLyHoSo.ViewModels
 {
     public sealed class ShellViewModel : ViewModelBase
     {
-        private readonly DashboardViewModel _dashboardViewModel = new DashboardViewModel();
-        private readonly RecordInputViewModel _recordInputViewModel = new RecordInputViewModel();
-        private readonly RecordProcessingViewModel _recordProcessingViewModel = new RecordProcessingViewModel();
-        private readonly ExportViewModel _exportViewModel = new ExportViewModel();
-        private readonly SettingsViewModel _settingsViewModel = new SettingsViewModel();
+        private readonly DashboardViewModel _dashboardViewModel;
+        private readonly RecordInputViewModel _recordInputViewModel;
+        private readonly RecordProcessingViewModel _recordProcessingViewModel;
+        private readonly ExportViewModel _exportViewModel;
+        private readonly SettingsViewModel _settingsViewModel;
 
         private ViewModelBase _currentViewModel;
         private string _currentPageKey;
 
         public ShellViewModel()
         {
+            AppDataService.Instance.Initialize();
+
+            _dashboardViewModel = new DashboardViewModel();
+            _recordInputViewModel = new RecordInputViewModel();
+            _recordProcessingViewModel = new RecordProcessingViewModel();
+            _exportViewModel = new ExportViewModel();
+            _settingsViewModel = new SettingsViewModel();
+
             NavigationItems = new ObservableCollection<NavigationItem>
             {
                 CreateNavigationItem("Dashboard", "Tổng quan", "\uE80F"),
@@ -72,4 +81,3 @@ namespace QuanLyHoSo.ViewModels
         }
     }
 }
-
