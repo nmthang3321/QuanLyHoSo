@@ -34,27 +34,30 @@
                     </Border>
                     <StackPanel Grid.Column="1">
                         <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="HS-2025-000125" FontSize="18" FontWeight="Bold" Margin="0,0,10,0" />
-                            <Border Background="#DDF8E7" CornerRadius="8" Padding="8,3">
-                                <TextBlock Text="Đang xác minh" Foreground="#0D8A2A" FontSize="12" />
+                            <TextBlock Text="{Binding RecordCode}" FontSize="18" FontWeight="Bold" Margin="0,0,10,0" />
+                            <Border Background="{Binding Status, Converter={StaticResource StatusToBrushConverter}}" CornerRadius="4" Height="22" Padding="7,1">
+                                <TextBlock Text="{Binding Status}"
+                                           Foreground="{Binding Status, Converter={StaticResource StatusToBrushConverter}, ConverterParameter=Foreground}"
+                                           FontSize="12"
+                                           FontWeight="SemiBold" />
                             </Border>
                         </StackPanel>
-                        <TextBlock Text="Ngày tiếp nhận: 25/08/2026" Style="{StaticResource MutedText}" Margin="0,6,0,0" />
-                        <TextBlock Text="Nguồn tiếp nhận: Trực tiếp" Style="{StaticResource MutedText}" />
+                        <TextBlock Text="{Binding ReceivedDate, StringFormat=Ngày tiếp nhận: {0}}" Style="{StaticResource MutedText}" Margin="0,6,0,0" />
+                        <TextBlock Text="{Binding ReceiveSource, StringFormat=Nguồn tiếp nhận: {0}}" Style="{StaticResource MutedText}" />
                     </StackPanel>
                     <StackPanel Grid.Column="2">
                         <TextBlock Text="Người gửi đơn" Style="{StaticResource MutedText}" />
-                        <TextBlock Text="Nguyễn Văn A" FontWeight="SemiBold" />
-                        <TextBlock Text="0912 345 678" />
+                        <TextBlock Text="{Binding SenderName}" FontWeight="SemiBold" />
+                        <TextBlock Text="{Binding SenderPhone}" />
                     </StackPanel>
                     <StackPanel Grid.Column="3">
                         <TextBlock Text="Địa bàn" Style="{StaticResource MutedText}" />
-                        <TextBlock Text="Phường Long Xuyên" FontWeight="SemiBold" />
+                        <TextBlock Text="{Binding AreaName}" FontWeight="SemiBold" />
                     </StackPanel>
                     <StackPanel Grid.Column="4">
                         <TextBlock Text="Loại vụ việc" Style="{StaticResource MutedText}" />
-                        <TextBlock Text="Khiếu nại" FontWeight="SemiBold" />
-                        <TextBlock Text="Quản lý đất đai" />
+                        <TextBlock Text="{Binding CaseType}" FontWeight="SemiBold" />
+                        <TextBlock Text="{Binding Field}" />
                     </StackPanel>
                     <Button Grid.Column="5" Style="{StaticResource SecondaryButton}" Content="Xem chi tiết" />
                 </Grid>
@@ -143,19 +146,19 @@
                             </Grid.ColumnDefinitions>
                             <StackPanel Margin="0,0,10,12">
                                 <TextBlock><Run Text="Trạng thái hiện tại" /><Run Text=" *" Foreground="#E11414" /></TextBlock>
-                                <ComboBox ItemsSource="{Binding Statuses}" SelectedIndex="3" />
+                                <ComboBox ItemsSource="{Binding Statuses}" SelectedItem="{Binding Status}" />
                             </StackPanel>
                             <StackPanel Grid.Column="1" Margin="0,0,0,12">
                                 <TextBlock><Run Text="Ngày xử lý" /><Run Text=" *" Foreground="#E11414" /></TextBlock>
-                                <TextBox Text="25/08/2026 14:30" />
+                                <TextBox Text="{Binding ProcessingDate}" />
                             </StackPanel>
                         </Grid>
                         <TextBlock><Run Text="Người xử lý" /><Run Text=" *" Foreground="#E11414" /></TextBlock>
-                        <TextBox Text="Trần Văn C" Margin="0,0,0,12" />
+                        <TextBox Text="{Binding ProcessorName}" Margin="0,0,0,12" />
                         <TextBlock><Run Text="Nội dung xử lý" /><Run Text=" *" Foreground="#E11414" /></TextBlock>
-                        <TextBox Height="96" TextWrapping="Wrap" AcceptsReturn="True" VerticalContentAlignment="Top" Text="Đang tiến hành xác minh nội dung phản ánh tại thực địa và làm việc với các bên liên quan." Margin="0,0,0,12" />
+                        <TextBox Height="96" TextWrapping="Wrap" AcceptsReturn="True" VerticalContentAlignment="Top" Text="{Binding ProcessContent}" Margin="0,0,0,12" />
                         <TextBlock Text="Ghi chú" />
-                        <TextBox Height="80" TextWrapping="Wrap" AcceptsReturn="True" VerticalContentAlignment="Top" Text="Dự kiến hoàn thành xác minh trước ngày 10/09/2026." Margin="0,0,0,18" />
+                        <TextBox Height="80" TextWrapping="Wrap" AcceptsReturn="True" VerticalContentAlignment="Top" Text="{Binding ProcessNote}" Margin="0,0,0,18" />
                         <Grid>
                             <Button Style="{StaticResource DangerButton}" Content="Hủy xử lý" HorizontalAlignment="Left" />
                             <Button Style="{StaticResource PrimaryButton}" Content="Cập nhật" HorizontalAlignment="Right" />
