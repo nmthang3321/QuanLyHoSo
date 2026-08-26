@@ -43,41 +43,41 @@
 
                         <StackPanel Grid.Column="0" Margin="0,0,12,12">
                             <TextBlock><Run Text="Số hồ sơ / Số đơn" /><Run Text=" *" Foreground="#E11414" /></TextBlock>
-                            <TextBox Text="HS-2025-000125" />
+                            <TextBox Text="{Binding RecordCode}" />
                         </StackPanel>
                         <StackPanel Grid.Column="1" Margin="0,0,12,12">
                             <TextBlock><Run Text="Ngày tiếp nhận" /><Run Text=" *" Foreground="#E11414" /></TextBlock>
-                            <TextBox Text="25/08/2026" />
+                            <TextBox Text="{Binding ReceivedDate}" />
                         </StackPanel>
                         <StackPanel Grid.Column="2" Margin="0,0,12,12">
                             <TextBlock><Run Text="Nguồn tiếp nhận" /><Run Text=" *" Foreground="#E11414" /></TextBlock>
-                            <ComboBox ItemsSource="{Binding ReceiveSources}" SelectedIndex="0" />
+                            <ComboBox ItemsSource="{Binding ReceiveSources}" SelectedItem="{Binding ReceiveSource}" />
                         </StackPanel>
                         <StackPanel Grid.Column="3" Margin="0,0,0,12">
                             <TextBlock><Run Text="Người tiếp nhận" /><Run Text=" *" Foreground="#E11414" /></TextBlock>
-                            <TextBox Text="Trần Văn B" />
+                            <TextBox Text="{Binding ReceiverName}" />
                         </StackPanel>
 
                         <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,12,12">
                             <TextBlock><Run Text="Người gửi đơn / Người tố giác" /><Run Text=" *" Foreground="#E11414" /></TextBlock>
-                            <TextBox Text="Nguyễn Văn A" />
+                            <TextBox Text="{Binding SenderName}" />
                         </StackPanel>
                         <StackPanel Grid.Row="1" Grid.Column="1" Margin="0,0,12,12">
                             <TextBlock Text="Số điện thoại" />
-                            <TextBox Text="0912 345 678" />
+                            <TextBox Text="{Binding SenderPhone}" />
                         </StackPanel>
                         <StackPanel Grid.Row="1" Grid.Column="2" Grid.ColumnSpan="2" Margin="0,0,0,12">
                             <TextBlock Text="Địa chỉ liên hệ" />
-                            <TextBox Text="Ấp Bình Hòa, Xã Mỹ Hòa Hưng, An Giang" />
+                            <TextBox Text="{Binding ContactAddress}" />
                         </StackPanel>
 
                         <StackPanel Grid.Row="2" Grid.Column="0" Margin="0,0,12,12">
                             <TextBlock><Run Text="Địa bàn (xã/phường/đặc khu)" /><Run Text=" *" Foreground="#E11414" /></TextBlock>
-                            <ComboBox ItemsSource="{Binding Areas}" SelectedIndex="0" />
+                            <ComboBox ItemsSource="{Binding Areas}" SelectedItem="{Binding AreaName}" />
                         </StackPanel>
                         <StackPanel Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="3" Margin="0,0,0,12">
                             <TextBlock Text="Địa chỉ xảy ra vụ việc" />
-                            <TextBox Text="Khóm Đông Thịnh 5, Phường Long Xuyên, An Giang" />
+                            <TextBox Text="{Binding IncidentAddress}" />
                         </StackPanel>
 
                         <StackPanel Grid.Row="3" Grid.ColumnSpan="4">
@@ -86,7 +86,7 @@
                                      VerticalContentAlignment="Top"
                                      TextWrapping="Wrap"
                                      AcceptsReturn="True"
-                                     Text="Phản ánh việc lấn chiếm đất công và xây dựng trái phép trên phần đất thuộc hành lang kênh thoát nước khu vực khóm Đông Thịnh 5, phường Long Xuyên." />
+                                     Text="{Binding Content}" />
                         </StackPanel>
                     </Grid>
                 </StackPanel>
@@ -103,23 +103,23 @@
                         <UniformGrid Columns="2">
                             <StackPanel Margin="0,0,10,10">
                                 <TextBlock><Run Text="Loại vụ việc" /><Run Text=" *" Foreground="#E11414" /></TextBlock>
-                                <ComboBox ItemsSource="{Binding CaseTypes}" SelectedIndex="0" />
+                                <ComboBox ItemsSource="{Binding CaseTypes}" SelectedItem="{Binding CaseType}" />
                             </StackPanel>
                             <StackPanel Margin="0,0,0,10">
                                 <TextBlock><Run Text="Nhóm nội dung" /><Run Text=" *" Foreground="#E11414" /></TextBlock>
-                                <ComboBox ItemsSource="{Binding ContentGroups}" SelectedIndex="0" />
+                                <ComboBox ItemsSource="{Binding ContentGroups}" SelectedItem="{Binding ContentGroup}" />
                             </StackPanel>
                             <StackPanel Margin="0,0,10,10">
                                 <TextBlock><Run Text="Lĩnh vực" /><Run Text=" *" Foreground="#E11414" /></TextBlock>
-                                <ComboBox ItemsSource="{Binding Fields}" SelectedIndex="0" />
+                                <ComboBox ItemsSource="{Binding Fields}" SelectedItem="{Binding Field}" />
                             </StackPanel>
                             <StackPanel Margin="0,0,0,10">
                                 <TextBlock Text="Đối tượng liên quan" />
-                                <TextBox Text="Trần Văn C" />
+                                <TextBox Text="{Binding RelatedPerson}" />
                             </StackPanel>
                         </UniformGrid>
                         <TextBlock Text="Ghi chú" />
-                        <TextBox Height="54" TextWrapping="Wrap" AcceptsReturn="True" Text="Đơn có kèm theo hình ảnh hiện trạng và giấy tờ liên quan." />
+                        <TextBox Height="54" TextWrapping="Wrap" AcceptsReturn="True" Text="{Binding Note}" />
                     </StackPanel>
                 </Border>
 
@@ -129,25 +129,23 @@
                         <UniformGrid Columns="2">
                             <StackPanel Margin="0,0,10,10">
                                 <TextBlock Text="Hình thức xử lý mong muốn" />
-                                <ComboBox SelectedIndex="0">
-                                    <ComboBoxItem Content="Đề nghị kiểm tra, xử lý" />
-                                </ComboBox>
+                                <ComboBox ItemsSource="{Binding HandlingMethods}" SelectedItem="{Binding ExpectedHandlingMethod}" />
                             </StackPanel>
                             <StackPanel Margin="0,0,0,10">
                                 <TextBlock Text="Mức độ vụ việc" />
-                                <ComboBox ItemsSource="{Binding Priorities}" SelectedIndex="0" />
+                                <ComboBox ItemsSource="{Binding Priorities}" SelectedItem="{Binding SeverityLevel}" />
                             </StackPanel>
                             <StackPanel Margin="0,0,10,10">
                                 <TextBlock Text="Ngày hẹn trả kết quả" />
-                                <TextBox Text="30/09/2026" />
+                                <TextBox Text="{Binding ExpectedResultDate}" />
                             </StackPanel>
                             <StackPanel Margin="0,0,0,10">
                                 <TextBlock Text="Ưu tiên" />
-                                <ComboBox ItemsSource="{Binding Priorities}" SelectedIndex="0" />
+                                <ComboBox ItemsSource="{Binding Priorities}" SelectedItem="{Binding PriorityLevel}" />
                             </StackPanel>
                         </UniformGrid>
                         <TextBlock Text="Ghi chú bổ sung" />
-                        <TextBox Height="54" TextWrapping="Wrap" AcceptsReturn="True" />
+                        <TextBox Height="54" TextWrapping="Wrap" AcceptsReturn="True" Text="{Binding AdditionalNote}" />
                     </StackPanel>
                 </Border>
             </Grid>
