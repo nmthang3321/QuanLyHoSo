@@ -39,9 +39,14 @@ namespace QuanLyHoSo.Models
         public int StepNumber { get; set; }
         public string IconGlyph { get; set; }
         public string Title { get; set; }
+        public string DateText { get; set; }
         public string TimeText { get; set; }
         public bool IsDone { get; set; }
         public bool IsCurrent { get; set; }
+        public bool HasPreviousStep { get; set; }
+        public bool HasNextStep { get; set; }
+        public bool IsPreviousConnectorDone { get; set; }
+        public bool IsNextConnectorDone { get; set; }
     }
 
     public sealed class ProcessHistoryItem
@@ -51,6 +56,10 @@ namespace QuanLyHoSo.Models
         public string ProcessorName { get; set; }
         public string Content { get; set; }
         public bool IsCompleted { get; set; }
+        public bool IsCurrent { get; set; }
+        public bool HasNextItem { get; set; }
+        public bool IsNextConnectorDone { get; set; }
+        public bool HasDetails { get; set; }
     }
 
     public sealed class ProcessingRecordDetail
@@ -70,6 +79,19 @@ namespace QuanLyHoSo.Models
         public string ProcessNote { get; set; }
         public IReadOnlyList<ProcessStep> Steps { get; set; } = new List<ProcessStep>();
         public IReadOnlyList<ProcessHistoryItem> History { get; set; } = new List<ProcessHistoryItem>();
+    }
+
+    public sealed class ProcessingQueueRecord
+    {
+        public int Index { get; set; }
+        public string RecordCode { get; set; }
+        public string ReceivedDate { get; set; }
+        public string SenderName { get; set; }
+        public string AreaName { get; set; }
+        public string CaseType { get; set; }
+        public string PriorityLevel { get; set; }
+        public string Status { get; set; }
+        public string UpdatedAt { get; set; }
     }
 
     public sealed class ExportRecordPreview

@@ -1,4 +1,9 @@
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System;
+using System.Globalization;
+using System.Windows;
+using System.Windows.Input;
 using QuanLyHoSo.Infrastructure.Data;
 using QuanLyHoSo.Models;
 
@@ -6,56 +11,307 @@ namespace QuanLyHoSo.ViewModels
 {
     public sealed class RecordProcessingViewModel : ViewModelBase
     {
+        private readonly AppDataService _dataService;
+        private string _searchText;
+        private RecordFormDraft _selectedRecordDetail;
+        private ProcessingRecordDetail _selectedProcessingDetail;
+        private DateTime? _selectedProcessingDate;
+        private string _processingContent;
+        private string _processingNote;
+        private string _processingProcessorName;
+        private string _processingStatus;
+        private string _selectedArea;
+        private string _selectedPriority;
+        private string _selectedStatus;
+
         public RecordProcessingViewModel()
         {
-            var detail = AppDataService.Instance.GetProcessingRecordDetail();
-
-            Statuses = new ObservableCollection<string>
+            _dataService = AppDataService.Instance;
+            Metrics = new ObservableCollection<DashboardMetric>();
+            QueueRecords = new ObservableCollection<ProcessingQueueRecord>();
+            ProcessSteps = new ObservableCollection<ProcessStep>();
+            History = new ObservableCollection<ProcessHistoryItem>();
+            ProcessingStatuses = new ObservableCollection<string>
             {
+                "Mới tiếp nhận",
+                "Đang phân loại",
+                "Đã phân công",
+                "Đang xác minh",
+                "Đang chờ bổ sung tài liệu",
+                "Chờ kết quả",
+                "Đã giải quyết",
+                "Chuyển cơ quan khác"
+            };
+            StatusFilters = new ObservableCollection<string>
+            {
+                "Tất cả",
                 "Mới tiếp nhận",
                 "Đang phân loại",
                 "Đã phân công",
                 "Đang xác minh",
                 "Chờ kết quả",
                 "Đang chờ bổ sung tài liệu",
-                "Đã giải quyết",
                 "Chuyển cơ quan khác"
             };
+            AreaFilters = new ObservableCollection<string>(_dataService.GetAreaNames(includeAll: true));
+            PriorityFilters = new ObservableCollection<string>(_dataService.GetCatalogValues("Priority", includeAll: true));
+            ApplyFilterCommand = new RelayCommand(Reload);
+            ViewRecordCommand = new RelayCommand(ViewRecord);
+            ViewProcessingDetailCommand = new RelayCommand(ViewProcessingDetail);
+            OpenProcessingDetailCommand = new RelayCommand(OpenProcessingDetail);
+            CloseDetailCommand = new RelayCommand(CloseDetail);
+            BackToQueueCommand = new RelayCommand(BackToQueue);
+            SaveProcessingCommand = new RelayCommand(SaveProcessing);
 
-            ProcessSteps = new ObservableCollection<ProcessStep>(detail.Steps);
-            History = new ObservableCollection<ProcessHistoryItem>(detail.History);
+            _selectedStatus = StatusFilters[0];
+            _selectedArea = AreaFilters.Count > 0 ? AreaFilters[0] : "Tất cả";
+            _selectedPriority = PriorityFilters.Count > 0 ? PriorityFilters[0] : "Tất cả";
 
-            RecordCode = detail.RecordCode;
-            ReceivedDate = detail.ReceivedDate;
-            ReceiveSource = detail.ReceiveSource;
-            SenderName = detail.SenderName;
-            SenderPhone = detail.SenderPhone;
-            AreaName = detail.AreaName;
-            CaseType = detail.CaseType;
-            Field = detail.Field;
-            Status = detail.Status;
-            ProcessorName = detail.ProcessorName;
-            ProcessingDate = detail.ProcessingDate;
-            ProcessContent = detail.ProcessContent;
-            ProcessNote = detail.ProcessNote;
+            Reload();
         }
 
-        public ObservableCollection<string> Statuses { get; }
+        public ObservableCollection<DashboardMetric> Metrics { get; }
+        public ObservableCollection<ProcessingQueueRecord> QueueRecords { get; }
         public ObservableCollection<ProcessStep> ProcessSteps { get; }
         public ObservableCollection<ProcessHistoryItem> History { get; }
+        public ObservableCollection<string> ProcessingStatuses { get; }
+        public ObservableCollection<string> StatusFilters { get; }
+        public ObservableCollection<string> AreaFilters { get; }
+        public ObservableCollection<string> PriorityFilters { get; }
+        public ICommand ApplyFilterCommand { get; }
+        public ICommand ViewRecordCommand { get; }
+        public ICommand ViewProcessingDetailCommand { get; }
+        public ICommand OpenProcessingDetailCommand { get; }
+        public ICommand CloseDetailCommand { get; }
+        public ICommand BackToQueueCommand { get; }
+        public ICommand SaveProcessingCommand { get; }
 
-        public string RecordCode { get; set; }
-        public string ReceivedDate { get; set; }
-        public string ReceiveSource { get; set; }
-        public string SenderName { get; set; }
-        public string SenderPhone { get; set; }
-        public string AreaName { get; set; }
-        public string CaseType { get; set; }
-        public string Field { get; set; }
-        public string Status { get; set; }
-        public string ProcessorName { get; set; }
-        public string ProcessingDate { get; set; }
-        public string ProcessContent { get; set; }
-        public string ProcessNote { get; set; }
+        public string SearchText
+        {
+            get => _searchText;
+            set => SetProperty(ref _searchText, value);
+        }
+
+        public string SelectedStatus
+        {
+            get => _selectedStatus;
+            set
+            {
+                if (SetProperty(ref _selectedStatus, value))
+                {
+                    Reload();
+                }
+            }
+        }
+
+        public string SelectedArea
+        {
+            get => _selectedArea;
+            set
+            {
+                if (SetProperty(ref _selectedArea, value))
+                {
+                    Reload();
+                }
+            }
+        }
+
+        public string SelectedPriority
+        {
+            get => _selectedPriority;
+            set
+            {
+                if (SetProperty(ref _selectedPriority, value))
+                {
+                    Reload();
+                }
+            }
+        }
+
+        public RecordFormDraft SelectedRecordDetail
+        {
+            get => _selectedRecordDetail;
+            private set
+            {
+                if (SetProperty(ref _selectedRecordDetail, value))
+                {
+                    OnPropertyChanged(nameof(IsDetailOpen));
+                }
+            }
+        }
+
+        public bool IsDetailOpen => SelectedRecordDetail != null;
+
+        public ProcessingRecordDetail SelectedProcessingDetail
+        {
+            get => _selectedProcessingDetail;
+            private set
+            {
+                if (SetProperty(ref _selectedProcessingDetail, value))
+                {
+                    OnPropertyChanged(nameof(IsProcessingDetailOpen));
+                }
+            }
+        }
+
+        public bool IsProcessingDetailOpen => SelectedProcessingDetail != null;
+
+        public string ProcessingStatus
+        {
+            get => _processingStatus;
+            set => SetProperty(ref _processingStatus, value);
+        }
+
+        public DateTime? SelectedProcessingDate
+        {
+            get => _selectedProcessingDate;
+            set => SetProperty(ref _selectedProcessingDate, value);
+        }
+
+        public string ProcessingProcessorName
+        {
+            get => _processingProcessorName;
+            set => SetProperty(ref _processingProcessorName, value);
+        }
+
+        public string ProcessingContent
+        {
+            get => _processingContent;
+            set => SetProperty(ref _processingContent, value);
+        }
+
+        public string ProcessingNote
+        {
+            get => _processingNote;
+            set => SetProperty(ref _processingNote, value);
+        }
+
+        public void Reload()
+        {
+            ReplaceItems(Metrics, _dataService.GetProcessingQueueMetrics());
+            ReplaceItems(QueueRecords, _dataService.GetProcessingQueueRecords(
+                SearchText,
+                SelectedStatus,
+                SelectedArea,
+                SelectedPriority,
+                take: 20));
+        }
+
+        private void ViewRecord(object parameter)
+        {
+            if (parameter is ProcessingQueueRecord record)
+            {
+                SelectedRecordDetail = _dataService.GetRecordForm(record.RecordCode);
+            }
+        }
+
+        private void ViewProcessingDetail()
+        {
+            if (!string.IsNullOrWhiteSpace(SelectedProcessingDetail?.RecordCode))
+            {
+                SelectedRecordDetail = _dataService.GetRecordForm(SelectedProcessingDetail.RecordCode);
+            }
+        }
+
+        private void OpenProcessingDetail(object parameter)
+        {
+            if (parameter is not ProcessingQueueRecord record)
+            {
+                return;
+            }
+
+            SelectedProcessingDetail = _dataService.GetProcessingRecordDetail(record.RecordCode);
+            ReplaceItems(ProcessSteps, SelectedProcessingDetail.Steps);
+            ReplaceItems(History, SelectedProcessingDetail.History);
+            ProcessingStatus = SelectedProcessingDetail.Status;
+            SelectedProcessingDate = ParseProcessingDate(SelectedProcessingDetail.ProcessingDate) ?? DateTime.Now;
+            ProcessingProcessorName = SelectedProcessingDetail.ProcessorName;
+            ProcessingContent = SelectedProcessingDetail.ProcessContent;
+            ProcessingNote = SelectedProcessingDetail.ProcessNote;
+        }
+
+        private void CloseDetail()
+        {
+            SelectedRecordDetail = null;
+        }
+
+        private void BackToQueue()
+        {
+            SelectedProcessingDetail = null;
+            ProcessSteps.Clear();
+            History.Clear();
+            Reload();
+        }
+
+        private void SaveProcessing()
+        {
+            if (SelectedProcessingDetail == null)
+            {
+                return;
+            }
+
+            var missingFields = new List<string>();
+            if (string.IsNullOrWhiteSpace(ProcessingStatus))
+            {
+                missingFields.Add("Trạng thái hiện tại");
+            }
+
+            if (!SelectedProcessingDate.HasValue)
+            {
+                missingFields.Add("Ngày xử lý");
+            }
+
+            if (string.IsNullOrWhiteSpace(ProcessingProcessorName))
+            {
+                missingFields.Add("Người xử lý");
+            }
+
+            if (string.IsNullOrWhiteSpace(ProcessingContent))
+            {
+                missingFields.Add("Nội dung xử lý");
+            }
+
+            if (missingFields.Count > 0)
+            {
+                MessageBox.Show("Vui lòng nhập đầy đủ thông tin bắt buộc:\n\n- " + string.Join("\n- ", missingFields), "Thiếu thông tin xử lý", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            _dataService.UpdateProcessingRecord(
+                SelectedProcessingDetail.RecordCode,
+                ProcessingStatus,
+                SelectedProcessingDate.Value,
+                ProcessingProcessorName,
+                ProcessingContent,
+                ProcessingNote);
+
+            SelectedProcessingDetail = _dataService.GetProcessingRecordDetail(SelectedProcessingDetail.RecordCode);
+            ReplaceItems(ProcessSteps, SelectedProcessingDetail.Steps);
+            ReplaceItems(History, SelectedProcessingDetail.History);
+            ProcessingStatus = SelectedProcessingDetail.Status;
+            ProcessingProcessorName = SelectedProcessingDetail.ProcessorName;
+            MessageBox.Show("Đã cập nhật xử lý hồ sơ.", "Cập nhật xử lý", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        private static DateTime? ParseProcessingDate(string value)
+        {
+            if (DateTime.TryParseExact(value, "dd/MM/yyyy HH:mm", CultureInfo.GetCultureInfo("vi-VN"), DateTimeStyles.None, out var exactDate))
+            {
+                return exactDate;
+            }
+
+            return DateTime.TryParse(value, CultureInfo.GetCultureInfo("vi-VN"), DateTimeStyles.None, out var date)
+                ? date
+                : (DateTime?)null;
+        }
+
+        private static void ReplaceItems<T>(ObservableCollection<T> target, IEnumerable<T> source)
+        {
+            target.Clear();
+            foreach (var item in source)
+            {
+                target.Add(item);
+            }
+        }
     }
 }

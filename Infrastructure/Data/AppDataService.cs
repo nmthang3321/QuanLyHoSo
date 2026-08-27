@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using Microsoft.Data.Sqlite;
 using QuanLyHoSo.Models;
 
@@ -497,16 +498,23 @@ SELECT last_insert_rowid();";
             };
         }
 
-        public ProcessingRecordDetail GetProcessingRecordDetail()
+        public ProcessingRecordDetail GetProcessingRecordDetail(string recordCode = null)
         {
             using var connection = OpenConnection();
             using var command = connection.CreateCommand();
-            command.CommandText = @"
+            var whereClause = string.IsNullOrWhiteSpace(recordCode)
+                ? "WHERE Status <> 'Đã giải quyết'"
+                : "WHERE RecordCode = $recordCode";
+            command.CommandText = $@"
 SELECT Id, RecordCode, ReceivedDate, ReceiveSource, SenderName, SenderPhone, AreaName, CaseType, Field, Status, ProcessorName, UpdatedAt
 FROM Records
-WHERE Status <> 'Đã giải quyết'
+{whereClause}
 ORDER BY UpdatedAt DESC
 LIMIT 1;";
+            if (!string.IsNullOrWhiteSpace(recordCode))
+            {
+                command.Parameters.AddWithValue("$recordCode", recordCode);
+            }
 
             using var reader = command.ExecuteReader();
             if (!reader.Read())
@@ -516,6 +524,7 @@ LIMIT 1;";
 
             var recordId = reader.GetInt32(0);
             var status = reader.GetString(9);
+            var history = GetProcessHistory(connection, recordId, status);
             return new ProcessingRecordDetail
             {
                 RecordCode = reader.GetString(1),
@@ -531,9 +540,153 @@ LIMIT 1;";
                 ProcessingDate = FormatDateTime(reader.GetString(11)),
                 ProcessContent = "Đang cập nhật tiến độ xử lý hồ sơ theo thông tin từ cơ sở dữ liệu.",
                 ProcessNote = "Dữ liệu mẫu được seed tự động cho giai đoạn thiết kế giao diện.",
-                Steps = BuildProcessSteps(status),
-                History = GetProcessHistory(connection, recordId)
+                Steps = BuildProcessSteps(status, history),
+                History = history
             };
+        }
+
+        public void UpdateProcessingRecord(string recordCode, string status, DateTime processedAt, string processorName, string content, string note)
+        {
+            if (string.IsNullOrWhiteSpace(recordCode))
+            {
+                return;
+            }
+
+            using var connection = OpenConnection();
+            using var transaction = connection.BeginTransaction();
+            var recordId = GetRecordId(connection, transaction, recordCode);
+            if (!recordId.HasValue)
+            {
+                transaction.Commit();
+                return;
+            }
+
+            using var updateCommand = connection.CreateCommand();
+            updateCommand.Transaction = transaction;
+            updateCommand.CommandText = @"
+UPDATE Records
+SET Status = $status,
+    ProcessorName = $processor,
+    Note = CASE WHEN $note = '' THEN Note ELSE $note END,
+    UpdatedAt = $updatedAt
+WHERE Id = $recordId;";
+            updateCommand.Parameters.AddWithValue("$recordId", recordId.Value);
+            updateCommand.Parameters.AddWithValue("$status", NormalizeDbText(status));
+            updateCommand.Parameters.AddWithValue("$processor", NormalizeDbText(processorName));
+            updateCommand.Parameters.AddWithValue("$note", NormalizeDbText(note));
+            updateCommand.Parameters.AddWithValue("$updatedAt", processedAt.ToString("O", CultureInfo.InvariantCulture));
+            updateCommand.ExecuteNonQuery();
+
+            var currentStep = GetProcessStepNumber(status);
+            DeleteProcessHistoryFromStep(connection, transaction, recordId.Value, currentStep);
+
+            for (var step = 1; step <= currentStep; step++)
+            {
+                var definition = GetProcessStepDefinition(step);
+                var stepContent = step == currentStep
+                    ? NormalizeDbText(content)
+                    : $"Tự động ghi nhận bước {definition.Title.ToLower(CultureInfo.GetCultureInfo("vi-VN"))} khi hồ sơ được chuyển đến bước {status}.";
+                var isCompleted = step < currentStep || currentStep >= 6;
+
+                if (step < currentStep && HasProcessHistory(connection, transaction, recordId.Value, definition.Title))
+                {
+                    continue;
+                }
+
+                InsertProcessHistory(
+                    connection,
+                    transaction,
+                    recordId.Value,
+                    definition.Title,
+                    processedAt,
+                    NormalizeDbText(processorName),
+                    stepContent,
+                    isCompleted);
+            }
+
+            transaction.Commit();
+        }
+
+        public IReadOnlyList<DashboardMetric> GetProcessingQueueMetrics()
+        {
+            using var connection = OpenConnection();
+            var needClassify = CountRecordsByStatuses(connection, null, null, "Mới tiếp nhận", "Đang phân loại");
+            var processing = CountRecordsByStatuses(connection, null, null, "Đã phân công", "Đang xác minh");
+            var waiting = CountRecordsByStatuses(connection, null, null, "Chờ kết quả", "Đang chờ bổ sung tài liệu");
+            var overdue = CountOverdueOpenRecords(connection);
+
+            return new List<DashboardMetric>
+            {
+                new DashboardMetric { Title = "CẦN PHÂN LOẠI", Value = needClassify.ToString("N0", CultureInfo.GetCultureInfo("vi-VN")), Delta = "Hồ sơ mới/chưa phân loại", IconGlyph = "\uE8F1", AccentColor = "#0B5CFF" },
+                new DashboardMetric { Title = "ĐANG XỬ LÝ", Value = processing.ToString("N0", CultureInfo.GetCultureInfo("vi-VN")), Delta = "Đã phân công, xác minh", IconGlyph = "\uE823", AccentColor = "#F28C18" },
+                new DashboardMetric { Title = "CHỜ BỔ SUNG", Value = waiting.ToString("N0", CultureInfo.GetCultureInfo("vi-VN")), Delta = "Đang chờ tài liệu/kết quả", IconGlyph = "\uE916", AccentColor = "#7147D8" },
+                new DashboardMetric { Title = "QUÁ HẠN", Value = overdue.ToString("N0", CultureInfo.GetCultureInfo("vi-VN")), Delta = "Chưa hoàn tất theo hẹn", IconGlyph = "\uE7BA", AccentColor = "#D13438" }
+            };
+        }
+
+        public IReadOnlyList<ProcessingQueueRecord> GetProcessingQueueRecords(
+            string searchText = null,
+            string status = null,
+            string areaName = null,
+            string priorityLevel = null,
+            int take = 20)
+        {
+            using var connection = OpenConnection();
+            var result = new List<ProcessingQueueRecord>();
+            using var command = connection.CreateCommand();
+            var conditions = new List<string> { "Status <> 'Đã giải quyết'" };
+
+            if (!string.IsNullOrWhiteSpace(searchText))
+            {
+                conditions.Add("(RecordCode LIKE $search OR SenderName LIKE $search OR Content LIKE $search)");
+                command.Parameters.AddWithValue("$search", $"%{searchText.Trim()}%");
+            }
+
+            if (!string.IsNullOrWhiteSpace(status) && status != "Tất cả")
+            {
+                conditions.Add("Status = $status");
+                command.Parameters.AddWithValue("$status", status);
+            }
+
+            if (!string.IsNullOrWhiteSpace(areaName) && areaName != "Tất cả")
+            {
+                conditions.Add("AreaName = $areaName");
+                command.Parameters.AddWithValue("$areaName", areaName);
+            }
+
+            if (!string.IsNullOrWhiteSpace(priorityLevel) && priorityLevel != "Tất cả")
+            {
+                conditions.Add("PriorityLevel = $priorityLevel");
+                command.Parameters.AddWithValue("$priorityLevel", priorityLevel);
+            }
+
+            command.CommandText = $@"
+SELECT RecordCode, ReceivedDate, SenderName, AreaName, CaseType, PriorityLevel, Status, UpdatedAt
+FROM Records
+WHERE {string.Join(" AND ", conditions)}
+ORDER BY UpdatedAt DESC
+LIMIT $take;";
+            command.Parameters.AddWithValue("$take", Math.Max(1, Math.Min(20, take)));
+
+            using var reader = command.ExecuteReader();
+            var index = 1;
+            while (reader.Read())
+            {
+                result.Add(new ProcessingQueueRecord
+                {
+                    Index = index++,
+                    RecordCode = reader.GetString(0),
+                    ReceivedDate = FormatDate(reader.GetString(1)),
+                    SenderName = reader.GetString(2),
+                    AreaName = reader.GetString(3),
+                    CaseType = reader.GetString(4),
+                    PriorityLevel = reader.GetString(5),
+                    Status = reader.GetString(6),
+                    UpdatedAt = FormatDateTime(reader.GetString(7))
+                });
+            }
+
+            return result;
         }
 
         public IReadOnlyList<ExportRecordPreview> GetExportPreview(int take = 50)
@@ -920,7 +1073,7 @@ VALUES ($recordId, $title, $processedAt, $processor, $content, $isCompleted);";
             return result;
         }
 
-        private static List<ProcessHistoryItem> GetProcessHistory(SqliteConnection connection, int recordId)
+        private static List<ProcessHistoryItem> GetProcessHistory(SqliteConnection connection, int recordId, string status)
         {
             var result = new List<ProcessHistoryItem>();
             using var command = connection.CreateCommand();
@@ -931,24 +1084,88 @@ WHERE RecordId = $recordId
 ORDER BY ProcessedAt;";
             command.Parameters.AddWithValue("$recordId", recordId);
             using var reader = command.ExecuteReader();
+            var currentStepTitle = GetProcessStepDefinition(GetProcessStepNumber(status)).Title;
             while (reader.Read())
             {
+                var title = reader.GetString(0);
                 result.Add(new ProcessHistoryItem
                 {
-                    Title = reader.GetString(0),
+                    Title = title,
                     ProcessedAt = FormatDateTime(reader.GetString(1)),
                     ProcessorName = reader.GetString(2),
                     Content = reader.GetString(3),
-                    IsCompleted = reader.GetInt32(4) == 1
+                    IsCompleted = reader.GetInt32(4) == 1,
+                    IsCurrent = title == currentStepTitle,
+                    HasDetails = true
                 });
             }
 
+            AddPendingProcessHistoryItems(result, status);
+            result.Sort((left, right) => GetHistoryStepOrder(left.Title).CompareTo(GetHistoryStepOrder(right.Title)));
+            ApplyHistoryConnectorState(result, status);
             return result;
         }
 
-        private static List<ProcessStep> BuildProcessSteps(string status)
+        private static List<ProcessStep> BuildProcessSteps(string status, IReadOnlyList<ProcessHistoryItem> history)
         {
-            var currentStep = status switch
+            var currentStep = GetProcessStepNumber(status);
+
+            return new List<ProcessStep>
+            {
+                CreateStep(1, currentStep, history),
+                CreateStep(2, currentStep, history),
+                CreateStep(3, currentStep, history),
+                CreateStep(4, currentStep, history),
+                CreateStep(5, currentStep, history),
+                CreateStep(6, currentStep, history),
+                CreateStep(7, currentStep, history)
+            };
+        }
+
+        private static ProcessStep CreateStep(int stepNumber, int currentStep, IReadOnlyList<ProcessHistoryItem> history)
+        {
+            var definition = GetProcessStepDefinition(stepNumber);
+            var historyItem = history?
+                .Where(item => item.Title == definition.Title && !IsPendingProcessHistory(item))
+                .LastOrDefault();
+            return new ProcessStep
+            {
+                StepNumber = stepNumber,
+                IconGlyph = definition.IconGlyph,
+                Title = definition.Title,
+                DateText = historyItem?.ProcessedAt?.Split(' ').FirstOrDefault() ?? (stepNumber <= currentStep ? "Đã thực hiện" : "Chưa thực hiện"),
+                TimeText = historyItem?.ProcessedAt?.Contains(" ") == true
+                    ? historyItem.ProcessedAt.Split(' ').Last()
+                    : stepNumber == currentStep ? "Đang thực hiện" : string.Empty,
+                IsDone = stepNumber < currentStep,
+                IsCurrent = stepNumber == currentStep,
+                HasPreviousStep = stepNumber > 1,
+                HasNextStep = stepNumber < 7,
+                IsPreviousConnectorDone = stepNumber > 1 && stepNumber <= currentStep,
+                IsNextConnectorDone = stepNumber < 7 && stepNumber < currentStep
+            };
+        }
+
+        private static void ApplyHistoryConnectorState(IReadOnlyList<ProcessHistoryItem> history, string status)
+        {
+            var currentStep = GetProcessStepNumber(status);
+            for (var index = 0; index < history.Count; index++)
+            {
+                var item = history[index];
+                var step = GetHistoryStepOrder(item.Title);
+                if (step < currentStep)
+                {
+                    item.IsCompleted = true;
+                }
+
+                item.HasNextItem = index < history.Count - 1;
+                item.IsNextConnectorDone = step < currentStep;
+            }
+        }
+
+        private static int GetProcessStepNumber(string status)
+        {
+            return status switch
             {
                 "Mới tiếp nhận" => 1,
                 "Đang phân loại" => 2,
@@ -959,30 +1176,112 @@ ORDER BY ProcessedAt;";
                 "Đã giải quyết" => 7,
                 _ => 4
             };
+        }
 
-            return new List<ProcessStep>
+        private static (string IconGlyph, string Title) GetProcessStepDefinition(int stepNumber)
+        {
+            return stepNumber switch
             {
-                CreateStep(1, "\uE8A5", "Tiếp nhận", currentStep),
-                CreateStep(2, "\uE8FD", "Phân loại", currentStep),
-                CreateStep(3, "\uE77B", "Phân công", currentStep),
-                CreateStep(4, "\uE721", "Xác minh", currentStep),
-                CreateStep(5, "\uE916", "Gia hạn", currentStep),
-                CreateStep(6, "\uE73E", "Kết thúc", currentStep),
-                CreateStep(7, "\uE74E", "Lưu hồ sơ", currentStep)
+                1 => ("\uE8A5", "Tiếp nhận"),
+                2 => ("\uE8FD", "Phân loại"),
+                3 => ("\uE77B", "Phân công"),
+                4 => ("\uE721", "Xác minh"),
+                5 => ("\uE916", "Gia hạn"),
+                6 => ("\uE73E", "Kết thúc"),
+                7 => ("\uE74E", "Lưu hồ sơ"),
+                _ => ("\uE8A5", "Tiếp nhận")
             };
         }
 
-        private static ProcessStep CreateStep(int stepNumber, string iconGlyph, string title, int currentStep)
+        private static int GetHistoryStepOrder(string title)
         {
-            return new ProcessStep
+            for (var step = 1; step <= 7; step++)
             {
-                StepNumber = stepNumber,
-                IconGlyph = iconGlyph,
-                Title = title,
-                TimeText = stepNumber < currentStep ? "Đã thực hiện" : stepNumber == currentStep ? "Đang thực hiện" : "Chưa thực hiện",
-                IsDone = stepNumber < currentStep,
-                IsCurrent = stepNumber == currentStep
-            };
+                if (GetProcessStepDefinition(step).Title == title)
+                {
+                    return step;
+                }
+            }
+
+            return 99;
+        }
+
+        private static bool IsPendingProcessHistory(ProcessHistoryItem item)
+        {
+            return item.ProcessedAt == "Chưa thực hiện";
+        }
+
+        private static bool HasProcessHistory(SqliteConnection connection, SqliteTransaction transaction, int recordId, string title)
+        {
+            using var command = connection.CreateCommand();
+            command.Transaction = transaction;
+            command.CommandText = "SELECT COUNT(*) FROM ProcessHistories WHERE RecordId = $recordId AND Title = $title;";
+            command.Parameters.AddWithValue("$recordId", recordId);
+            command.Parameters.AddWithValue("$title", title);
+            return Convert.ToInt32(command.ExecuteScalar(), CultureInfo.InvariantCulture) > 0;
+        }
+
+        private static void InsertProcessHistory(SqliteConnection connection, SqliteTransaction transaction, int recordId, string title, DateTime processedAt, string processor, string content, bool isCompleted)
+        {
+            using var command = connection.CreateCommand();
+            command.Transaction = transaction;
+            command.CommandText = @"
+INSERT INTO ProcessHistories (RecordId, Title, ProcessedAt, ProcessorName, Content, IsCompleted)
+VALUES ($recordId, $title, $processedAt, $processor, $content, $isCompleted);";
+            command.Parameters.AddWithValue("$recordId", recordId);
+            command.Parameters.AddWithValue("$title", title);
+            command.Parameters.AddWithValue("$processedAt", processedAt.ToString("O", CultureInfo.InvariantCulture));
+            command.Parameters.AddWithValue("$processor", processor);
+            command.Parameters.AddWithValue("$content", content);
+            command.Parameters.AddWithValue("$isCompleted", isCompleted ? 1 : 0);
+            command.ExecuteNonQuery();
+        }
+
+        private static void AddPendingProcessHistoryItems(List<ProcessHistoryItem> result, string status)
+        {
+            var currentStep = GetProcessStepNumber(status);
+            for (var step = 1; step <= 7; step++)
+            {
+                var definition = GetProcessStepDefinition(step);
+                if (result.Any(item => item.Title == definition.Title))
+                {
+                    continue;
+                }
+
+                result.Add(new ProcessHistoryItem
+                {
+                    Title = definition.Title,
+                    ProcessedAt = "Chưa thực hiện",
+                    ProcessorName = string.Empty,
+                    Content = string.Empty,
+                    IsCompleted = false,
+                    IsCurrent = step == currentStep,
+                    HasDetails = false
+                });
+            }
+        }
+
+        private static void DeleteProcessHistoryFromStep(SqliteConnection connection, SqliteTransaction transaction, int recordId, int firstStep)
+        {
+            var titles = new List<string>();
+            for (var step = firstStep; step <= 7; step++)
+            {
+                titles.Add(GetProcessStepDefinition(step).Title);
+            }
+
+            using var command = connection.CreateCommand();
+            command.Transaction = transaction;
+            command.CommandText = $@"
+DELETE FROM ProcessHistories
+WHERE RecordId = $recordId
+  AND Title IN ({string.Join(", ", titles.Select((_, index) => "$title" + index))});";
+            command.Parameters.AddWithValue("$recordId", recordId);
+            for (var index = 0; index < titles.Count; index++)
+            {
+                command.Parameters.AddWithValue("$title" + index, titles[index]);
+            }
+
+            command.ExecuteNonQuery();
         }
 
         private static string BuildRandomContent(string caseType, string field, string areaName)
@@ -1047,6 +1346,19 @@ ORDER BY ProcessedAt;";
 
             command.CommandText = $"SELECT COUNT(*) FROM Records WHERE Status IN ({string.Join(",", parameters)}){BuildDateCondition(fromDate, toDate)};";
             AddDateParameters(command, fromDate, toDate);
+            return Convert.ToInt32(command.ExecuteScalar(), CultureInfo.InvariantCulture);
+        }
+
+        private static int CountOverdueOpenRecords(SqliteConnection connection)
+        {
+            using var command = connection.CreateCommand();
+            command.CommandText = @"
+SELECT COUNT(*)
+FROM Records
+WHERE Status <> 'Đã giải quyết'
+  AND ExpectedResultDate <> ''
+  AND ExpectedResultDate < $today;";
+            command.Parameters.AddWithValue("$today", DateTime.Today.ToString("O", CultureInfo.InvariantCulture));
             return Convert.ToInt32(command.ExecuteScalar(), CultureInfo.InvariantCulture);
         }
 

@@ -3,8 +3,17 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <UserControl.Resources>
         <Style x:Key="InputLabelText" TargetType="TextBlock">
-            <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="Margin" Value="0,0,0,5" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+            <Setter Property="Margin" Value="0,0,0,6" />
+        </Style>
+
+        <Style x:Key="AttachmentIconButton" TargetType="Button" BasedOn="{StaticResource SecondaryButton}">
+            <Setter Property="Width" Value="28" />
+            <Setter Property="MinWidth" Value="28" />
+            <Setter Property="Height" Value="28" />
+            <Setter Property="Padding" Value="0" />
         </Style>
 
         <Style x:Key="ReceivedCalendarDayButton" TargetType="CalendarDayButton">
@@ -38,7 +47,7 @@
     </UserControl.Resources>
     <ScrollViewer VerticalScrollBarVisibility="Auto">
         <StackPanel>
-            <Grid Margin="0,0,0,18">
+            <Grid Margin="0,0,0,16">
                 <StackPanel>
                     <TextBlock Text="NHẬP DỮ LIỆU" Style="{StaticResource PageTitleText}" />
                     <TextBlock Text="Tiếp nhận và nhập thông tin hồ sơ" Style="{StaticResource MutedText}" Margin="0,4,0,0" />
@@ -62,9 +71,9 @@
                 </StackPanel>
             </Grid>
 
-            <Border Style="{StaticResource CardBorder}" Margin="0,0,0,10">
+            <Border Style="{StaticResource CardBorder}" Margin="0,0,0,12" Padding="18">
                 <StackPanel>
-                    <TextBlock Text="1. THÔNG TIN CHUNG" Style="{StaticResource SectionTitleText}" Foreground="{StaticResource PrimaryBrush}" Margin="0,0,0,12" />
+                    <TextBlock Text="1. THÔNG TIN CHUNG" Style="{StaticResource SectionTitleText}" Foreground="{StaticResource PrimaryBrush}" Margin="0,0,0,14" />
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
@@ -79,39 +88,39 @@
                             <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
 
-                        <StackPanel Grid.Column="0" Margin="0,0,12,12">
+                        <StackPanel Grid.Column="0" Margin="0,0,14,14">
                             <TextBlock Style="{StaticResource InputLabelText}"><Run Text="Số hồ sơ / Số đơn" /><Run Text=" *" Foreground="#E11414" /></TextBlock>
                             <TextBox Text="{Binding RecordCode, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                         </StackPanel>
-                        <StackPanel Grid.Column="1" Margin="0,0,12,12">
+                        <StackPanel Grid.Column="1" Margin="0,0,14,14">
                             <TextBlock Style="{StaticResource InputLabelText}"><Run Text="Ngày tiếp nhận" /><Run Text=" *" Foreground="#E11414" /></TextBlock>
                             <DatePicker Style="{StaticResource ReceivedDatePickerStyle}"
                                         SelectedDate="{Binding SelectedReceivedDate, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                         Language="vi-VN" />
                         </StackPanel>
-                        <StackPanel Grid.Column="2" Margin="0,0,12,12">
+                        <StackPanel Grid.Column="2" Margin="0,0,14,14">
                             <TextBlock Style="{StaticResource InputLabelText}"><Run Text="Nguồn tiếp nhận" /><Run Text=" *" Foreground="#E11414" /></TextBlock>
                             <ComboBox ItemsSource="{Binding ReceiveSources}" SelectedItem="{Binding ReceiveSource, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                         </StackPanel>
-                        <StackPanel Grid.Column="3" Margin="0,0,0,12">
+                        <StackPanel Grid.Column="3" Margin="0,0,0,14">
                             <TextBlock Style="{StaticResource InputLabelText}"><Run Text="Người tiếp nhận" /><Run Text=" *" Foreground="#E11414" /></TextBlock>
                             <TextBox Text="{Binding ReceiverName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                         </StackPanel>
 
-                        <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,12,12">
+                        <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,14,14">
                             <TextBlock Style="{StaticResource InputLabelText}"><Run Text="Người gửi đơn / Người tố giác" /><Run Text=" *" Foreground="#E11414" /></TextBlock>
                             <TextBox Text="{Binding SenderName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                         </StackPanel>
-                        <StackPanel Grid.Row="1" Grid.Column="1" Margin="0,0,12,12">
+                        <StackPanel Grid.Row="1" Grid.Column="1" Margin="0,0,14,14">
                             <TextBlock Text="Số điện thoại" Style="{StaticResource InputLabelText}" />
                             <TextBox Text="{Binding SenderPhone, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                         </StackPanel>
-                        <StackPanel Grid.Row="1" Grid.Column="2" Grid.ColumnSpan="2" Margin="0,0,0,12">
+                        <StackPanel Grid.Row="1" Grid.Column="2" Grid.ColumnSpan="2" Margin="0,0,0,14">
                             <TextBlock Text="Địa chỉ liên hệ" Style="{StaticResource InputLabelText}" />
                             <TextBox Text="{Binding ContactAddress, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                         </StackPanel>
 
-                        <StackPanel Grid.Row="2" Grid.Column="0" Margin="0,0,12,12">
+                        <StackPanel Grid.Row="2" Grid.Column="0" Margin="0,0,14,14">
                             <TextBlock Style="{StaticResource InputLabelText}"><Run Text="Địa bàn (xã/phường/đặc khu)" /><Run Text=" *" Foreground="#E11414" /></TextBlock>
                             <ComboBox x:Name="AreaComboBox"
                                       ItemsSource="{Binding FilteredAreas}"
@@ -122,14 +131,14 @@
                                       StaysOpenOnEdit="True"
                                       KeyUp="AreaComboBox_KeyUp" />
                         </StackPanel>
-                        <StackPanel Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="3" Margin="0,0,0,12">
+                        <StackPanel Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="3" Margin="0,0,0,14">
                             <TextBlock Text="Địa chỉ xảy ra vụ việc" Style="{StaticResource InputLabelText}" />
                             <TextBox Text="{Binding IncidentAddress, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                         </StackPanel>
 
                         <StackPanel Grid.Row="3" Grid.ColumnSpan="4">
                             <TextBlock Style="{StaticResource InputLabelText}"><Run Text="Nội dung đơn / Nội dung vụ việc" /><Run Text=" *" Foreground="#E11414" /></TextBlock>
-                            <TextBox Height="76"
+                            <TextBox Height="92"
                                      VerticalContentAlignment="Top"
                                      TextWrapping="Wrap"
                                      AcceptsReturn="True"
@@ -139,74 +148,79 @@
                 </StackPanel>
             </Border>
 
-            <Grid Margin="0,0,0,10">
+            <Grid Margin="0,0,0,12">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
-                <Border Grid.Column="0" Style="{StaticResource CardBorder}" Margin="0,0,6,0">
+                <Border Grid.Column="0" Style="{StaticResource CardBorder}" Margin="0,0,6,0" Padding="18">
                     <StackPanel>
-                        <TextBlock Text="2. THÔNG TIN LIÊN QUAN" Style="{StaticResource SectionTitleText}" Foreground="{StaticResource PrimaryBrush}" Margin="0,0,0,12" />
+                        <TextBlock Text="2. THÔNG TIN LIÊN QUAN" Style="{StaticResource SectionTitleText}" Foreground="{StaticResource PrimaryBrush}" Margin="0,0,0,14" />
                         <UniformGrid Columns="2">
-                            <StackPanel Margin="0,0,10,10">
+                            <StackPanel Margin="0,0,12,12">
                                 <TextBlock Style="{StaticResource InputLabelText}"><Run Text="Loại vụ việc" /><Run Text=" *" Foreground="#E11414" /></TextBlock>
                                 <ComboBox ItemsSource="{Binding CaseTypes}" SelectedItem="{Binding CaseType, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                             </StackPanel>
-                            <StackPanel Margin="0,0,0,10">
+                            <StackPanel Margin="0,0,0,12">
                                 <TextBlock Style="{StaticResource InputLabelText}"><Run Text="Nhóm nội dung" /><Run Text=" *" Foreground="#E11414" /></TextBlock>
                                 <ComboBox ItemsSource="{Binding ContentGroups}" SelectedItem="{Binding ContentGroup, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                             </StackPanel>
-                            <StackPanel Margin="0,0,10,10">
+                            <StackPanel Margin="0,0,12,12">
                                 <TextBlock Style="{StaticResource InputLabelText}"><Run Text="Lĩnh vực" /><Run Text=" *" Foreground="#E11414" /></TextBlock>
                                 <ComboBox ItemsSource="{Binding Fields}" SelectedItem="{Binding Field, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                             </StackPanel>
-                            <StackPanel Margin="0,0,0,10">
+                            <StackPanel Margin="0,0,0,12">
                                 <TextBlock Text="Đối tượng liên quan" Style="{StaticResource InputLabelText}" />
                                 <TextBox Text="{Binding RelatedPerson, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                             </StackPanel>
                         </UniformGrid>
                         <TextBlock Text="Ghi chú" Style="{StaticResource InputLabelText}" />
-                        <TextBox Height="54" TextWrapping="Wrap" AcceptsReturn="True" Text="{Binding Note, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                        <TextBox Height="68" TextWrapping="Wrap" AcceptsReturn="True" VerticalContentAlignment="Top" Text="{Binding Note, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                     </StackPanel>
                 </Border>
 
-                <Border Grid.Column="1" Style="{StaticResource CardBorder}" Margin="6,0,0,0">
+                <Border Grid.Column="1" Style="{StaticResource CardBorder}" Margin="6,0,0,0" Padding="18">
                     <StackPanel>
-                        <TextBlock Text="3. THÔNG TIN BỔ SUNG" Style="{StaticResource SectionTitleText}" Foreground="{StaticResource PrimaryBrush}" Margin="0,0,0,12" />
+                        <TextBlock Text="3. THÔNG TIN BỔ SUNG" Style="{StaticResource SectionTitleText}" Foreground="{StaticResource PrimaryBrush}" Margin="0,0,0,14" />
                         <UniformGrid Columns="2">
-                            <StackPanel Margin="0,0,10,10">
+                            <StackPanel Margin="0,0,12,12">
                                 <TextBlock Text="Hình thức xử lý mong muốn" Style="{StaticResource InputLabelText}" />
                                 <ComboBox ItemsSource="{Binding HandlingMethods}" SelectedItem="{Binding ExpectedHandlingMethod, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                             </StackPanel>
-                            <StackPanel Margin="0,0,0,10">
+                            <StackPanel Margin="0,0,0,12">
                                 <TextBlock Text="Mức độ vụ việc" Style="{StaticResource InputLabelText}" />
                                 <ComboBox ItemsSource="{Binding Priorities}" SelectedItem="{Binding SeverityLevel, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                             </StackPanel>
-                            <StackPanel Margin="0,0,10,10">
+                            <StackPanel Margin="0,0,12,12">
                                 <TextBlock Text="Ngày hẹn trả kết quả" Style="{StaticResource InputLabelText}" />
                                 <TextBox Text="{Binding ExpectedResultDate, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                             </StackPanel>
-                            <StackPanel Margin="0,0,0,10">
+                            <StackPanel Margin="0,0,0,12">
                                 <TextBlock Text="Ưu tiên" Style="{StaticResource InputLabelText}" />
                                 <ComboBox ItemsSource="{Binding Priorities}" SelectedItem="{Binding PriorityLevel, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                             </StackPanel>
                         </UniformGrid>
                         <TextBlock Text="Ghi chú bổ sung" Style="{StaticResource InputLabelText}" />
-                        <TextBox Height="54" TextWrapping="Wrap" AcceptsReturn="True" Text="{Binding AdditionalNote, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                        <TextBox Height="68" TextWrapping="Wrap" AcceptsReturn="True" VerticalContentAlignment="Top" Text="{Binding AdditionalNote, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                     </StackPanel>
                 </Border>
             </Grid>
 
-            <Border Style="{StaticResource CardBorder}">
+            <Border Style="{StaticResource CardBorder}" Padding="16">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="420" />
                     </Grid.ColumnDefinitions>
                     <StackPanel>
-                        <TextBlock Text="TÀI LIỆU LIÊN QUAN (ĐÍNH KÈM)" Style="{StaticResource SectionTitleText}" Foreground="{StaticResource PrimaryBrush}" />
+                        <StackPanel Orientation="Horizontal">
+                            <Border Width="20" Height="20" CornerRadius="10" Background="#EAF2FF" Margin="0,0,8,0">
+                                <TextBlock Text="&#xE946;" FontFamily="Segoe MDL2 Assets" FontSize="12" Foreground="{StaticResource PrimaryBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <TextBlock Text="TÀI LIỆU LIÊN QUAN (ĐÍNH KÈM)" Style="{StaticResource SectionTitleText}" Foreground="{StaticResource PrimaryBrush}" />
+                        </StackPanel>
                         <Border Margin="0,12,18,0"
-                                MinHeight="148"
+                                MinHeight="84"
                                 Background="#F7FAFF"
                                 BorderBrush="#D8E7FF"
                                 BorderThickness="1"
@@ -229,7 +243,7 @@
                                        HorizontalAlignment="Center"
                                        VerticalAlignment="Center" />
                         </Border>
-                        <ItemsControl ItemsSource="{Binding Attachments}" Margin="0,10,18,0">
+                        <ItemsControl ItemsSource="{Binding Attachments}" Margin="28,10,18,0">
                             <ItemsControl.Style>
                                 <Style TargetType="ItemsControl">
                                     <Setter Property="Visibility" Value="Visible" />
@@ -242,45 +256,32 @@
                             </ItemsControl.Style>
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Border Background="#F7FAFF"
-                                            BorderBrush="#D8E7FF"
-                                            BorderThickness="1"
-                                            CornerRadius="6"
-                                            Padding="10"
-                                            Margin="0,0,0,8">
-                                    <Grid>
+                                    <Grid Margin="0,0,0,8">
                                         <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="14" />
                                             <ColumnDefinition Width="*" />
                                             <ColumnDefinition Width="90" />
-                                            <ColumnDefinition Width="34" />
-                                            <ColumnDefinition Width="34" />
+                                            <ColumnDefinition Width="32" />
+                                            <ColumnDefinition Width="32" />
                                         </Grid.ColumnDefinitions>
-                                        <TextBlock Text="{Binding FileName}" />
-                                        <TextBlock Grid.Column="1" Text="{Binding FileSize}" Style="{StaticResource MutedText}" />
-                                        <Button Grid.Column="2"
-                                                Style="{StaticResource SecondaryButton}"
-                                                Width="28"
-                                                MinWidth="28"
-                                                Height="28"
-                                                Padding="0"
+                                        <TextBlock Text="•" FontSize="16" Foreground="{StaticResource PrimaryBrush}" VerticalAlignment="Center" />
+                                        <TextBlock Grid.Column="1" Text="{Binding FileName}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Grid.Column="2" Text="{Binding FileSize}" Style="{StaticResource MutedText}" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,8,0" />
+                                        <Button Grid.Column="3"
+                                                Style="{StaticResource AttachmentIconButton}"
                                                 Command="{Binding DataContext.OpenAttachmentCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                 CommandParameter="{Binding}"
                                                 ToolTip="Xem tài liệu">
                                             <TextBlock Text="&#xE896;" FontFamily="Segoe MDL2 Assets" Foreground="{StaticResource PrimaryBrush}" />
                                         </Button>
-                                        <Button Grid.Column="3"
-                                                Style="{StaticResource SecondaryButton}"
-                                                Width="28"
-                                                MinWidth="28"
-                                                Height="28"
-                                                Padding="0"
+                                        <Button Grid.Column="4"
+                                                Style="{StaticResource AttachmentIconButton}"
                                                 Command="{Binding DataContext.RemoveAttachmentCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                 CommandParameter="{Binding}"
                                                 ToolTip="Xóa tài liệu">
                                             <TextBlock Text="&#xE74D;" FontFamily="Segoe MDL2 Assets" Foreground="#E11414" />
                                         </Button>
                                     </Grid>
-                                    </Border>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
@@ -291,8 +292,8 @@
                             BorderBrush="#7FAEFF"
                             BorderThickness="1"
                             CornerRadius="6"
-                            Padding="16"
-                            MinHeight="148"
+                            Padding="14"
+                            MinHeight="94"
                             AllowDrop="True"
                             PreviewDragEnter="AttachmentDropZone_PreviewDragEnter"
                             PreviewDragOver="AttachmentDropZone_PreviewDragOver"
@@ -308,31 +309,36 @@
                                     PreviewDragEnter="AttachmentDropZone_PreviewDragEnter"
                                     PreviewDragOver="AttachmentDropZone_PreviewDragOver"
                                     PreviewDrop="AttachmentDropZone_PreviewDrop">
-                            <TextBlock Text="&#xE898;" FontFamily="Segoe MDL2 Assets" FontSize="30" Foreground="{StaticResource PrimaryBrush}" HorizontalAlignment="Center" />
-                            <TextBlock Text="Kéo thả file vào đây hoặc" HorizontalAlignment="Center" Margin="0,8,0,10" />
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                <TextBlock Text="&#xE898;" FontFamily="Segoe MDL2 Assets" FontSize="24" Foreground="{StaticResource PrimaryBrush}" VerticalAlignment="Center" Margin="0,0,16,0" />
+                                <StackPanel>
+                                    <TextBlock Text="Kéo thả file vào đây hoặc" HorizontalAlignment="Center" FontWeight="SemiBold" />
+                                    <TextBlock Text="PDF, JPG, PNG - tối đa 10MB/file" Style="{StaticResource MutedText}" HorizontalAlignment="Center" Margin="0,5,0,0" />
+                                </StackPanel>
+                            </StackPanel>
                             <Button Style="{StaticResource SecondaryButton}"
                                     Content="Chọn file"
                                     MinWidth="110"
+                                    Margin="0,10,0,0"
                                     Click="ChooseAttachmentFilesButton_Click" />
-                            <TextBlock Text="PDF, JPG, PNG - tối đa 10MB/file" Style="{StaticResource MutedText}" HorizontalAlignment="Center" Margin="0,8,0,0" />
                         </StackPanel>
                     </Border>
                 </Grid>
             </Border>
 
-            <Grid Margin="0,10,0,0">
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
-                    <Button Style="{StaticResource DangerButton}"
-                            MinWidth="100"
-                            Command="{Binding DeleteCommand}">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="&#xE74D;" FontFamily="Segoe MDL2 Assets" Margin="0,0,8,0" />
-                            <TextBlock Text="Xóa" />
-                        </StackPanel>
-                    </Button>
-                </StackPanel>
+            <Grid Margin="0,12,0,0">
+                <Button Style="{StaticResource DangerButton}"
+                        MinWidth="118"
+                        HorizontalAlignment="Left"
+                        Command="{Binding DeleteCommand}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#xE74D;" FontFamily="Segoe MDL2 Assets" Margin="0,0,8,0" />
+                        <TextBlock Text="Xóa" />
+                    </StackPanel>
+                </Button>
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                     <Button Style="{StaticResource PrimaryButton}"
+                            MinWidth="138"
                             Margin="0,0,12,0"
                             Command="{Binding SaveCommand}">
                         <StackPanel Orientation="Horizontal">
@@ -341,6 +347,7 @@
                         </StackPanel>
                     </Button>
                     <Button Style="{StaticResource SecondaryButton}"
+                            MinWidth="128"
                             Content="Hủy bỏ"
                             Command="{Binding CancelCommand}" />
                 </StackPanel>
