@@ -1,0 +1,394 @@
+<UserControl x:Class="QuanLyHoSo.Views.Records.RecordListView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <UserControl.Resources>
+        <Style x:Key="IconActionButton" TargetType="Button" BasedOn="{StaticResource SecondaryButton}">
+            <Setter Property="Width" Value="30" />
+            <Setter Property="MinWidth" Value="30" />
+            <Setter Property="Height" Value="30" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Margin" Value="0,0,6,0" />
+            <Setter Property="FontFamily" Value="Segoe MDL2 Assets" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+    </UserControl.Resources>
+
+    <Grid>
+        <ScrollViewer x:Name="RecordListScrollViewer"
+                      VerticalScrollBarVisibility="Auto"
+                      PreviewMouseWheel="RecordListScrollViewer_PreviewMouseWheel">
+            <StackPanel>
+            <Grid Margin="0,0,0,18">
+                <StackPanel>
+                    <TextBlock Text="DANH SÁCH HỒ SƠ" Style="{StaticResource PageTitleText}" />
+                    <TextBlock Text="20 hồ sơ cập nhật mới nhất và thao tác nhanh" Style="{StaticResource MutedText}" Margin="0,4,0,0" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button Style="{StaticResource SecondaryButton}"
+                            Margin="0,0,12,0"
+                            Command="{Binding BackCommand}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE72B;" FontFamily="Segoe MDL2 Assets" Margin="0,0,8,0" />
+                            <TextBlock Text="Quay lại" />
+                        </StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource SecondaryButton}"
+                            Command="{Binding RefreshCommand}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE72C;" FontFamily="Segoe MDL2 Assets" Margin="0,0,8,0" />
+                            <TextBlock Text="Làm mới" />
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </Grid>
+
+            <Border Style="{StaticResource CardBorder}">
+                <StackPanel>
+                    <Grid Margin="0,0,0,12">
+                        <StackPanel>
+                            <TextBlock Text="HỒ SƠ MỚI NHẤT" Style="{StaticResource SectionTitleText}" />
+                            <TextBlock Text="{Binding TotalRecordsText}" Style="{StaticResource MutedText}" Margin="0,4,0,0" />
+                        </StackPanel>
+                    </Grid>
+
+                    <DataGrid ItemsSource="{Binding Records}"
+                              Height="{Binding TableHeight}"
+                              CanUserResizeColumns="True"
+                              HorizontalScrollBarVisibility="Disabled"
+                              VerticalScrollBarVisibility="Disabled"
+                              PreviewMouseWheel="RecordListDataGrid_PreviewMouseWheel"
+                              GridLinesVisibility="Horizontal"
+                              IsReadOnly="True"
+                              SelectionMode="Single"
+                              SelectionUnit="FullRow">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="STT"
+                                                Binding="{Binding Index}"
+                                                Width="58"
+                                                MinWidth="48"
+                                                MaxWidth="72" />
+                            <DataGridTextColumn Header="Số hồ sơ"
+                                                Binding="{Binding RecordCode}"
+                                                Width="0.75*"
+                                                MinWidth="105"
+                                                MaxWidth="155" />
+                            <DataGridTextColumn Header="Người gửi / Tổ chức"
+                                                Binding="{Binding SenderName}"
+                                                Width="1.55*"
+                                                MinWidth="180"
+                                                MaxWidth="420" />
+                            <DataGridTextColumn Header="Địa bàn"
+                                                Binding="{Binding AreaName}"
+                                                Width="1.05*"
+                                                MinWidth="130"
+                                                MaxWidth="280" />
+                            <DataGridTemplateColumn Header="Trạng thái"
+                                                    Width="1.0*"
+                                                    MinWidth="145"
+                                                    MaxWidth="230">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Border Background="{Binding Status, Converter={StaticResource StatusToBrushConverter}}"
+                                                CornerRadius="4"
+                                                Height="22"
+                                                Padding="7,1"
+                                                VerticalAlignment="Center"
+                                                HorizontalAlignment="Left">
+                                            <TextBlock Text="{Binding Status}"
+                                                       FontSize="12"
+                                                       FontWeight="SemiBold"
+                                                       Foreground="{Binding Status, Converter={StaticResource StatusToBrushConverter}, ConverterParameter=Foreground}" />
+                                        </Border>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTextColumn Header="Cập nhật cuối"
+                                                Binding="{Binding UpdatedAt}"
+                                                Width="1.0*"
+                                                MinWidth="135"
+                                                MaxWidth="220" />
+                            <DataGridTextColumn Header="Người xử lý"
+                                                Binding="{Binding ProcessorName}"
+                                                Width="0.9*"
+                                                MinWidth="120" />
+                            <DataGridTemplateColumn Header="Thao tác"
+                                                    Width="126"
+                                                    MinWidth="126"
+                                                    MaxWidth="126">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                            <Button Style="{StaticResource IconActionButton}"
+                                                    Command="{Binding ViewCommand}"
+                                                    ToolTip="Xem hồ sơ"
+                                                    Foreground="{StaticResource PrimaryBrush}">
+                                                <TextBlock Text="&#xE890;" FontFamily="Segoe MDL2 Assets" />
+                                            </Button>
+                                            <Button Style="{StaticResource IconActionButton}"
+                                                    Command="{Binding EditCommand}"
+                                                    ToolTip="Chỉnh sửa"
+                                                    Foreground="#F28C18">
+                                                <TextBlock Text="&#xE70F;" FontFamily="Segoe MDL2 Assets" />
+                                            </Button>
+                                            <Button Style="{StaticResource IconActionButton}"
+                                                    Command="{Binding DeleteCommand}"
+                                                    ToolTip="Xóa"
+                                                    Foreground="#E11414"
+                                                    Margin="0">
+                                                <TextBlock Text="&#xE74D;" FontFamily="Segoe MDL2 Assets" />
+                                            </Button>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
+
+                    <Grid Margin="0,12,0,0">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Text="Số dòng"
+                                       Style="{StaticResource MutedText}"
+                                       VerticalAlignment="Center"
+                                       Margin="0,0,8,0" />
+                            <TextBox Text="{Binding PageSizeText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                     Width="58"
+                                     Height="36"
+                                     HorizontalContentAlignment="Center" />
+                            <TextBlock Text="Tối đa 20"
+                                       Style="{StaticResource MutedText}"
+                                       FontSize="12"
+                                       VerticalAlignment="Center"
+                                       Margin="10,0,0,0" />
+                        </StackPanel>
+
+                        <StackPanel Orientation="Horizontal"
+                                    HorizontalAlignment="Right"
+                                    VerticalAlignment="Center">
+                            <Button Style="{StaticResource SecondaryButton}"
+                                    Width="36"
+                                    MinWidth="36"
+                                    Height="36"
+                                    Padding="0"
+                                    Command="{Binding PreviousPageCommand}"
+                                    ToolTip="Trang trước">
+                                <TextBlock Text="&#xE76B;"
+                                           FontFamily="Segoe MDL2 Assets"
+                                           FontSize="14"
+                                           FontWeight="SemiBold" />
+                            </Button>
+                            <Border Background="#F8FAFD"
+                                    BorderBrush="{StaticResource LineBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="6"
+                                    Height="36"
+                                    MinWidth="92"
+                                    Margin="8,0"
+                                    Padding="14,0">
+                                <TextBlock Text="{Binding PageText}"
+                                           FontSize="13"
+                                           FontWeight="SemiBold"
+                                           Foreground="{StaticResource MutedTextBrush}"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center" />
+                            </Border>
+                            <Button Style="{StaticResource SecondaryButton}"
+                                    Width="36"
+                                    MinWidth="36"
+                                    Height="36"
+                                    Padding="0"
+                                    Command="{Binding NextPageCommand}"
+                                    ToolTip="Trang sau">
+                                <TextBlock Text="&#xE76C;"
+                                           FontFamily="Segoe MDL2 Assets"
+                                           FontSize="14"
+                                           FontWeight="SemiBold" />
+                            </Button>
+                        </StackPanel>
+                    </Grid>
+                </StackPanel>
+            </Border>
+            </StackPanel>
+        </ScrollViewer>
+
+        <Grid Background="#9906164A"
+              Visibility="{Binding IsDetailOpen, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <Border Background="White"
+                    BorderBrush="{StaticResource LineBrush}"
+                    BorderThickness="1"
+                    CornerRadius="6"
+                    Width="860"
+                    MaxWidth="980"
+                    MaxHeight="640"
+                    Padding="18"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center">
+                <Border.Effect>
+                    <DropShadowEffect BlurRadius="26"
+                                      ShadowDepth="6"
+                                      Opacity="0.22"
+                                      Color="#06164A" />
+                </Border.Effect>
+
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <Grid Margin="0,0,0,14">
+                        <StackPanel>
+                            <TextBlock Text="CHI TIẾT HỒ SƠ" Style="{StaticResource SectionTitleText}" Foreground="{StaticResource PrimaryBrush}" />
+                            <TextBlock Text="{Binding SelectedRecordDetail.RecordCode}" FontSize="24" FontWeight="Bold" Margin="0,6,0,0" />
+                        </StackPanel>
+                        <Button Style="{StaticResource SecondaryButton}"
+                                Width="36"
+                                MinWidth="36"
+                                Height="36"
+                                Padding="0"
+                                HorizontalAlignment="Right"
+                                Command="{Binding CloseDetailCommand}"
+                                ToolTip="Đóng">
+                            <TextBlock Text="&#xE711;" FontFamily="Segoe MDL2 Assets" FontSize="13" />
+                        </Button>
+                    </Grid>
+
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                        <StackPanel>
+                            <Grid Margin="0,0,0,12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+
+                                <StackPanel Margin="0,0,12,12">
+                                    <TextBlock Text="Ngày tiếp nhận" Style="{StaticResource MutedText}" />
+                                    <TextBlock Text="{Binding SelectedRecordDetail.ReceivedDate}" FontWeight="SemiBold" Margin="0,4,0,0" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="1" Margin="0,0,12,12">
+                                    <TextBlock Text="Nguồn tiếp nhận" Style="{StaticResource MutedText}" />
+                                    <TextBlock Text="{Binding SelectedRecordDetail.ReceiveSource}" FontWeight="SemiBold" Margin="0,4,0,0" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="2" Margin="0,0,0,12">
+                                    <TextBlock Text="Người tiếp nhận" Style="{StaticResource MutedText}" />
+                                    <TextBlock Text="{Binding SelectedRecordDetail.ReceiverName}" FontWeight="SemiBold" Margin="0,4,0,0" />
+                                </StackPanel>
+
+                                <StackPanel Grid.Row="1" Margin="0,0,12,12">
+                                    <TextBlock Text="Người gửi / Người tố giác" Style="{StaticResource MutedText}" />
+                                    <TextBlock Text="{Binding SelectedRecordDetail.SenderName}" FontWeight="SemiBold" Margin="0,4,0,0" TextWrapping="Wrap" />
+                                </StackPanel>
+                                <StackPanel Grid.Row="1" Grid.Column="1" Margin="0,0,12,12">
+                                    <TextBlock Text="Số điện thoại" Style="{StaticResource MutedText}" />
+                                    <TextBlock Text="{Binding SelectedRecordDetail.SenderPhone}" FontWeight="SemiBold" Margin="0,4,0,0" />
+                                </StackPanel>
+                                <StackPanel Grid.Row="1" Grid.Column="2" Margin="0,0,0,12">
+                                    <TextBlock Text="Địa bàn" Style="{StaticResource MutedText}" />
+                                    <TextBlock Text="{Binding SelectedRecordDetail.AreaName}" FontWeight="SemiBold" Margin="0,4,0,0" TextWrapping="Wrap" />
+                                </StackPanel>
+
+                                <StackPanel Grid.Row="2" Grid.ColumnSpan="2" Margin="0,0,12,12">
+                                    <TextBlock Text="Địa chỉ liên hệ" Style="{StaticResource MutedText}" />
+                                    <TextBlock Text="{Binding SelectedRecordDetail.ContactAddress}" FontWeight="SemiBold" Margin="0,4,0,0" TextWrapping="Wrap" />
+                                </StackPanel>
+                                <StackPanel Grid.Row="2" Grid.Column="2" Margin="0,0,0,12">
+                                    <TextBlock Text="Địa chỉ xảy ra vụ việc" Style="{StaticResource MutedText}" />
+                                    <TextBlock Text="{Binding SelectedRecordDetail.IncidentAddress}" FontWeight="SemiBold" Margin="0,4,0,0" TextWrapping="Wrap" />
+                                </StackPanel>
+
+                                <StackPanel Grid.Row="3" Margin="0,0,12,0">
+                                    <TextBlock Text="Loại vụ việc" Style="{StaticResource MutedText}" />
+                                    <TextBlock Text="{Binding SelectedRecordDetail.CaseType}" FontWeight="SemiBold" Margin="0,4,0,0" TextWrapping="Wrap" />
+                                </StackPanel>
+                                <StackPanel Grid.Row="3" Grid.Column="1" Margin="0,0,12,0">
+                                    <TextBlock Text="Nhóm nội dung" Style="{StaticResource MutedText}" />
+                                    <TextBlock Text="{Binding SelectedRecordDetail.ContentGroup}" FontWeight="SemiBold" Margin="0,4,0,0" TextWrapping="Wrap" />
+                                </StackPanel>
+                                <StackPanel Grid.Row="3" Grid.Column="2">
+                                    <TextBlock Text="Lĩnh vực" Style="{StaticResource MutedText}" />
+                                    <TextBlock Text="{Binding SelectedRecordDetail.Field}" FontWeight="SemiBold" Margin="0,4,0,0" TextWrapping="Wrap" />
+                                </StackPanel>
+                            </Grid>
+
+                            <Border Background="#F7FAFF"
+                                    BorderBrush="#D8E7FF"
+                                    BorderThickness="1"
+                                    CornerRadius="6"
+                                    Padding="14"
+                                    Margin="0,0,0,12">
+                                <StackPanel>
+                                    <TextBlock Text="Nội dung đơn / Nội dung vụ việc" FontWeight="SemiBold" Margin="0,0,0,6" />
+                                    <TextBlock Text="{Binding SelectedRecordDetail.Content}" TextWrapping="Wrap" LineHeight="20" />
+                                </StackPanel>
+                            </Border>
+
+                            <Grid Margin="0,0,0,12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Border Background="#F8FAFD" BorderBrush="{StaticResource LineBrush}" BorderThickness="1" CornerRadius="6" Padding="12" Margin="0,0,6,0">
+                                    <StackPanel>
+                                        <TextBlock Text="Thông tin xử lý" FontWeight="SemiBold" Margin="0,0,0,8" />
+                                        <TextBlock Text="{Binding SelectedRecordDetail.ExpectedHandlingMethod, StringFormat=Hình thức: {0}}" TextWrapping="Wrap" />
+                                        <TextBlock Text="{Binding SelectedRecordDetail.SeverityLevel, StringFormat=Mức độ: {0}}" Margin="0,6,0,0" />
+                                        <TextBlock Text="{Binding SelectedRecordDetail.PriorityLevel, StringFormat=Ưu tiên: {0}}" Margin="0,6,0,0" />
+                                        <TextBlock Text="{Binding SelectedRecordDetail.ExpectedResultDate, StringFormat=Ngày hẹn trả: {0}}" Margin="0,6,0,0" />
+                                    </StackPanel>
+                                </Border>
+                                <Border Grid.Column="1" Background="#F8FAFD" BorderBrush="{StaticResource LineBrush}" BorderThickness="1" CornerRadius="6" Padding="12" Margin="6,0,0,0">
+                                    <StackPanel>
+                                        <TextBlock Text="Ghi chú" FontWeight="SemiBold" Margin="0,0,0,8" />
+                                        <TextBlock Text="{Binding SelectedRecordDetail.Note}" TextWrapping="Wrap" />
+                                        <TextBlock Text="{Binding SelectedRecordDetail.AdditionalNote}" TextWrapping="Wrap" Margin="0,8,0,0" />
+                                    </StackPanel>
+                                </Border>
+                            </Grid>
+
+                            <Border Background="#F8FAFD"
+                                    BorderBrush="{StaticResource LineBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="6"
+                                    Padding="12">
+                                <StackPanel>
+                                    <TextBlock Text="Tài liệu đính kèm" FontWeight="SemiBold" Margin="0,0,0,8" />
+                                    <ItemsControl ItemsSource="{Binding SelectedRecordDetail.Attachments}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Grid Margin="0,0,0,6">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="24" />
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="90" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock Text="&#xE8A5;" FontFamily="Segoe MDL2 Assets" Foreground="{StaticResource PrimaryBrush}" />
+                                                    <TextBlock Grid.Column="1" Text="{Binding FileName}" />
+                                                    <TextBlock Grid.Column="2" Text="{Binding FileSize}" Style="{StaticResource MutedText}" HorizontalAlignment="Right" />
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </ScrollViewer>
+
+                    <Button Grid.Row="2"
+                            Content="Đóng"
+                            Style="{StaticResource PrimaryButton}"
+                            HorizontalAlignment="Right"
+                            Margin="0,14,0,0"
+                            Command="{Binding CloseDetailCommand}" />
+                </Grid>
+            </Border>
+        </Grid>
+    </Grid>
+</UserControl>

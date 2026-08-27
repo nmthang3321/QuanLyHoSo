@@ -124,13 +124,24 @@
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
 
-            <Grid Margin="0,0,0,14" HorizontalAlignment="Stretch">
+            <Grid x:Name="OverviewChartsGrid"
+                  Margin="0,0,0,14"
+                  HorizontalAlignment="Stretch"
+                  SizeChanged="OverviewChartsGrid_SizeChanged">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
 
-                <Border Grid.Column="0" Style="{StaticResource CardBorder}" Margin="0,0,8,0" HorizontalAlignment="Stretch">
+                <Border x:Name="StatusChartCard"
+                        Grid.Column="0"
+                        Style="{StaticResource CardBorder}"
+                        Margin="0,0,8,0"
+                        HorizontalAlignment="Stretch">
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
@@ -139,7 +150,7 @@
                         <TextBlock Text="HỒ SƠ THEO TRẠNG THÁI" Style="{StaticResource SectionTitleText}" />
                         <Grid Grid.Row="1" Margin="0,18,0,0">
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="220" />
+                                <ColumnDefinition Width="200" />
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
                             <Grid Width="190" Height="190">
@@ -172,20 +183,33 @@
                                     <DataTemplate>
                                         <Grid Margin="0,0,0,10">
                                             <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="20" />
-                                                <ColumnDefinition Width="*" />
-                                                <ColumnDefinition Width="190" />
-                                                <ColumnDefinition Width="60" />
-                                                <ColumnDefinition Width="60" />
+                                                <ColumnDefinition Width="18" />
+                                                <ColumnDefinition Width="*" MinWidth="72" />
+                                                <ColumnDefinition Width="130" />
+                                                <ColumnDefinition Width="42" />
+                                                <ColumnDefinition Width="52" />
                                             </Grid.ColumnDefinitions>
                                             <Ellipse Width="10" Height="10" Fill="{Binding Color}" VerticalAlignment="Center" />
-                                            <TextBlock Grid.Column="1" Text="{Binding Name}" />
-                                            <Grid Grid.Column="2" Height="10" VerticalAlignment="Center">
+                                            <TextBlock Grid.Column="1"
+                                                       Text="{Binding Name}"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       ToolTip="{Binding Name}"
+                                                       Margin="0,0,8,0" />
+                                            <Grid Grid.Column="2"
+                                                  Height="10"
+                                                  VerticalAlignment="Center"
+                                                  ClipToBounds="True">
                                                 <Border Background="#ECF1F8" CornerRadius="4" />
                                                 <Border Width="{Binding Width}" Background="{Binding Color}" CornerRadius="4" HorizontalAlignment="Left" />
                                             </Grid>
-                                            <TextBlock Grid.Column="3" Text="{Binding Count}" HorizontalAlignment="Right" />
-                                            <TextBlock Grid.Column="4" Text="{Binding Percentage}" HorizontalAlignment="Right" />
+                                            <TextBlock Grid.Column="3"
+                                                       Text="{Binding Count}"
+                                                       HorizontalAlignment="Right"
+                                                       Margin="6,0,0,0" />
+                                            <TextBlock Grid.Column="4"
+                                                       Text="{Binding Percentage}"
+                                                       HorizontalAlignment="Right"
+                                                       Margin="6,0,0,0" />
                                         </Grid>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
@@ -194,7 +218,11 @@
                     </Grid>
                 </Border>
 
-                <Border Grid.Column="1" Style="{StaticResource CardBorder}" Margin="8,0,0,0" HorizontalAlignment="Stretch">
+                <Border x:Name="AreaChartCard"
+                        Grid.Column="1"
+                        Style="{StaticResource CardBorder}"
+                        Margin="8,0,0,0"
+                        HorizontalAlignment="Stretch">
                     <StackPanel>
                         <TextBlock Text="HỒ SƠ THEO ĐỊA BÀN - TOP 5" Style="{StaticResource SectionTitleText}" Margin="0,0,0,18" />
                         <ItemsControl ItemsSource="{Binding AreaStats}">

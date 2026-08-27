@@ -19,6 +19,33 @@ namespace QuanLyHoSo.Views.Dashboard
             InitializeComponent();
         }
 
+        private void OverviewChartsGrid_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            if (e.NewSize.Width < 980)
+            {
+                Grid.SetColumn(StatusChartCard, 0);
+                Grid.SetColumnSpan(StatusChartCard, 2);
+                Grid.SetRow(StatusChartCard, 0);
+                StatusChartCard.Margin = new Thickness(0, 0, 0, 14);
+
+                Grid.SetColumn(AreaChartCard, 0);
+                Grid.SetColumnSpan(AreaChartCard, 2);
+                Grid.SetRow(AreaChartCard, 1);
+                AreaChartCard.Margin = new Thickness(0);
+                return;
+            }
+
+            Grid.SetColumn(StatusChartCard, 0);
+            Grid.SetColumnSpan(StatusChartCard, 1);
+            Grid.SetRow(StatusChartCard, 0);
+            StatusChartCard.Margin = new Thickness(0, 0, 8, 0);
+
+            Grid.SetColumn(AreaChartCard, 1);
+            Grid.SetColumnSpan(AreaChartCard, 1);
+            Grid.SetRow(AreaChartCard, 0);
+            AreaChartCard.Margin = new Thickness(8, 0, 0, 0);
+        }
+
         private void DateFilterButton_Click(object sender, RoutedEventArgs e)
         {
             DateFilterHost.ContextMenu.PlacementTarget = DateFilterHost;

@@ -8,6 +8,7 @@ namespace QuanLyHoSo.ViewModels
     {
         private readonly DashboardViewModel _dashboardViewModel;
         private readonly RecordInputViewModel _recordInputViewModel;
+        private readonly RecordListViewModel _recordListViewModel;
         private readonly RecordProcessingViewModel _recordProcessingViewModel;
         private readonly ExportViewModel _exportViewModel;
         private readonly SettingsViewModel _settingsViewModel;
@@ -20,7 +21,8 @@ namespace QuanLyHoSo.ViewModels
             AppDataService.Instance.Initialize();
 
             _dashboardViewModel = new DashboardViewModel();
-            _recordInputViewModel = new RecordInputViewModel();
+            _recordInputViewModel = new RecordInputViewModel(() => NavigateTo("RecordList"));
+            _recordListViewModel = new RecordListViewModel(() => NavigateTo("Input"), EditRecordFromList);
             _recordProcessingViewModel = new RecordProcessingViewModel();
             _exportViewModel = new ExportViewModel();
             _settingsViewModel = new SettingsViewModel();
@@ -64,10 +66,16 @@ namespace QuanLyHoSo.ViewModels
 
         private void NavigateTo(string key)
         {
+            if (key == "RecordList")
+            {
+                _recordListViewModel.Reload();
+            }
+
             CurrentPageKey = key;
             CurrentViewModel = key switch
             {
                 "Input" => _recordInputViewModel,
+                "RecordList" => _recordListViewModel,
                 "Processing" => _recordProcessingViewModel,
                 "Export" => _exportViewModel,
                 "Settings" => _settingsViewModel,
@@ -76,8 +84,14 @@ namespace QuanLyHoSo.ViewModels
 
             foreach (var item in NavigationItems)
             {
-                item.IsSelected = item.Key == key;
+                item.IsSelected = item.Key == key || (key == "RecordList" && item.Key == "Input");
             }
+        }
+
+        private void EditRecordFromList(string recordCode)
+        {
+            _recordInputViewModel.LoadRecord(recordCode);
+            NavigateTo("Input");
         }
     }
 }

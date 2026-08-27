@@ -153,7 +153,7 @@ ORDER BY COUNT(*) DESC, Status;";
                     Name = status,
                     Count = count,
                     Percentage = $"{count * 100.0 / total:0.0}%",
-                    Width = Math.Max(8, (int)Math.Round(count * 180.0 / total)),
+                    Width = Math.Max(8, (int)Math.Round(count * 130.0 / total)),
                     Color = GetStatusColor(status)
                 });
             }
@@ -248,6 +248,221 @@ SELECT Id, RecordCode, ReceivedDate, ReceiveSource, ReceiverName, SenderName, Se
 FROM Records
 ORDER BY UpdatedAt DESC
 LIMIT 1;";
+            return ReadRecordForm(connection, command);
+        }
+
+        public RecordFormDraft GetRecordForm(string recordCode)
+        {
+            if (string.IsNullOrWhiteSpace(recordCode))
+            {
+                return new RecordFormDraft();
+            }
+
+            using var connection = OpenConnection();
+            using var command = connection.CreateCommand();
+            command.CommandText = @"
+SELECT Id, RecordCode, ReceivedDate, ReceiveSource, ReceiverName, SenderName, SenderPhone, ContactAddress,
+       AreaName, IncidentAddress, Content, CaseType, ContentGroup, Field, RelatedPerson,
+       ExpectedHandlingMethod, SeverityLevel, ExpectedResultDate, PriorityLevel, Note, AdditionalNote
+FROM Records
+WHERE RecordCode = $recordCode
+LIMIT 1;";
+            command.Parameters.AddWithValue("$recordCode", recordCode);
+            return ReadRecordForm(connection, command);
+        }
+
+        public void SaveRecordForm(RecordFormDraft record, string originalRecordCode = null)
+        {
+            if (record == null)
+            {
+                return;
+            }
+
+            using var connection = OpenConnection();
+            using var transaction = connection.BeginTransaction();
+            var lookupCode = string.IsNullOrWhiteSpace(originalRecordCode) ? record.RecordCode : originalRecordCode;
+            var recordId = GetRecordId(connection, transaction, lookupCode);
+            var now = DateTime.Now.ToString("O", CultureInfo.InvariantCulture);
+
+            if (recordId.HasValue)
+            {
+                using var updateCommand = connection.CreateCommand();
+                updateCommand.Transaction = transaction;
+                updateCommand.CommandText = @"
+UPDATE Records
+SET RecordCode = $recordCode,
+    ReceivedDate = $receivedDate,
+    ReceiveSource = $receiveSource,
+    ReceiverName = $receiverName,
+    SenderName = $senderName,
+    SenderPhone = $senderPhone,
+    ContactAddress = $contactAddress,
+    AreaName = $areaName,
+    IncidentAddress = $incidentAddress,
+    Content = $content,
+    CaseType = $caseType,
+    ContentGroup = $contentGroup,
+    Field = $field,
+    RelatedPerson = $relatedPerson,
+    ExpectedHandlingMethod = $method,
+    SeverityLevel = $severity,
+    ExpectedResultDate = $expectedDate,
+    PriorityLevel = $priority,
+    Note = $note,
+    AdditionalNote = $additionalNote,
+    UpdatedAt = $updatedAt
+WHERE Id = $recordId;";
+                updateCommand.Parameters.AddWithValue("$recordId", recordId.Value);
+                AddRecordFormParameters(updateCommand, record, now);
+                updateCommand.ExecuteNonQuery();
+                ReplaceAttachments(connection, transaction, recordId.Value, record.Attachments);
+            }
+            else
+            {
+                using var insertCommand = connection.CreateCommand();
+                insertCommand.Transaction = transaction;
+                insertCommand.CommandText = @"
+INSERT INTO Records (
+    RecordCode, ReceivedDate, ReceiveSource, ReceiverName, SenderName, SenderPhone, ContactAddress,
+    AreaName, IncidentAddress, Content, CaseType, ContentGroup, Field, RelatedPerson,
+    ExpectedHandlingMethod, SeverityLevel, ExpectedResultDate, PriorityLevel, Status, ProcessorName,
+    Note, AdditionalNote, CreatedAt, UpdatedAt)
+VALUES (
+    $recordCode, $receivedDate, $receiveSource, $receiverName, $senderName, $senderPhone, $contactAddress,
+    $areaName, $incidentAddress, $content, $caseType, $contentGroup, $field, $relatedPerson,
+    $method, $severity, $expectedDate, $priority, $status, $processor,
+    $note, $additionalNote, $createdAt, $updatedAt);
+SELECT last_insert_rowid();";
+                AddRecordFormParameters(insertCommand, record, now);
+                insertCommand.Parameters.AddWithValue("$status", "Mới tiếp nhận");
+                insertCommand.Parameters.AddWithValue("$processor", NormalizeDbText(record.ReceiverName));
+                insertCommand.Parameters.AddWithValue("$createdAt", now);
+                var insertedId = Convert.ToInt32(insertCommand.ExecuteScalar(), CultureInfo.InvariantCulture);
+                ReplaceAttachments(connection, transaction, insertedId, record.Attachments);
+            }
+
+            transaction.Commit();
+        }
+
+        public bool DeleteRecord(string recordCode)
+        {
+            if (string.IsNullOrWhiteSpace(recordCode))
+            {
+                return false;
+            }
+
+            using var connection = OpenConnection();
+            using var transaction = connection.BeginTransaction();
+            using var selectCommand = connection.CreateCommand();
+            selectCommand.Transaction = transaction;
+            selectCommand.CommandText = "SELECT Id FROM Records WHERE RecordCode = $recordCode LIMIT 1;";
+            selectCommand.Parameters.AddWithValue("$recordCode", recordCode);
+
+            var recordIdValue = selectCommand.ExecuteScalar();
+            if (recordIdValue == null)
+            {
+                transaction.Commit();
+                return false;
+            }
+
+            var recordId = Convert.ToInt32(recordIdValue, CultureInfo.InvariantCulture);
+            using var deleteHistoriesCommand = connection.CreateCommand();
+            deleteHistoriesCommand.Transaction = transaction;
+            deleteHistoriesCommand.CommandText = "DELETE FROM ProcessHistories WHERE RecordId = $recordId;";
+            deleteHistoriesCommand.Parameters.AddWithValue("$recordId", recordId);
+            deleteHistoriesCommand.ExecuteNonQuery();
+
+            using var deleteAttachmentsCommand = connection.CreateCommand();
+            deleteAttachmentsCommand.Transaction = transaction;
+            deleteAttachmentsCommand.CommandText = "DELETE FROM RecordAttachments WHERE RecordId = $recordId;";
+            deleteAttachmentsCommand.Parameters.AddWithValue("$recordId", recordId);
+            deleteAttachmentsCommand.ExecuteNonQuery();
+
+            using var deleteRecordCommand = connection.CreateCommand();
+            deleteRecordCommand.Transaction = transaction;
+            deleteRecordCommand.CommandText = "DELETE FROM Records WHERE Id = $recordId;";
+            deleteRecordCommand.Parameters.AddWithValue("$recordId", recordId);
+            deleteRecordCommand.ExecuteNonQuery();
+
+            transaction.Commit();
+            return true;
+        }
+
+        private static int? GetRecordId(SqliteConnection connection, SqliteTransaction transaction, string recordCode)
+        {
+            if (string.IsNullOrWhiteSpace(recordCode))
+            {
+                return null;
+            }
+
+            using var command = connection.CreateCommand();
+            command.Transaction = transaction;
+            command.CommandText = "SELECT Id FROM Records WHERE RecordCode = $recordCode LIMIT 1;";
+            command.Parameters.AddWithValue("$recordCode", recordCode);
+            var value = command.ExecuteScalar();
+            return value == null ? (int?)null : Convert.ToInt32(value, CultureInfo.InvariantCulture);
+        }
+
+        private static void AddRecordFormParameters(SqliteCommand command, RecordFormDraft record, string updatedAt)
+        {
+            command.Parameters.AddWithValue("$recordCode", NormalizeDbText(record.RecordCode));
+            command.Parameters.AddWithValue("$receivedDate", ParseDisplayDate(record.ReceivedDate).ToString("O", CultureInfo.InvariantCulture));
+            command.Parameters.AddWithValue("$receiveSource", NormalizeDbText(record.ReceiveSource));
+            command.Parameters.AddWithValue("$receiverName", NormalizeDbText(record.ReceiverName));
+            command.Parameters.AddWithValue("$senderName", NormalizeDbText(record.SenderName));
+            command.Parameters.AddWithValue("$senderPhone", NormalizeDbText(record.SenderPhone));
+            command.Parameters.AddWithValue("$contactAddress", NormalizeDbText(record.ContactAddress));
+            command.Parameters.AddWithValue("$areaName", NormalizeDbText(record.AreaName));
+            command.Parameters.AddWithValue("$incidentAddress", NormalizeDbText(record.IncidentAddress));
+            command.Parameters.AddWithValue("$content", NormalizeDbText(record.Content));
+            command.Parameters.AddWithValue("$caseType", NormalizeDbText(record.CaseType));
+            command.Parameters.AddWithValue("$contentGroup", NormalizeDbText(record.ContentGroup));
+            command.Parameters.AddWithValue("$field", NormalizeDbText(record.Field));
+            command.Parameters.AddWithValue("$relatedPerson", NormalizeDbText(record.RelatedPerson));
+            command.Parameters.AddWithValue("$method", NormalizeDbText(record.ExpectedHandlingMethod));
+            command.Parameters.AddWithValue("$severity", NormalizeDbText(record.SeverityLevel));
+            command.Parameters.AddWithValue("$expectedDate", string.IsNullOrWhiteSpace(record.ExpectedResultDate)
+                ? string.Empty
+                : ParseDisplayDate(record.ExpectedResultDate).ToString("O", CultureInfo.InvariantCulture));
+            command.Parameters.AddWithValue("$priority", NormalizeDbText(record.PriorityLevel));
+            command.Parameters.AddWithValue("$note", NormalizeDbText(record.Note));
+            command.Parameters.AddWithValue("$additionalNote", NormalizeDbText(record.AdditionalNote));
+            command.Parameters.AddWithValue("$updatedAt", updatedAt);
+        }
+
+        private static void ReplaceAttachments(SqliteConnection connection, SqliteTransaction transaction, int recordId, IReadOnlyList<AttachmentDraft> attachments)
+        {
+            using var deleteCommand = connection.CreateCommand();
+            deleteCommand.Transaction = transaction;
+            deleteCommand.CommandText = "DELETE FROM RecordAttachments WHERE RecordId = $recordId;";
+            deleteCommand.Parameters.AddWithValue("$recordId", recordId);
+            deleteCommand.ExecuteNonQuery();
+
+            if (attachments == null)
+            {
+                return;
+            }
+
+            foreach (var attachment in attachments)
+            {
+                using var insertCommand = connection.CreateCommand();
+                insertCommand.Transaction = transaction;
+                insertCommand.CommandText = "INSERT INTO RecordAttachments (RecordId, FileName, FileSize, FilePath) VALUES ($recordId, $fileName, $fileSize, $filePath);";
+                insertCommand.Parameters.AddWithValue("$recordId", recordId);
+                insertCommand.Parameters.AddWithValue("$fileName", NormalizeDbText(attachment.FileName));
+                insertCommand.Parameters.AddWithValue("$fileSize", NormalizeDbText(attachment.FileSize));
+                insertCommand.Parameters.AddWithValue("$filePath", NormalizeDbText(attachment.FilePath));
+                insertCommand.ExecuteNonQuery();
+            }
+        }
+
+        private static string NormalizeDbText(string value)
+        {
+            return value?.Trim() ?? string.Empty;
+        }
+
+        private RecordFormDraft ReadRecordForm(SqliteConnection connection, SqliteCommand command)
+        {
 
             using var reader = command.ExecuteReader();
             if (!reader.Read())
@@ -418,6 +633,7 @@ CREATE TABLE IF NOT EXISTS RecordAttachments (
     RecordId INTEGER NOT NULL,
     FileName TEXT NOT NULL,
     FileSize TEXT NOT NULL,
+    FilePath TEXT NOT NULL DEFAULT '',
     FOREIGN KEY (RecordId) REFERENCES Records(Id)
 );
 
@@ -431,6 +647,7 @@ CREATE TABLE IF NOT EXISTS ProcessHistories (
     IsCompleted INTEGER NOT NULL,
     FOREIGN KEY (RecordId) REFERENCES Records(Id)
 );");
+            TryAddColumn(connection, "RecordAttachments", "FilePath", "TEXT NOT NULL DEFAULT ''");
         }
 
         private static void SeedAreas(SqliteConnection connection)
@@ -687,12 +904,17 @@ VALUES ($recordId, $title, $processedAt, $processor, $content, $isCompleted);";
         {
             var result = new List<AttachmentDraft>();
             using var command = connection.CreateCommand();
-            command.CommandText = "SELECT FileName, FileSize FROM RecordAttachments WHERE RecordId = $recordId ORDER BY Id;";
+            command.CommandText = "SELECT FileName, FileSize, FilePath FROM RecordAttachments WHERE RecordId = $recordId ORDER BY Id;";
             command.Parameters.AddWithValue("$recordId", recordId);
             using var reader = command.ExecuteReader();
             while (reader.Read())
             {
-                result.Add(new AttachmentDraft { FileName = reader.GetString(0), FileSize = reader.GetString(1) });
+                result.Add(new AttachmentDraft
+                {
+                    FileName = reader.GetString(0),
+                    FileSize = reader.GetString(1),
+                    FilePath = reader.GetString(2)
+                });
             }
 
             return result;
@@ -874,6 +1096,18 @@ ORDER BY ProcessedAt;";
             command.ExecuteNonQuery();
         }
 
+        private static void TryAddColumn(SqliteConnection connection, string tableName, string columnName, string definition)
+        {
+            try
+            {
+                ExecuteNonQuery(connection, $"ALTER TABLE {tableName} ADD COLUMN {columnName} {definition};");
+            }
+            catch (SqliteException)
+            {
+                // Existing local databases already have the column after the first migration run.
+            }
+        }
+
         private static string FormatDate(string value)
         {
             return DateTime.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var date)
@@ -886,6 +1120,18 @@ ORDER BY ProcessedAt;";
             return DateTime.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var date)
                 ? date.ToString("dd/MM/yyyy HH:mm", CultureInfo.GetCultureInfo("vi-VN"))
                 : value;
+        }
+
+        private static DateTime ParseDisplayDate(string value)
+        {
+            if (DateTime.TryParseExact(value, "dd/MM/yyyy", CultureInfo.GetCultureInfo("vi-VN"), DateTimeStyles.None, out var exactDate))
+            {
+                return exactDate;
+            }
+
+            return DateTime.TryParse(value, CultureInfo.GetCultureInfo("vi-VN"), DateTimeStyles.None, out var date)
+                ? date
+                : DateTime.Today;
         }
 
         private static string GetStatusColor(string status)

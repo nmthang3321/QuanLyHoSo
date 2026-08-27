@@ -143,6 +143,9 @@
         <DataTemplate DataType="{x:Type viewModels:RecordInputViewModel}">
             <records:RecordInputView />
         </DataTemplate>
+        <DataTemplate DataType="{x:Type viewModels:RecordListViewModel}">
+            <records:RecordListView />
+        </DataTemplate>
         <DataTemplate DataType="{x:Type viewModels:RecordProcessingViewModel}">
             <records:RecordProcessingView />
         </DataTemplate>

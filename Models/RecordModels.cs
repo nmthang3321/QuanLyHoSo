@@ -6,6 +6,7 @@ namespace QuanLyHoSo.Models
     {
         public string FileName { get; set; }
         public string FileSize { get; set; }
+        public string FilePath { get; set; }
     }
 
     public sealed class RecordFormDraft
