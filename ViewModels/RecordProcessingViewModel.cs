@@ -5,6 +5,7 @@ using System.Globalization;
 using System.Windows;
 using System.Windows.Input;
 using QuanLyHoSo.Infrastructure.Data;
+using QuanLyHoSo.Infrastructure.Logging;
 using QuanLyHoSo.Models;
 
 namespace QuanLyHoSo.ViewModels
@@ -277,20 +278,30 @@ namespace QuanLyHoSo.ViewModels
                 return;
             }
 
-            _dataService.UpdateProcessingRecord(
-                SelectedProcessingDetail.RecordCode,
-                ProcessingStatus,
-                SelectedProcessingDate.Value,
-                ProcessingProcessorName,
-                ProcessingContent,
-                ProcessingNote);
+            var recordCode = SelectedProcessingDetail.RecordCode;
+            try
+            {
+                _dataService.UpdateProcessingRecord(
+                    recordCode,
+                    ProcessingStatus,
+                    SelectedProcessingDate.Value,
+                    ProcessingProcessorName,
+                    ProcessingContent,
+                    ProcessingNote);
 
-            SelectedProcessingDetail = _dataService.GetProcessingRecordDetail(SelectedProcessingDetail.RecordCode);
-            ReplaceItems(ProcessSteps, SelectedProcessingDetail.Steps);
-            ReplaceItems(History, SelectedProcessingDetail.History);
-            ProcessingStatus = SelectedProcessingDetail.Status;
-            ProcessingProcessorName = SelectedProcessingDetail.ProcessorName;
-            MessageBox.Show("Đã cập nhật xử lý hồ sơ.", "Cập nhật xử lý", MessageBoxButton.OK, MessageBoxImage.Information);
+                AppLogger.Info("Processing", "UpdateProcessingRecord", "Processing record updated.", recordCode);
+                SelectedProcessingDetail = _dataService.GetProcessingRecordDetail(recordCode);
+                ReplaceItems(ProcessSteps, SelectedProcessingDetail.Steps);
+                ReplaceItems(History, SelectedProcessingDetail.History);
+                ProcessingStatus = SelectedProcessingDetail.Status;
+                ProcessingProcessorName = SelectedProcessingDetail.ProcessorName;
+                MessageBox.Show("Đã cập nhật xử lý hồ sơ.", "Cập nhật xử lý", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Error("Processing", "UpdateProcessingRecord", ex, "Failed to update processing record.", recordCode);
+                MessageBox.Show($"Không thể cập nhật xử lý hồ sơ.\n\nChi tiết: {ex.Message}", "Lỗi cập nhật xử lý", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
         private static DateTime? ParseProcessingDate(string value)

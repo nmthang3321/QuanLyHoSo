@@ -4,6 +4,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using Microsoft.Data.Sqlite;
+using QuanLyHoSo.Infrastructure.Logging;
 using QuanLyHoSo.Models;
 
 namespace QuanLyHoSo.Infrastructure.Data
@@ -31,6 +32,7 @@ namespace QuanLyHoSo.Infrastructure.Data
 
         public void Initialize()
         {
+            AppLogger.Info("Database", "Initialize", $"Initializing database at {DatabasePath}.");
             using var connection = OpenConnection();
             CreateSchema(connection);
             SeedAreas(connection);
@@ -1644,8 +1646,9 @@ WHERE Status <> 'Đã giải quyết'
             {
                 ExecuteNonQuery(connection, $"ALTER TABLE {tableName} ADD COLUMN {columnName} {definition};");
             }
-            catch (SqliteException)
+            catch (SqliteException ex)
             {
+                AppLogger.Warning("Database", "TryAddColumn", $"Could not add column {tableName}.{columnName}. It may already exist.", ex);
                 // Existing local databases already have the column after the first migration run.
             }
         }

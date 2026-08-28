@@ -6,6 +6,7 @@ using System.Reflection;
 using System.Windows;
 using System.Windows.Input;
 using QuanLyHoSo.Infrastructure.Data;
+using QuanLyHoSo.Infrastructure.Logging;
 using QuanLyHoSo.Models;
 using Forms = System.Windows.Forms;
 
@@ -42,7 +43,8 @@ namespace QuanLyHoSo.ViewModels
                 new SoftwareInfo { Label = "Phiên bản hiện tại", Value = VersionText },
                 new SoftwareInfo { Label = "Khu vực sử dụng", Value = "An Giang" },
                 new SoftwareInfo { Label = "Cơ sở dữ liệu", Value = "SQLite local" },
-                new SoftwareInfo { Label = "Đường dẫn DB", Value = _dataService.DatabasePath }
+                new SoftwareInfo { Label = "Đường dẫn DB", Value = _dataService.DatabasePath },
+                new SoftwareInfo { Label = "Đường dẫn log", Value = AppLogger.LogFolder }
             };
 
             SelectCatalogGroupCommand = new RelayCommand(SelectCatalogGroup);
@@ -316,6 +318,7 @@ namespace QuanLyHoSo.ViewModels
             }
             catch (Exception ex)
             {
+                AppLogger.Error("Settings", "BackupNow", ex, "Failed to backup database.");
                 BackupStatus = "Sao lưu không thành công";
                 MessageBox.Show($"Không thể sao lưu dữ liệu.\n{ex.Message}", "Sao lưu dữ liệu", MessageBoxButton.OK, MessageBoxImage.Error);
             }

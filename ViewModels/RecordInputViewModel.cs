@@ -10,6 +10,7 @@ using System.Windows;
 using System.Windows.Data;
 using System.Windows.Input;
 using QuanLyHoSo.Infrastructure.Data;
+using QuanLyHoSo.Infrastructure.Logging;
 using QuanLyHoSo.Models;
 
 namespace QuanLyHoSo.ViewModels
@@ -213,6 +214,7 @@ namespace QuanLyHoSo.ViewModels
             }
             catch (Exception ex)
             {
+                AppLogger.Error("Records", "SaveRecordForm", ex, "Failed to save record form.", RecordCode);
                 MessageBox.Show($"Không thể lưu hồ sơ. Vui lòng kiểm tra lại dữ liệu.\n\nChi tiết: {ex.Message}", "Lỗi lưu hồ sơ", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
@@ -237,14 +239,23 @@ namespace QuanLyHoSo.ViewModels
                 return;
             }
 
-            if (_dataService.DeleteRecord(recordCode))
+            try
             {
-                MessageBox.Show("Đã xóa hồ sơ khỏi cơ sở dữ liệu.", "Xóa hồ sơ", MessageBoxButton.OK, MessageBoxImage.Information);
-                ClearForm();
-                return;
-            }
+                if (_dataService.DeleteRecord(recordCode))
+                {
+                    AppLogger.Info("Records", "DeleteRecord", "Record deleted.", recordCode);
+                    MessageBox.Show("Đã xóa hồ sơ khỏi cơ sở dữ liệu.", "Xóa hồ sơ", MessageBoxButton.OK, MessageBoxImage.Information);
+                    ClearForm();
+                    return;
+                }
 
-            MessageBox.Show("Không tìm thấy hồ sơ trong cơ sở dữ liệu.", "Xóa hồ sơ", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show("Không tìm thấy hồ sơ trong cơ sở dữ liệu.", "Xóa hồ sơ", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Error("Records", "DeleteRecord", ex, "Failed to delete record.", recordCode);
+                MessageBox.Show($"Không thể xóa hồ sơ.\n\nChi tiết: {ex.Message}", "Lỗi xóa hồ sơ", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
         private RecordFormDraft BuildDraft()

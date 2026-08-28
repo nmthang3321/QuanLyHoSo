@@ -5,6 +5,7 @@ using System.Globalization;
 using System.Windows;
 using System.Windows.Input;
 using QuanLyHoSo.Infrastructure.Data;
+using QuanLyHoSo.Infrastructure.Logging;
 using QuanLyHoSo.Models;
 
 namespace QuanLyHoSo.ViewModels
@@ -229,10 +230,19 @@ namespace QuanLyHoSo.ViewModels
                 return;
             }
 
-            if (_dataService.DeleteRecord(recordCode))
+            try
             {
-                MessageBox.Show("Đã xóa hồ sơ khỏi cơ sở dữ liệu.", "Xóa hồ sơ", MessageBoxButton.OK, MessageBoxImage.Information);
-                Reload();
+                if (_dataService.DeleteRecord(recordCode))
+                {
+                    AppLogger.Info("Records", "DeleteRecordFromList", "Record deleted.", recordCode);
+                    MessageBox.Show("Đã xóa hồ sơ khỏi cơ sở dữ liệu.", "Xóa hồ sơ", MessageBoxButton.OK, MessageBoxImage.Information);
+                    Reload();
+                }
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Error("Records", "DeleteRecordFromList", ex, "Failed to delete record from list.", recordCode);
+                MessageBox.Show($"Không thể xóa hồ sơ.\n\nChi tiết: {ex.Message}", "Lỗi xóa hồ sơ", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 

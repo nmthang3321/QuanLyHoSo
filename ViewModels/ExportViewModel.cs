@@ -11,6 +11,7 @@ using System.Windows;
 using System.Xml;
 using Microsoft.Win32;
 using QuanLyHoSo.Infrastructure.Data;
+using QuanLyHoSo.Infrastructure.Logging;
 using QuanLyHoSo.Models;
 
 namespace QuanLyHoSo.ViewModels
@@ -332,6 +333,7 @@ namespace QuanLyHoSo.ViewModels
             }
             catch (Exception ex)
             {
+                AppLogger.Error("Export", "ExportRecords", ex, $"Failed to export records to {dialog.FileName}.");
                 MessageBox.Show($"Không thể xuất dữ liệu. Vui lòng thử lại.\n\nChi tiết: {ex.Message}", "Lỗi xuất dữ liệu", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
