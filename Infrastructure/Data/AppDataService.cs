@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -32,12 +33,14 @@ namespace QuanLyHoSo.Infrastructure.Data
 
         public void Initialize()
         {
+            var stopwatch = Stopwatch.StartNew();
             AppLogger.Info("Database", "Initialize", $"Initializing database at {DatabasePath}.");
             using var connection = OpenConnection();
             CreateSchema(connection);
             SeedAreas(connection);
             SeedCatalogs(connection);
             SeedRecords(connection);
+            LogElapsed("Database", "Initialize", stopwatch);
         }
 
         public IReadOnlyList<string> GetAreaNames(bool includeAll = false)
@@ -109,6 +112,27 @@ ORDER BY DisplayOrder, Name;";
                     Name = reader.GetString(2),
                     DisplayOrder = reader.GetInt32(3)
                 });
+            }
+
+            return result;
+        }
+
+        public IReadOnlyDictionary<string, int> CountCatalogItemsByType()
+        {
+            var result = new Dictionary<string, int>(StringComparer.Ordinal);
+
+            using var connection = OpenConnection();
+            using var command = connection.CreateCommand();
+            command.CommandText = @"
+SELECT CatalogType, COUNT(*)
+FROM CatalogItems
+WHERE IsActive = 1
+GROUP BY CatalogType;";
+
+            using var reader = command.ExecuteReader();
+            while (reader.Read())
+            {
+                result[reader.GetString(0)] = reader.GetInt32(1);
             }
 
             return result;
@@ -747,6 +771,7 @@ WHERE Id = $recordId;";
             string priorityLevel = null,
             int take = 20)
         {
+            var stopwatch = Stopwatch.StartNew();
             using var connection = OpenConnection();
             var result = new List<ProcessingQueueRecord>();
             using var command = connection.CreateCommand();
@@ -802,6 +827,7 @@ LIMIT $take;";
                 });
             }
 
+            LogElapsed("Database", "GetProcessingQueueRecords", stopwatch, result.Count);
             return result;
         }
 
@@ -817,6 +843,7 @@ LIMIT $take;";
             string sortOption = null,
             int take = 50)
         {
+            var stopwatch = Stopwatch.StartNew();
             using var connection = OpenConnection();
             var result = new List<ExportRecordPreview>();
             using var command = connection.CreateCommand();
@@ -846,6 +873,7 @@ LIMIT $take;";
                 });
             }
 
+            LogElapsed("Database", "GetExportPreview", stopwatch, result.Count);
             return result;
         }
 
@@ -859,11 +887,14 @@ LIMIT $take;";
             string processorName = null,
             string searchText = null)
         {
+            var stopwatch = Stopwatch.StartNew();
             using var connection = OpenConnection();
             using var command = connection.CreateCommand();
             var whereClause = BuildExportWhere(command, fromDate, toDate, status, caseType, field, areaName, processorName, searchText);
             command.CommandText = $"SELECT COUNT(*) FROM Records {whereClause};";
-            return Convert.ToInt32(command.ExecuteScalar(), CultureInfo.InvariantCulture);
+            var count = Convert.ToInt32(command.ExecuteScalar(), CultureInfo.InvariantCulture);
+            LogElapsed("Database", "CountExportRecords", stopwatch, count);
+            return count;
         }
 
         public int CountRecords(DateTime? fromDate = null, DateTime? toDate = null)
@@ -1651,6 +1682,15 @@ WHERE Status <> 'Đã giải quyết'
                 AppLogger.Warning("Database", "TryAddColumn", $"Could not add column {tableName}.{columnName}. It may already exist.", ex);
                 // Existing local databases already have the column after the first migration run.
             }
+        }
+
+        private static void LogElapsed(string module, string action, Stopwatch stopwatch, int? rowCount = null)
+        {
+            stopwatch.Stop();
+            var message = rowCount.HasValue
+                ? $"Completed in {stopwatch.ElapsedMilliseconds} ms. Rows: {rowCount.Value}."
+                : $"Completed in {stopwatch.ElapsedMilliseconds} ms.";
+            AppLogger.Info(module, action, message);
         }
 
         private static string FormatDate(string value)

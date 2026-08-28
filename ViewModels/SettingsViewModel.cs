@@ -172,7 +172,7 @@ namespace QuanLyHoSo.ViewModels
                 Description = description,
                 IconGlyph = iconGlyph,
                 AccentColor = accentColor,
-                ItemCount = _dataService.GetCatalogItems(type).Count
+                ItemCount = 0
             };
         }
 
@@ -341,9 +341,10 @@ namespace QuanLyHoSo.ViewModels
 
         private void RefreshCatalogGroupCounts()
         {
+            var countsByType = _dataService.CountCatalogItemsByType();
             foreach (var group in CatalogGroups)
             {
-                group.ItemCount = _dataService.GetCatalogItems(group.CatalogType).Count;
+                group.ItemCount = countsByType.TryGetValue(group.CatalogType, out var count) ? count : 0;
             }
         }
 

@@ -1,5 +1,7 @@
+using System.Diagnostics;
 using System.Collections.ObjectModel;
 using QuanLyHoSo.Infrastructure.Data;
+using QuanLyHoSo.Infrastructure.Logging;
 using QuanLyHoSo.Models;
 
 namespace QuanLyHoSo.ViewModels
@@ -18,14 +20,18 @@ namespace QuanLyHoSo.ViewModels
 
         public ShellViewModel()
         {
+            var stopwatch = Stopwatch.StartNew();
             AppDataService.Instance.Initialize();
+            LogElapsed("InitializeDatabase", stopwatch);
 
+            stopwatch.Restart();
             _dashboardViewModel = new DashboardViewModel();
             _recordInputViewModel = new RecordInputViewModel(() => NavigateTo("RecordList"));
             _recordListViewModel = new RecordListViewModel(() => NavigateTo("Input"), EditRecordFromList);
             _recordProcessingViewModel = new RecordProcessingViewModel();
             _exportViewModel = new ExportViewModel();
             _settingsViewModel = new SettingsViewModel();
+            LogElapsed("CreatePageViewModels", stopwatch);
 
             NavigationItems = new ObservableCollection<NavigationItem>
             {
@@ -95,6 +101,12 @@ namespace QuanLyHoSo.ViewModels
         {
             _recordInputViewModel.LoadRecord(recordCode);
             NavigateTo("Input");
+        }
+
+        private static void LogElapsed(string action, Stopwatch stopwatch)
+        {
+            stopwatch.Stop();
+            AppLogger.Info("Shell", action, $"Completed in {stopwatch.ElapsedMilliseconds} ms.");
         }
     }
 }
