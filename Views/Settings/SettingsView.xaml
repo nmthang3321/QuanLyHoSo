@@ -17,6 +17,21 @@
             <Setter Property="FontSize" Value="14" />
         </Style>
 
+        <Style x:Key="CatalogGroupButton" TargetType="Button">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <ContentPresenter />
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <Style x:Key="CatalogGroupBorder" TargetType="Border">
             <Setter Property="Background" Value="#F8FAFE" />
             <Setter Property="BorderBrush" Value="#E6EDF8" />
@@ -99,10 +114,7 @@
                                 <DataTemplate>
                                     <Button Command="{Binding DataContext.SelectCatalogGroupCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                             CommandParameter="{Binding}"
-                                            Background="Transparent"
-                                            BorderThickness="0"
-                                            Padding="0"
-                                            HorizontalContentAlignment="Stretch">
+                                            Style="{StaticResource CatalogGroupButton}">
                                         <Border Style="{StaticResource CatalogGroupBorder}">
                                             <Grid>
                                                 <Grid.ColumnDefinitions>

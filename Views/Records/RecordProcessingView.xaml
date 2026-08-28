@@ -209,17 +209,17 @@
                             <TextBlock Text="{Binding SelectedProcessingDetail.ReceiveSource, StringFormat=Nguồn tiếp nhận: {0}}" Style="{StaticResource MutedText}" />
                         </StackPanel>
                         <StackPanel Grid.Column="2">
-                            <TextBlock Text="Người gửi đơn" Style="{StaticResource MutedText}" />
-                            <TextBlock Text="{Binding SelectedProcessingDetail.SenderName}" FontWeight="SemiBold" />
+                            <TextBlock Text="Người gửi đơn" Style="{StaticResource FieldLabelText}" />
+                            <TextBlock Text="{Binding SelectedProcessingDetail.SenderName}" Style="{StaticResource DetailValueText}" />
                             <TextBlock Text="{Binding SelectedProcessingDetail.SenderPhone}" />
                         </StackPanel>
                         <StackPanel Grid.Column="3">
-                            <TextBlock Text="Địa bàn" Style="{StaticResource MutedText}" />
-                            <TextBlock Text="{Binding SelectedProcessingDetail.AreaName}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                            <TextBlock Text="Địa bàn" Style="{StaticResource FieldLabelText}" />
+                            <TextBlock Text="{Binding SelectedProcessingDetail.AreaName}" Style="{StaticResource DetailValueText}" TextWrapping="Wrap" />
                         </StackPanel>
                         <StackPanel Grid.Column="4">
-                            <TextBlock Text="Loại vụ việc" Style="{StaticResource MutedText}" />
-                            <TextBlock Text="{Binding SelectedProcessingDetail.CaseType}" FontWeight="SemiBold" />
+                            <TextBlock Text="Loại vụ việc" Style="{StaticResource FieldLabelText}" />
+                            <TextBlock Text="{Binding SelectedProcessingDetail.CaseType}" Style="{StaticResource DetailValueText}" />
                             <TextBlock Text="{Binding SelectedProcessingDetail.Field}" />
                         </StackPanel>
                         <Button Grid.Column="5"
@@ -485,19 +485,19 @@
                                     <ColumnDefinition Width="*" />
                                 </Grid.ColumnDefinitions>
                                 <StackPanel Margin="0,0,10,12">
-                                    <TextBlock><Run Text="Trạng thái hiện tại" /><Run Text=" *" Foreground="#E11414" /></TextBlock>
+                                    <TextBlock Style="{StaticResource FieldLabelText}"><Run Text="Trạng thái hiện tại" /><Run Text=" *" Foreground="#E11414" /></TextBlock>
                                     <ComboBox ItemsSource="{Binding ProcessingStatuses}" SelectedItem="{Binding ProcessingStatus, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                                 </StackPanel>
                                 <StackPanel Grid.Column="1" Margin="0,0,0,12">
-                                    <TextBlock><Run Text="Ngày xử lý" /><Run Text=" *" Foreground="#E11414" /></TextBlock>
+                                    <TextBlock Style="{StaticResource FieldLabelText}"><Run Text="Ngày xử lý" /><Run Text=" *" Foreground="#E11414" /></TextBlock>
                                     <DatePicker SelectedDate="{Binding SelectedProcessingDate, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Language="vi-VN" />
                                 </StackPanel>
                             </Grid>
-                            <TextBlock><Run Text="Người xử lý" /><Run Text=" *" Foreground="#E11414" /></TextBlock>
+                            <TextBlock Style="{StaticResource FieldLabelText}"><Run Text="Người xử lý" /><Run Text=" *" Foreground="#E11414" /></TextBlock>
                             <TextBox Text="{Binding ProcessingProcessorName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,12" />
-                            <TextBlock><Run Text="Nội dung xử lý" /><Run Text=" *" Foreground="#E11414" /></TextBlock>
+                            <TextBlock Style="{StaticResource FieldLabelText}"><Run Text="Nội dung xử lý" /><Run Text=" *" Foreground="#E11414" /></TextBlock>
                             <TextBox Height="96" TextWrapping="Wrap" AcceptsReturn="True" VerticalContentAlignment="Top" Text="{Binding ProcessingContent, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,12" />
-                            <TextBlock Text="Ghi chú" />
+                            <TextBlock Text="Ghi chú" Style="{StaticResource FieldLabelText}" />
                             <TextBox Height="80" TextWrapping="Wrap" AcceptsReturn="True" VerticalContentAlignment="Top" Text="{Binding ProcessingNote, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,18" />
                             <Grid>
                                 <Button Style="{StaticResource DangerButton}" Content="Hủy xử lý" HorizontalAlignment="Left" Command="{Binding BackToQueueCommand}" />
@@ -553,53 +553,53 @@
                                     <RowDefinition Height="Auto" />
                                 </Grid.RowDefinitions>
                                 <StackPanel Margin="0,0,12,12">
-                                    <TextBlock Text="Ngày tiếp nhận" Style="{StaticResource MutedText}" />
-                                    <TextBlock Text="{Binding SelectedRecordDetail.ReceivedDate}" FontWeight="SemiBold" Margin="0,4,0,0" />
+                                    <TextBlock Text="Ngày tiếp nhận" Style="{StaticResource FieldLabelText}" />
+                                    <TextBlock Text="{Binding SelectedRecordDetail.ReceivedDate}" Style="{StaticResource DetailValueText}" />
                                 </StackPanel>
                                 <StackPanel Grid.Column="1" Margin="0,0,12,12">
-                                    <TextBlock Text="Nguồn tiếp nhận" Style="{StaticResource MutedText}" />
-                                    <TextBlock Text="{Binding SelectedRecordDetail.ReceiveSource}" FontWeight="SemiBold" Margin="0,4,0,0" />
+                                    <TextBlock Text="Nguồn tiếp nhận" Style="{StaticResource FieldLabelText}" />
+                                    <TextBlock Text="{Binding SelectedRecordDetail.ReceiveSource}" Style="{StaticResource DetailValueText}" />
                                 </StackPanel>
                                 <StackPanel Grid.Column="2" Margin="0,0,0,12">
-                                    <TextBlock Text="Người tiếp nhận" Style="{StaticResource MutedText}" />
-                                    <TextBlock Text="{Binding SelectedRecordDetail.ReceiverName}" FontWeight="SemiBold" Margin="0,4,0,0" />
+                                    <TextBlock Text="Người tiếp nhận" Style="{StaticResource FieldLabelText}" />
+                                    <TextBlock Text="{Binding SelectedRecordDetail.ReceiverName}" Style="{StaticResource DetailValueText}" />
                                 </StackPanel>
                                 <StackPanel Grid.Row="1" Margin="0,0,12,12">
-                                    <TextBlock Text="Người gửi / Người tố giác" Style="{StaticResource MutedText}" />
-                                    <TextBlock Text="{Binding SelectedRecordDetail.SenderName}" FontWeight="SemiBold" Margin="0,4,0,0" TextWrapping="Wrap" />
+                                    <TextBlock Text="Người gửi / Người tố giác" Style="{StaticResource FieldLabelText}" />
+                                    <TextBlock Text="{Binding SelectedRecordDetail.SenderName}" Style="{StaticResource DetailValueText}" TextWrapping="Wrap" />
                                 </StackPanel>
                                 <StackPanel Grid.Row="1" Grid.Column="1" Margin="0,0,12,12">
-                                    <TextBlock Text="Số điện thoại" Style="{StaticResource MutedText}" />
-                                    <TextBlock Text="{Binding SelectedRecordDetail.SenderPhone}" FontWeight="SemiBold" Margin="0,4,0,0" />
+                                    <TextBlock Text="Số điện thoại" Style="{StaticResource FieldLabelText}" />
+                                    <TextBlock Text="{Binding SelectedRecordDetail.SenderPhone}" Style="{StaticResource DetailValueText}" />
                                 </StackPanel>
                                 <StackPanel Grid.Row="1" Grid.Column="2" Margin="0,0,0,12">
-                                    <TextBlock Text="Địa bàn" Style="{StaticResource MutedText}" />
-                                    <TextBlock Text="{Binding SelectedRecordDetail.AreaName}" FontWeight="SemiBold" Margin="0,4,0,0" TextWrapping="Wrap" />
+                                    <TextBlock Text="Địa bàn" Style="{StaticResource FieldLabelText}" />
+                                    <TextBlock Text="{Binding SelectedRecordDetail.AreaName}" Style="{StaticResource DetailValueText}" TextWrapping="Wrap" />
                                 </StackPanel>
                                 <StackPanel Grid.Row="2" Grid.ColumnSpan="2" Margin="0,0,12,12">
-                                    <TextBlock Text="Địa chỉ liên hệ" Style="{StaticResource MutedText}" />
-                                    <TextBlock Text="{Binding SelectedRecordDetail.ContactAddress}" FontWeight="SemiBold" Margin="0,4,0,0" TextWrapping="Wrap" />
+                                    <TextBlock Text="Địa chỉ liên hệ" Style="{StaticResource FieldLabelText}" />
+                                    <TextBlock Text="{Binding SelectedRecordDetail.ContactAddress}" Style="{StaticResource DetailValueText}" TextWrapping="Wrap" />
                                 </StackPanel>
                                 <StackPanel Grid.Row="2" Grid.Column="2" Margin="0,0,0,12">
-                                    <TextBlock Text="Địa chỉ xảy ra vụ việc" Style="{StaticResource MutedText}" />
-                                    <TextBlock Text="{Binding SelectedRecordDetail.IncidentAddress}" FontWeight="SemiBold" Margin="0,4,0,0" TextWrapping="Wrap" />
+                                    <TextBlock Text="Địa chỉ xảy ra vụ việc" Style="{StaticResource FieldLabelText}" />
+                                    <TextBlock Text="{Binding SelectedRecordDetail.IncidentAddress}" Style="{StaticResource DetailValueText}" TextWrapping="Wrap" />
                                 </StackPanel>
                                 <StackPanel Grid.Row="3" Margin="0,0,12,0">
-                                    <TextBlock Text="Loại vụ việc" Style="{StaticResource MutedText}" />
-                                    <TextBlock Text="{Binding SelectedRecordDetail.CaseType}" FontWeight="SemiBold" Margin="0,4,0,0" TextWrapping="Wrap" />
+                                    <TextBlock Text="Loại vụ việc" Style="{StaticResource FieldLabelText}" />
+                                    <TextBlock Text="{Binding SelectedRecordDetail.CaseType}" Style="{StaticResource DetailValueText}" TextWrapping="Wrap" />
                                 </StackPanel>
                                 <StackPanel Grid.Row="3" Grid.Column="1" Margin="0,0,12,0">
-                                    <TextBlock Text="Nhóm nội dung" Style="{StaticResource MutedText}" />
-                                    <TextBlock Text="{Binding SelectedRecordDetail.ContentGroup}" FontWeight="SemiBold" Margin="0,4,0,0" TextWrapping="Wrap" />
+                                    <TextBlock Text="Nhóm nội dung" Style="{StaticResource FieldLabelText}" />
+                                    <TextBlock Text="{Binding SelectedRecordDetail.ContentGroup}" Style="{StaticResource DetailValueText}" TextWrapping="Wrap" />
                                 </StackPanel>
                                 <StackPanel Grid.Row="3" Grid.Column="2">
-                                    <TextBlock Text="Lĩnh vực" Style="{StaticResource MutedText}" />
-                                    <TextBlock Text="{Binding SelectedRecordDetail.Field}" FontWeight="SemiBold" Margin="0,4,0,0" TextWrapping="Wrap" />
+                                    <TextBlock Text="Lĩnh vực" Style="{StaticResource FieldLabelText}" />
+                                    <TextBlock Text="{Binding SelectedRecordDetail.Field}" Style="{StaticResource DetailValueText}" TextWrapping="Wrap" />
                                 </StackPanel>
                             </Grid>
                             <Border Background="#F7FAFF" BorderBrush="#D8E7FF" BorderThickness="1" CornerRadius="6" Padding="14" Margin="0,0,0,12">
                                 <StackPanel>
-                                    <TextBlock Text="Nội dung đơn / Nội dung vụ việc" FontWeight="SemiBold" Margin="0,0,0,6" />
+                                    <TextBlock Text="Nội dung đơn / Nội dung vụ việc" Style="{StaticResource SubsectionTitleText}" Margin="0,0,0,6" />
                                     <TextBlock Text="{Binding SelectedRecordDetail.Content}" TextWrapping="Wrap" LineHeight="20" />
                                 </StackPanel>
                             </Border>
@@ -611,7 +611,7 @@
                                 </Grid.ColumnDefinitions>
                                 <Border Background="#F8FAFD" BorderBrush="{StaticResource LineBrush}" BorderThickness="1" CornerRadius="6" Padding="12" Margin="0,0,6,0">
                                     <StackPanel>
-                                        <TextBlock Text="Thông tin xử lý" FontWeight="SemiBold" Margin="0,0,0,8" />
+                                        <TextBlock Text="Thông tin xử lý" Style="{StaticResource SubsectionTitleText}" />
                                         <TextBlock Text="{Binding SelectedRecordDetail.ExpectedHandlingMethod, StringFormat=Hình thức: {0}}" TextWrapping="Wrap" />
                                         <TextBlock Text="{Binding SelectedRecordDetail.SeverityLevel, StringFormat=Mức độ: {0}}" Margin="0,6,0,0" />
                                         <TextBlock Text="{Binding SelectedRecordDetail.PriorityLevel, StringFormat=Ưu tiên: {0}}" Margin="0,6,0,0" />
@@ -620,7 +620,7 @@
                                 </Border>
                                 <Border Grid.Column="1" Background="#F8FAFD" BorderBrush="{StaticResource LineBrush}" BorderThickness="1" CornerRadius="6" Padding="12" Margin="6,0,0,0">
                                     <StackPanel>
-                                        <TextBlock Text="Ghi chú" FontWeight="SemiBold" Margin="0,0,0,8" />
+                                        <TextBlock Text="Ghi chú" Style="{StaticResource SubsectionTitleText}" />
                                         <TextBlock Text="{Binding SelectedRecordDetail.Note}" TextWrapping="Wrap" />
                                         <TextBlock Text="{Binding SelectedRecordDetail.AdditionalNote}" TextWrapping="Wrap" Margin="0,8,0,0" />
                                     </StackPanel>
@@ -633,7 +633,7 @@
                                     CornerRadius="6"
                                     Padding="12">
                                 <StackPanel>
-                                    <TextBlock Text="Tài liệu đính kèm" FontWeight="SemiBold" Margin="0,0,0,8" />
+                                    <TextBlock Text="Tài liệu đính kèm" Style="{StaticResource SubsectionTitleText}" />
                                     <ItemsControl ItemsSource="{Binding SelectedRecordDetail.Attachments}">
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate>
