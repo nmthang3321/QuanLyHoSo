@@ -84,6 +84,120 @@ ORDER BY DisplayOrder;";
             return result;
         }
 
+        public IReadOnlyList<CatalogValueSetting> GetCatalogItems(string catalogType)
+        {
+            var result = new List<CatalogValueSetting>();
+
+            using var connection = OpenConnection();
+            using var command = connection.CreateCommand();
+            command.CommandText = @"
+SELECT Id, CatalogType, Name, DisplayOrder
+FROM CatalogItems
+WHERE CatalogType = $catalogType AND IsActive = 1
+ORDER BY DisplayOrder, Name;";
+            command.Parameters.AddWithValue("$catalogType", catalogType);
+
+            using var reader = command.ExecuteReader();
+            while (reader.Read())
+            {
+                result.Add(new CatalogValueSetting
+                {
+                    Id = reader.GetInt32(0),
+                    CatalogType = reader.GetString(1),
+                    Name = reader.GetString(2),
+                    DisplayOrder = reader.GetInt32(3)
+                });
+            }
+
+            return result;
+        }
+
+        public int AddCatalogItem(string catalogType, string name)
+        {
+            if (string.IsNullOrWhiteSpace(catalogType) || string.IsNullOrWhiteSpace(name))
+            {
+                return 0;
+            }
+
+            using var connection = OpenConnection();
+            var trimmedName = name.Trim();
+            if (CatalogNameExists(connection, catalogType, trimmedName))
+            {
+                return 0;
+            }
+
+            using var command = connection.CreateCommand();
+            command.CommandText = @"
+INSERT INTO CatalogItems (CatalogType, Name, DisplayOrder, IsActive)
+VALUES (
+    $catalogType,
+    $name,
+    COALESCE((SELECT MAX(DisplayOrder) + 1 FROM CatalogItems WHERE CatalogType = $catalogType), 1),
+    1);
+SELECT last_insert_rowid();";
+            command.Parameters.AddWithValue("$catalogType", catalogType);
+            command.Parameters.AddWithValue("$name", trimmedName);
+            return Convert.ToInt32(command.ExecuteScalar(), CultureInfo.InvariantCulture);
+        }
+
+        public bool UpdateCatalogItem(int id, string name)
+        {
+            if (id <= 0 || string.IsNullOrWhiteSpace(name))
+            {
+                return false;
+            }
+
+            using var connection = OpenConnection();
+            var trimmedName = name.Trim();
+            var catalogType = GetCatalogType(connection, id);
+            if (string.IsNullOrWhiteSpace(catalogType) || CatalogNameExists(connection, catalogType, trimmedName, id))
+            {
+                return false;
+            }
+
+            using var command = connection.CreateCommand();
+            command.CommandText = "UPDATE CatalogItems SET Name = $name WHERE Id = $id AND IsActive = 1;";
+            command.Parameters.AddWithValue("$id", id);
+            command.Parameters.AddWithValue("$name", trimmedName);
+            return command.ExecuteNonQuery() > 0;
+        }
+
+        public bool DeleteCatalogItem(int id)
+        {
+            if (id <= 0)
+            {
+                return false;
+            }
+
+            using var connection = OpenConnection();
+            using var command = connection.CreateCommand();
+            command.CommandText = "UPDATE CatalogItems SET IsActive = 0 WHERE Id = $id AND IsActive = 1;";
+            command.Parameters.AddWithValue("$id", id);
+            return command.ExecuteNonQuery() > 0;
+        }
+
+        public void UpdateCatalogItemOrders(IReadOnlyList<CatalogValueSetting> items)
+        {
+            if (items == null || items.Count == 0)
+            {
+                return;
+            }
+
+            using var connection = OpenConnection();
+            using var transaction = connection.BeginTransaction();
+            for (var index = 0; index < items.Count; index++)
+            {
+                using var command = connection.CreateCommand();
+                command.Transaction = transaction;
+                command.CommandText = "UPDATE CatalogItems SET DisplayOrder = $displayOrder WHERE Id = $id;";
+                command.Parameters.AddWithValue("$displayOrder", index + 1);
+                command.Parameters.AddWithValue("$id", items[index].Id);
+                command.ExecuteNonQuery();
+            }
+
+            transaction.Commit();
+        }
+
         public IReadOnlyList<string> GetProcessorNames(bool includeAll = false)
         {
             var result = new List<string>();
@@ -689,17 +803,29 @@ LIMIT $take;";
             return result;
         }
 
-        public IReadOnlyList<ExportRecordPreview> GetExportPreview(int take = 50)
+        public IReadOnlyList<ExportRecordPreview> GetExportPreview(
+            DateTime? fromDate = null,
+            DateTime? toDate = null,
+            string status = null,
+            string caseType = null,
+            string field = null,
+            string areaName = null,
+            string processorName = null,
+            string searchText = null,
+            string sortOption = null,
+            int take = 50)
         {
             using var connection = OpenConnection();
             var result = new List<ExportRecordPreview>();
             using var command = connection.CreateCommand();
-            command.CommandText = @"
+            var whereClause = BuildExportWhere(command, fromDate, toDate, status, caseType, field, areaName, processorName, searchText);
+            command.CommandText = $@"
 SELECT RecordCode, ReceivedDate, SenderName, AreaName, CaseType, Field, Status
 FROM Records
-ORDER BY ReceivedDate DESC, RecordCode DESC
+{whereClause}
+ORDER BY {BuildExportOrderBy(sortOption)}
 LIMIT $take;";
-            command.Parameters.AddWithValue("$take", take);
+            command.Parameters.AddWithValue("$take", Math.Max(1, take));
 
             using var reader = command.ExecuteReader();
             var index = 1;
@@ -719,6 +845,23 @@ LIMIT $take;";
             }
 
             return result;
+        }
+
+        public int CountExportRecords(
+            DateTime? fromDate = null,
+            DateTime? toDate = null,
+            string status = null,
+            string caseType = null,
+            string field = null,
+            string areaName = null,
+            string processorName = null,
+            string searchText = null)
+        {
+            using var connection = OpenConnection();
+            using var command = connection.CreateCommand();
+            var whereClause = BuildExportWhere(command, fromDate, toDate, status, caseType, field, areaName, processorName, searchText);
+            command.CommandText = $"SELECT COUNT(*) FROM Records {whereClause};";
+            return Convert.ToInt32(command.ExecuteScalar(), CultureInfo.InvariantCulture);
         }
 
         public int CountRecords(DateTime? fromDate = null, DateTime? toDate = null)
@@ -1307,7 +1450,7 @@ WHERE RecordId = $recordId
         {
             var result = new List<string>();
             using var command = connection.CreateCommand();
-            command.CommandText = "SELECT Name FROM CatalogItems WHERE CatalogType = $catalogType ORDER BY DisplayOrder;";
+            command.CommandText = "SELECT Name FROM CatalogItems WHERE CatalogType = $catalogType AND IsActive = 1 ORDER BY DisplayOrder;";
             command.Parameters.AddWithValue("$catalogType", catalogType);
             using var reader = command.ExecuteReader();
             while (reader.Read())
@@ -1316,6 +1459,30 @@ WHERE RecordId = $recordId
             }
 
             return result;
+        }
+
+        private static string GetCatalogType(SqliteConnection connection, int id)
+        {
+            using var command = connection.CreateCommand();
+            command.CommandText = "SELECT CatalogType FROM CatalogItems WHERE Id = $id LIMIT 1;";
+            command.Parameters.AddWithValue("$id", id);
+            return command.ExecuteScalar() as string;
+        }
+
+        private static bool CatalogNameExists(SqliteConnection connection, string catalogType, string name, int exceptId = 0)
+        {
+            using var command = connection.CreateCommand();
+            command.CommandText = @"
+SELECT COUNT(*)
+FROM CatalogItems
+WHERE CatalogType = $catalogType
+  AND IsActive = 1
+  AND lower(Name) = lower($name)
+  AND Id <> $exceptId;";
+            command.Parameters.AddWithValue("$catalogType", catalogType);
+            command.Parameters.AddWithValue("$name", name);
+            command.Parameters.AddWithValue("$exceptId", exceptId);
+            return Convert.ToInt32(command.ExecuteScalar(), CultureInfo.InvariantCulture) > 0;
         }
 
         private static int CountRows(SqliteConnection connection, string tableName)
@@ -1331,6 +1498,69 @@ WHERE RecordId = $recordId
             command.CommandText = $"SELECT COUNT(*) FROM Records{BuildDateWhere(fromDate, toDate)};";
             AddDateParameters(command, fromDate, toDate);
             return Convert.ToInt32(command.ExecuteScalar(), CultureInfo.InvariantCulture);
+        }
+
+        private static string BuildExportWhere(
+            SqliteCommand command,
+            DateTime? fromDate,
+            DateTime? toDate,
+            string status,
+            string caseType,
+            string field,
+            string areaName,
+            string processorName,
+            string searchText)
+        {
+            var conditions = new List<string>();
+            if (fromDate.HasValue)
+            {
+                conditions.Add("ReceivedDate >= $fromDate");
+                command.Parameters.AddWithValue("$fromDate", fromDate.Value.Date.ToString("O", CultureInfo.InvariantCulture));
+            }
+
+            if (toDate.HasValue)
+            {
+                conditions.Add("ReceivedDate <= $toDate");
+                command.Parameters.AddWithValue("$toDate", toDate.Value.Date.AddDays(1).AddTicks(-1).ToString("O", CultureInfo.InvariantCulture));
+            }
+
+            AddOptionalExportFilter(command, conditions, "Status", "$status", status);
+            AddOptionalExportFilter(command, conditions, "CaseType", "$caseType", caseType);
+            AddOptionalExportFilter(command, conditions, "Field", "$field", field);
+            AddOptionalExportFilter(command, conditions, "AreaName", "$areaName", areaName);
+            AddOptionalExportFilter(command, conditions, "ProcessorName", "$processorName", processorName);
+
+            if (!string.IsNullOrWhiteSpace(searchText))
+            {
+                conditions.Add("(RecordCode LIKE $search OR SenderName LIKE $search OR Content LIKE $search)");
+                command.Parameters.AddWithValue("$search", $"%{searchText.Trim()}%");
+            }
+
+            return conditions.Count == 0
+                ? string.Empty
+                : $"WHERE {string.Join(" AND ", conditions)}";
+        }
+
+        private static void AddOptionalExportFilter(SqliteCommand command, List<string> conditions, string columnName, string parameterName, string value)
+        {
+            if (string.IsNullOrWhiteSpace(value) || value == "Tất cả")
+            {
+                return;
+            }
+
+            conditions.Add($"{columnName} = {parameterName}");
+            command.Parameters.AddWithValue(parameterName, value);
+        }
+
+        private static string BuildExportOrderBy(string sortOption)
+        {
+            return sortOption switch
+            {
+                "Ngày tiếp nhận cũ nhất trước" => "ReceivedDate ASC, RecordCode ASC",
+                "Trạng thái" => "Status ASC, ReceivedDate DESC, RecordCode DESC",
+                "Địa bàn" => "AreaName ASC, ReceivedDate DESC, RecordCode DESC",
+                _ => "ReceivedDate DESC, RecordCode DESC"
+            };
         }
 
         private static int CountRecordsByStatuses(SqliteConnection connection, DateTime? fromDate, DateTime? toDate, params string[] statuses)

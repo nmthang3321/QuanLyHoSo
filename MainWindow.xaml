@@ -74,23 +74,31 @@
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
 
-                <Border Grid.Row="2" Padding="10" Background="#0A397C" CornerRadius="6">
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="&#xE77B;"
+                <Button Grid.Row="2"
+                        Command="{Binding SettingsNavigationItem.Command}"
+                        Height="52"
+                        Padding="14,0"
+                        HorizontalContentAlignment="Stretch"
+                        Background="{Binding SettingsNavigationItem.IsSelected, Converter={StaticResource BooleanToNavBrushConverter}}"
+                        BorderThickness="0"
+                        Cursor="Hand">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="34" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="{Binding SettingsNavigationItem.IconGlyph}"
                                    FontFamily="Segoe MDL2 Assets"
-                                   Foreground="#BFD6FF"
-                                   FontSize="16"
-                                   Margin="0,0,8,0" />
-                        <StackPanel>
-                            <TextBlock Text="Người dùng: Quản trị viên"
-                                       Foreground="White"
-                                       FontSize="12" />
-                            <TextBlock Text="Bản thiết kế giao diện"
-                                       Foreground="#BFD6FF"
-                                       FontSize="11" />
-                        </StackPanel>
-                    </StackPanel>
-                </Border>
+                                   FontSize="20"
+                                   Foreground="White"
+                                   VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="1"
+                                   Text="{Binding SettingsNavigationItem.Title}"
+                                   Foreground="White"
+                                   FontSize="15"
+                                   VerticalAlignment="Center" />
+                    </Grid>
+                </Button>
             </Grid>
         </Border>
 

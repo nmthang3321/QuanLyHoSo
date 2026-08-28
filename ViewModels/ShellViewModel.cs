@@ -32,14 +32,15 @@ namespace QuanLyHoSo.ViewModels
                 CreateNavigationItem("Dashboard", "Tổng quan", "\uE80F"),
                 CreateNavigationItem("Input", "Nhập dữ liệu", "\uE8A5"),
                 CreateNavigationItem("Processing", "Phân loại & Xử lý", "\uE8F9"),
-                CreateNavigationItem("Export", "Xuất dữ liệu", "\uE896"),
-                CreateNavigationItem("Settings", "Cài đặt", "\uE713")
+                CreateNavigationItem("Export", "Xuất dữ liệu", "\uE896")
             };
+            SettingsNavigationItem = CreateNavigationItem("Settings", "Cài đặt", "\uE713");
 
             NavigateTo("Dashboard");
         }
 
         public ObservableCollection<NavigationItem> NavigationItems { get; }
+        public NavigationItem SettingsNavigationItem { get; }
 
         public ViewModelBase CurrentViewModel
         {
@@ -86,6 +87,8 @@ namespace QuanLyHoSo.ViewModels
             {
                 item.IsSelected = item.Key == key || (key == "RecordList" && item.Key == "Input");
             }
+
+            SettingsNavigationItem.IsSelected = key == "Settings";
         }
 
         private void EditRecordFromList(string recordCode)

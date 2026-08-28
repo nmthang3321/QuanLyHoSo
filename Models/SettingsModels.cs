@@ -1,11 +1,42 @@
 namespace QuanLyHoSo.Models
 {
-    public sealed class SettingAction
+    public sealed class CatalogGroupSetting : ViewModels.ViewModelBase
     {
+        private int _itemCount;
+        private bool _isSelected;
+
+        public string CatalogType { get; set; }
         public string Title { get; set; }
-        public string Value { get; set; }
+        public string Description { get; set; }
         public string IconGlyph { get; set; }
         public string AccentColor { get; set; }
+
+        public int ItemCount
+        {
+            get => _itemCount;
+            set => SetProperty(ref _itemCount, value);
+        }
+
+        public bool IsSelected
+        {
+            get => _isSelected;
+            set => SetProperty(ref _isSelected, value);
+        }
+    }
+
+    public sealed class CatalogValueSetting : ViewModels.ViewModelBase
+    {
+        private int _displayOrder;
+
+        public int Id { get; set; }
+        public string CatalogType { get; set; }
+        public string Name { get; set; }
+
+        public int DisplayOrder
+        {
+            get => _displayOrder;
+            set => SetProperty(ref _displayOrder, value);
+        }
     }
 
     public sealed class SoftwareInfo
