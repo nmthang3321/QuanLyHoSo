@@ -17,6 +17,7 @@
         <Color x:Key="PrimaryColor">#0B5CFF</Color>
         <Color x:Key="PrimaryDarkColor">#062A63</Color>
         <Color x:Key="TextColor">#06164A</Color>
+        <Color x:Key="StrongTextColor">#2E3A59</Color>
         <Color x:Key="MutedTextColor">#5C6B91</Color>
         <Color x:Key="LineColor">#D8E2F3</Color>
         <Color x:Key="SurfaceColor">#FFFFFF</Color>
@@ -25,6 +26,7 @@
         <SolidColorBrush x:Key="PrimaryBrush" Color="{StaticResource PrimaryColor}" />
         <SolidColorBrush x:Key="PrimaryDarkBrush" Color="{StaticResource PrimaryDarkColor}" />
         <SolidColorBrush x:Key="TextBrush" Color="{StaticResource TextColor}" />
+        <SolidColorBrush x:Key="StrongTextBrush" Color="{StaticResource StrongTextColor}" />
         <SolidColorBrush x:Key="MutedTextBrush" Color="{StaticResource MutedTextColor}" />
         <SolidColorBrush x:Key="LineBrush" Color="{StaticResource LineColor}" />
         <SolidColorBrush x:Key="SurfaceBrush" Color="{StaticResource SurfaceColor}" />
@@ -34,16 +36,26 @@
             <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
             <Setter Property="FontFamily" Value="Segoe UI" />
             <Setter Property="FontSize" Value="13" />
+            <Style.Triggers>
+                <Trigger Property="FontWeight" Value="SemiBold">
+                    <Setter Property="Foreground" Value="{StaticResource StrongTextBrush}" />
+                </Trigger>
+                <Trigger Property="FontWeight" Value="Bold">
+                    <Setter Property="Foreground" Value="{StaticResource StrongTextBrush}" />
+                </Trigger>
+            </Style.Triggers>
         </Style>
 
         <Style x:Key="PageTitleText" TargetType="TextBlock">
             <Setter Property="FontSize" Value="26" />
             <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
         </Style>
 
         <Style x:Key="SectionTitleText" TargetType="TextBlock">
             <Setter Property="FontSize" Value="15" />
             <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="{StaticResource StrongTextBrush}" />
         </Style>
 
         <Style x:Key="MutedText" TargetType="TextBlock">
@@ -69,6 +81,11 @@
             <Setter Property="Padding" Value="14,0" />
             <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="Cursor" Value="Hand" />
+            <Style.Resources>
+                <Style TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
+                    <Setter Property="Foreground" Value="White" />
+                </Style>
+            </Style.Resources>
         </Style>
 
         <Style x:Key="SecondaryButton" TargetType="Button">
