@@ -1,8 +1,15 @@
 using System;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Net;
+using System.Net.Http;
 using System.Reflection;
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
 using QuanLyHoSo.Infrastructure.Data;
@@ -14,6 +21,10 @@ namespace QuanLyHoSo.ViewModels
 {
     public sealed class SettingsViewModel : ViewModelBase
     {
+        private const string GitHubLatestReleaseApiUrl = "https://api.github.com/repos/nmthang3321/QuanLyHoSo/releases/latest";
+        private const string GitHubReleasesApiUrl = "https://api.github.com/repos/nmthang3321/QuanLyHoSo/releases";
+        private const string GitHubReleasesPageUrl = "https://github.com/nmthang3321/QuanLyHoSo/releases/latest";
+
         private readonly AppDataService _dataService;
         private CatalogGroupSetting _selectedCatalogGroup;
         private CatalogValueSetting _selectedCatalogValue;
@@ -22,6 +33,11 @@ namespace QuanLyHoSo.ViewModels
         private string _backupStatus;
         private string _updateStatus;
         private string _lastBackupText;
+        private string _latestReleaseUrl;
+        private string _latestReleaseDownloadUrl;
+        private string _latestReleaseVersion;
+        private bool _isCheckingUpdate;
+        private bool _hasAvailableUpdate;
 
         public SettingsViewModel()
         {
@@ -43,6 +59,7 @@ namespace QuanLyHoSo.ViewModels
                 new SoftwareInfo { Label = "Phiên bản hiện tại", Value = VersionText },
                 new SoftwareInfo { Label = "Khu vực sử dụng", Value = "An Giang" },
                 new SoftwareInfo { Label = "Cơ sở dữ liệu", Value = "SQLite local" },
+                new SoftwareInfo { Label = "Nguồn cập nhật", Value = "GitHub Releases" },
                 new SoftwareInfo { Label = "Đường dẫn DB", Value = _dataService.DatabasePath },
                 new SoftwareInfo { Label = "Đường dẫn log", Value = AppLogger.LogFolder }
             };
@@ -54,8 +71,8 @@ namespace QuanLyHoSo.ViewModels
             ChooseBackupFolderCommand = new RelayCommand(ChooseBackupFolder);
             BackupNowCommand = new RelayCommand(BackupNow);
             RestoreDataCommand = new RelayCommand(ShowRestoreNotice);
-            CheckUpdateCommand = new RelayCommand(CheckUpdate);
-            UpdateSoftwareCommand = new RelayCommand(UpdateSoftware);
+            CheckUpdateCommand = new RelayCommand(async () => await CheckUpdateAsync(), () => !IsCheckingUpdate);
+            UpdateSoftwareCommand = new RelayCommand(async () => await UpdateSoftwareAsync(), () => HasAvailableUpdate && !IsCheckingUpdate);
 
             BackupFolder = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -64,6 +81,7 @@ namespace QuanLyHoSo.ViewModels
             LastBackupText = "Chưa có bản sao lưu trong phiên này";
             BackupStatus = "Sẵn sàng sao lưu dữ liệu";
             UpdateStatus = "Chưa kiểm tra cập nhật";
+            _latestReleaseUrl = GitHubReleasesPageUrl;
 
             SelectCatalogGroup(CatalogGroups.FirstOrDefault());
         }
@@ -137,7 +155,39 @@ namespace QuanLyHoSo.ViewModels
             set => SetProperty(ref _updateStatus, value);
         }
 
-        public string VersionText => Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "1.0.0";
+        public bool IsCheckingUpdate
+        {
+            get => _isCheckingUpdate;
+            set
+            {
+                if (SetProperty(ref _isCheckingUpdate, value))
+                {
+                    (CheckUpdateCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                    (UpdateSoftwareCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                }
+            }
+        }
+
+        public bool HasAvailableUpdate
+        {
+            get => _hasAvailableUpdate;
+            set
+            {
+                if (SetProperty(ref _hasAvailableUpdate, value))
+                {
+                    (UpdateSoftwareCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                }
+            }
+        }
+
+        public string VersionText
+        {
+            get
+            {
+                var version = Assembly.GetExecutingAssembly().GetName().Version;
+                return version == null ? "1.0.0" : $"{version.Major}.{version.Minor}.{version.Build}";
+            }
+        }
 
         public void MoveCatalogValue(CatalogValueSetting source, CatalogValueSetting target)
         {
@@ -329,14 +379,203 @@ namespace QuanLyHoSo.ViewModels
             MessageBox.Show("Chức năng khôi phục sẽ được thực hiện ở bước riêng để tránh ghi đè nhầm dữ liệu đang dùng.", "Khôi phục dữ liệu", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
-        private void CheckUpdate()
+        private async Task CheckUpdateAsync()
         {
-            UpdateStatus = $"Phiên bản {VersionText} đang là bản mới nhất trong cấu hình hiện tại.";
+            IsCheckingUpdate = true;
+            HasAvailableUpdate = false;
+            UpdateStatus = "Đang kiểm tra phiên bản mới trên GitHub...";
+
+            try
+            {
+                using var client = new HttpClient();
+                client.DefaultRequestHeaders.UserAgent.ParseAdd("QuanLyHoSo-Updater/1.0");
+
+                var release = await GetLatestReleaseAsync(client);
+                var latestVersion = NormalizeVersionText(release?.TagName);
+                var currentVersion = NormalizeVersionText(VersionText);
+
+                if (!Version.TryParse(latestVersion, out var latest) ||
+                    !Version.TryParse(currentVersion, out var current))
+                {
+                    UpdateStatus = "Không đọc được số phiên bản từ GitHub Release. Vui lòng kiểm tra tag release, ví dụ v1.0.1.";
+                    return;
+                }
+
+                _latestReleaseUrl = string.IsNullOrWhiteSpace(release?.HtmlUrl)
+                    ? GitHubReleasesPageUrl
+                    : release.HtmlUrl;
+                _latestReleaseDownloadUrl = release?.Assets?
+                    .Where(asset => !string.IsNullOrWhiteSpace(asset.BrowserDownloadUrl))
+                    .FirstOrDefault(asset => asset.Name?.EndsWith(".zip", StringComparison.OrdinalIgnoreCase) == true)
+                    ?.BrowserDownloadUrl;
+                _latestReleaseVersion = latestVersion;
+
+                if (latest > current)
+                {
+                    if (string.IsNullOrWhiteSpace(_latestReleaseDownloadUrl))
+                    {
+                        UpdateStatus = $"Có bản {latestVersion}, nhưng release chưa có file .zip để cập nhật tự động. Hãy upload bản publish .zip vào Assets.";
+                        return;
+                    }
+
+                    HasAvailableUpdate = true;
+                    UpdateStatus = $"Có bản cập nhật {latestVersion}. Phiên bản hiện tại là {currentVersion}. Bấm Cập nhật để tải và cài tự động.";
+                    return;
+                }
+
+                UpdateStatus = $"Phiên bản {currentVersion} đang là bản mới nhất.";
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Error("Settings", "CheckUpdate", ex, "Failed to check GitHub release.");
+                UpdateStatus = "Không thể kiểm tra cập nhật. Vui lòng kiểm tra kết nối mạng hoặc GitHub Release của repo.";
+            }
+            finally
+            {
+                IsCheckingUpdate = false;
+            }
         }
 
-        private void UpdateSoftware()
+        private static async Task<GitHubReleaseInfo> GetLatestReleaseAsync(HttpClient client)
         {
-            MessageBox.Show("Chưa cấu hình máy chủ cập nhật. Khi có gói phát hành, chức năng này sẽ tải và cài đặt phiên bản mới tại đây.", "Cập nhật phần mềm", MessageBoxButton.OK, MessageBoxImage.Information);
+            try
+            {
+                var latestJson = await client.GetStringAsync(GitHubLatestReleaseApiUrl);
+                return JsonSerializer.Deserialize<GitHubReleaseInfo>(latestJson);
+            }
+            catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
+            {
+                var releasesJson = await client.GetStringAsync(GitHubReleasesApiUrl);
+                var releases = JsonSerializer.Deserialize<GitHubReleaseInfo[]>(releasesJson);
+                return releases?.FirstOrDefault(release => !release.Draft);
+            }
+        }
+
+        private async Task UpdateSoftwareAsync()
+        {
+            if (!HasAvailableUpdate || string.IsNullOrWhiteSpace(_latestReleaseDownloadUrl))
+            {
+                MessageBox.Show("Chưa có bản cập nhật mới. Vui lòng bấm Check update để kiểm tra lại.", "Cập nhật phần mềm", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var confirm = MessageBox.Show(
+                $"App sẽ tải bản {_latestReleaseVersion}, đóng chương trình, cài bản mới rồi mở lại.\n\nBạn có muốn cập nhật ngay không?",
+                "Cập nhật phần mềm",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question);
+            if (confirm != MessageBoxResult.Yes)
+            {
+                return;
+            }
+
+            IsCheckingUpdate = true;
+            UpdateStatus = $"Đang tải bản cập nhật {_latestReleaseVersion}...";
+
+            try
+            {
+                var updateFolder = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "QuanLyHoSo",
+                    "Updates");
+                Directory.CreateDirectory(updateFolder);
+
+                var packagePath = Path.Combine(updateFolder, $"QuanLyHoSo-{_latestReleaseVersion}.zip");
+                using (var client = new HttpClient())
+                {
+                    client.DefaultRequestHeaders.UserAgent.ParseAdd("QuanLyHoSo-Updater/1.0");
+                    using var response = await client.GetAsync(_latestReleaseDownloadUrl);
+                    response.EnsureSuccessStatusCode();
+
+                    await using var remoteStream = await response.Content.ReadAsStreamAsync();
+                    await using var fileStream = File.Create(packagePath);
+                    await remoteStream.CopyToAsync(fileStream);
+                }
+
+                UpdateStatus = "Đã tải bản cập nhật. Đang khởi động trình cài đặt...";
+                StartUpdaterAndShutdown(packagePath);
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Error("Settings", "UpdateSoftware", ex, "Failed to download or start update package.");
+                UpdateStatus = "Không thể tải hoặc cài bản cập nhật. Vui lòng thử lại hoặc tải thủ công từ GitHub Release.";
+                MessageBox.Show($"Không thể cập nhật tự động.\n\n{ex.Message}", "Cập nhật phần mềm", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            finally
+            {
+                IsCheckingUpdate = false;
+            }
+        }
+
+        private static void StartUpdaterAndShutdown(string packagePath)
+        {
+            var currentProcess = Process.GetCurrentProcess();
+            var exePath = currentProcess.MainModule?.FileName ?? Path.Combine(AppContext.BaseDirectory, "QuanLyHoSo.exe");
+            var installDir = AppDomain.CurrentDomain.BaseDirectory;
+            var scriptPath = Path.Combine(Path.GetTempPath(), $"QuanLyHoSo_Update_{Guid.NewGuid():N}.ps1");
+
+            var script = BuildUpdaterScript(
+                currentProcess.Id,
+                packagePath,
+                installDir,
+                exePath);
+            File.WriteAllText(scriptPath, script, Encoding.UTF8);
+
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = "powershell.exe",
+                Arguments = $"-NoProfile -ExecutionPolicy Bypass -File {QuoteProcessArgument(scriptPath)}",
+                UseShellExecute = false,
+                CreateNoWindow = true
+            });
+
+            Application.Current.Shutdown();
+        }
+
+        private static string BuildUpdaterScript(int processId, string packagePath, string installDir, string exePath)
+        {
+            return $@"
+$ErrorActionPreference = 'Stop'
+$processId = {processId}
+$packagePath = {QuotePowerShellString(packagePath)}
+$installDir = {QuotePowerShellString(installDir)}
+$exePath = {QuotePowerShellString(exePath)}
+$extractDir = Join-Path ([System.IO.Path]::GetTempPath()) ('QuanLyHoSo_Update_' + [System.Guid]::NewGuid().ToString('N'))
+
+Wait-Process -Id $processId -ErrorAction SilentlyContinue
+Start-Sleep -Milliseconds 700
+New-Item -ItemType Directory -Path $extractDir -Force | Out-Null
+Expand-Archive -LiteralPath $packagePath -DestinationPath $extractDir -Force
+
+$sourceDir = $extractDir
+$children = @(Get-ChildItem -LiteralPath $extractDir)
+$directories = @($children | Where-Object {{ $_.PSIsContainer }})
+$files = @($children | Where-Object {{ -not $_.PSIsContainer }})
+if ($directories.Count -eq 1 -and $files.Count -eq 0) {{
+    $sourceDir = $directories[0].FullName
+}}
+
+Copy-Item -Path (Join-Path $sourceDir '*') -Destination $installDir -Recurse -Force
+Start-Process -FilePath $exePath
+Remove-Item -LiteralPath $extractDir -Recurse -Force -ErrorAction SilentlyContinue
+";
+        }
+
+        private static string QuotePowerShellString(string value)
+        {
+            return $"'{value.Replace("'", "''")}'";
+        }
+
+        private static string QuoteProcessArgument(string value)
+        {
+            return $"\"{value.Replace("\"", "\\\"")}\"";
+        }
+
+        private static string NormalizeVersionText(string versionText)
+        {
+            return string.IsNullOrWhiteSpace(versionText)
+                ? string.Empty
+                : versionText.Trim().TrimStart('v', 'V');
         }
 
         private void RefreshCatalogGroupCounts()
@@ -352,6 +591,30 @@ namespace QuanLyHoSo.ViewModels
         {
             (UpdateCatalogValueCommand as RelayCommand)?.RaiseCanExecuteChanged();
             (DeleteCatalogValueCommand as RelayCommand)?.RaiseCanExecuteChanged();
+        }
+
+        private sealed class GitHubReleaseInfo
+        {
+            [JsonPropertyName("tag_name")]
+            public string TagName { get; set; }
+
+            [JsonPropertyName("html_url")]
+            public string HtmlUrl { get; set; }
+
+            [JsonPropertyName("draft")]
+            public bool Draft { get; set; }
+
+            [JsonPropertyName("assets")]
+            public GitHubReleaseAsset[] Assets { get; set; }
+        }
+
+        private sealed class GitHubReleaseAsset
+        {
+            [JsonPropertyName("name")]
+            public string Name { get; set; }
+
+            [JsonPropertyName("browser_download_url")]
+            public string BrowserDownloadUrl { get; set; }
         }
     }
 }

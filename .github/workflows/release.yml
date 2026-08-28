@@ -1,0 +1,93 @@
+name: Build release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to build, for example 1.0.1"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    name: Build Windows package
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Resolve version
+        id: version
+        shell: pwsh
+        run: |
+          if ("${{ github.event_name }}" -eq "workflow_dispatch") {
+            $version = "${{ inputs.version }}"
+          } else {
+            $version = "${{ github.ref_name }}".TrimStart("v")
+          }
+
+          if ($version -notmatch '^\d+\.\d+\.\d+$') {
+            throw "Version must use semantic format like 1.0.1. Actual: $version"
+          }
+
+          "value=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "tag=v$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Publish app
+        shell: pwsh
+        run: |
+          dotnet publish .\QuanLyHoSo.csproj `
+            -c Release `
+            -r win-x64 `
+            --self-contained true `
+            /p:PublishSingleFile=true `
+            /p:IncludeNativeLibrariesForSelfExtract=true `
+            /p:Version=${{ steps.version.outputs.value }} `
+            /p:AssemblyVersion=${{ steps.version.outputs.value }}.0 `
+            /p:FileVersion=${{ steps.version.outputs.value }}.0 `
+            -o .\artifacts\publish-win-x64
+
+      - name: Create update zip
+        shell: pwsh
+        run: |
+          Compress-Archive `
+            -Path .\artifacts\publish-win-x64\* `
+            -DestinationPath .\artifacts\QuanLyHoSo-${{ steps.version.outputs.value }}-win-x64-update.zip `
+            -Force
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: choco install innosetup --no-progress -y
+
+      - name: Build installer
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path .\artifacts\installer -Force | Out-Null
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" `
+            /DAppVersion=${{ steps.version.outputs.value }} `
+            /DPublishDir="$pwd\artifacts\publish-win-x64" `
+            /O"$pwd\artifacts\installer" `
+            .\installer\QuanLyHoSo.iss
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: QuanLyHoSo ${{ steps.version.outputs.tag }}
+          prerelease: false
+          make_latest: true
+          files: |
+            artifacts/QuanLyHoSo-${{ steps.version.outputs.value }}-win-x64-update.zip
+            artifacts/installer/QuanLyHoSo-Setup-${{ steps.version.outputs.value }}-win-x64.exe
