@@ -2,8 +2,9 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:converters="clr-namespace:QuanLyHoSo.Presentation.Converters"
+             xmlns:auth="clr-namespace:QuanLyHoSo.Views.Auth"
              xmlns:dashboard="clr-namespace:QuanLyHoSo.Views.Dashboard"
-             xmlns:export="clr-namespace:QuanLyHoSo.Views.Export"
+             xmlns:presentation="clr-namespace:QuanLyHoSo.Presentation"
              xmlns:records="clr-namespace:QuanLyHoSo.Views.Records"
              xmlns:settings="clr-namespace:QuanLyHoSo.Views.Settings"
              xmlns:viewModels="clr-namespace:QuanLyHoSo.ViewModels"
@@ -13,6 +14,7 @@
         <converters:StatusToBrushConverter x:Key="StatusToBrushConverter" />
         <converters:StatusDonutSegmentConverter x:Key="StatusDonutSegmentConverter" />
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+        <converters:InverseBooleanToVisibilityConverter x:Key="InverseBooleanToVisibilityConverter" />
 
         <Color x:Key="PrimaryColor">#0B5CFF</Color>
         <Color x:Key="PrimaryDarkColor">#062A63</Color>
@@ -154,9 +156,17 @@
             <Setter Property="FontSize" Value="13" />
             <Setter Property="CanUserAddRows" Value="False" />
             <Setter Property="CanUserDeleteRows" Value="False" />
+            <Setter Property="ClipboardCopyMode" Value="ExcludeHeader" />
+            <Setter Property="presentation:DataGridCopyBehavior.IsEnabled" Value="True" />
+            <Setter Property="SelectionMode" Value="Extended" />
+            <Setter Property="SelectionUnit" Value="CellOrRowHeader" />
             <Setter Property="GridLinesVisibility" Value="Horizontal" />
             <Setter Property="HeadersVisibility" Value="Column" />
             <Setter Property="RowHeight" Value="34" />
+            <Setter Property="EnableRowVirtualization" Value="True" />
+            <Setter Property="EnableColumnVirtualization" Value="True" />
+            <Setter Property="VirtualizingPanel.IsVirtualizing" Value="True" />
+            <Setter Property="VirtualizingPanel.VirtualizationMode" Value="Recycling" />
             <Setter Property="BorderBrush" Value="{StaticResource LineBrush}" />
             <Setter Property="HorizontalGridLinesBrush" Value="#ECF1F8" />
             <Setter Property="VerticalGridLinesBrush" Value="#ECF1F8" />
@@ -173,6 +183,9 @@
             <Setter Property="Height" Value="36" />
         </Style>
 
+        <DataTemplate DataType="{x:Type viewModels:LoginViewModel}">
+            <auth:LoginView />
+        </DataTemplate>
         <DataTemplate DataType="{x:Type viewModels:DashboardViewModel}">
             <dashboard:DashboardView />
         </DataTemplate>
@@ -184,9 +197,6 @@
         </DataTemplate>
         <DataTemplate DataType="{x:Type viewModels:RecordProcessingViewModel}">
             <records:RecordProcessingView />
-        </DataTemplate>
-        <DataTemplate DataType="{x:Type viewModels:ExportViewModel}">
-            <export:ExportView />
         </DataTemplate>
         <DataTemplate DataType="{x:Type viewModels:SettingsViewModel}">
             <settings:SettingsView />

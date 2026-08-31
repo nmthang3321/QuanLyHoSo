@@ -54,18 +54,10 @@
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                     <Button Style="{StaticResource PrimaryButton}"
-                            Margin="0,0,12,0"
                             Command="{Binding NewCommand}">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="&#xE710;" FontFamily="Segoe MDL2 Assets" Margin="0,0,8,0" />
                             <TextBlock Text="Thêm mới" />
-                        </StackPanel>
-                    </Button>
-                    <Button Style="{StaticResource SecondaryButton}"
-                            Command="{Binding ShowRecordListCommand}">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="&#xE8FD;" FontFamily="Segoe MDL2 Assets" Margin="0,0,8,0" />
-                            <TextBlock Text="Danh sách hồ sơ" />
                         </StackPanel>
                     </Button>
                 </StackPanel>
@@ -90,7 +82,8 @@
 
                         <StackPanel Grid.Column="0" Margin="0,0,14,14">
                             <TextBlock Style="{StaticResource InputLabelText}"><Run Text="Số hồ sơ / Số đơn" /><Run Text=" *" Foreground="#E11414" /></TextBlock>
-                            <TextBox Text="{Binding RecordCode, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBox Text="{Binding RecordCode, Mode=OneWay}"
+                                     IsReadOnly="True" />
                         </StackPanel>
                         <StackPanel Grid.Column="1" Margin="0,0,14,14">
                             <TextBlock Style="{StaticResource InputLabelText}"><Run Text="Ngày tiếp nhận" /><Run Text=" *" Foreground="#E11414" /></TextBlock>

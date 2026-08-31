@@ -78,6 +78,7 @@ jobs:
           & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" `
             /DAppVersion=${{ steps.version.outputs.value }} `
             /DPublishDir="$pwd\artifacts\publish-win-x64" `
+            /DIconPath="$pwd\Assets\AppIcon.ico" `
             /O"$pwd\artifacts\installer" `
             .\installer\QuanLyHoSo.iss
 

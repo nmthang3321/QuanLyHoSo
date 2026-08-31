@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
@@ -6,14 +7,17 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
+using QuanLyHoSo.Infrastructure.Configuration;
 using QuanLyHoSo.Infrastructure.Data;
 using QuanLyHoSo.Infrastructure.Logging;
+using QuanLyHoSo.Infrastructure.Security;
 using QuanLyHoSo.Models;
 using Forms = System.Windows.Forms;
 
@@ -24,11 +28,15 @@ namespace QuanLyHoSo.ViewModels
         private const string GitHubLatestReleaseApiUrl = "https://api.github.com/repos/nmthang3321/QuanLyHoSo/releases/latest";
         private const string GitHubReleasesApiUrl = "https://api.github.com/repos/nmthang3321/QuanLyHoSo/releases";
         private const string GitHubReleasesPageUrl = "https://github.com/nmthang3321/QuanLyHoSo/releases/latest";
+        private const int CatalogDialogPageSize = 6;
 
         private readonly AppDataService _dataService;
+        private readonly List<CatalogValueSetting> _allCatalogValues;
         private CatalogGroupSetting _selectedCatalogGroup;
         private CatalogValueSetting _selectedCatalogValue;
         private string _catalogValueText;
+        private string _catalogSearchText;
+        private string _selectedCatalogStatusFilter;
         private string _backupFolder;
         private string _backupStatus;
         private string _updateStatus;
@@ -38,6 +46,22 @@ namespace QuanLyHoSo.ViewModels
         private string _latestReleaseVersion;
         private bool _isCheckingUpdate;
         private bool _hasAvailableUpdate;
+        private bool _isCatalogDialogOpen;
+        private bool _isSystemLogDialogOpen;
+        private bool _isGeneralSettingsDialogOpen;
+        private bool _isGuideDialogOpen;
+        private bool _isUserManagementDialogOpen;
+        private string _databasePathText;
+        private string _logFolderText;
+        private string _generalSettingsStatus;
+        private AppUser _selectedUser;
+        private string _userNameText;
+        private string _userDisplayNameText;
+        private string _selectedUserRole;
+        private string _userPasswordText;
+        private bool _isUserActive = true;
+        private int _catalogCurrentPage = 1;
+        private int _catalogFilteredCount;
 
         public SettingsViewModel()
         {
@@ -45,32 +69,59 @@ namespace QuanLyHoSo.ViewModels
 
             CatalogGroups = new ObservableCollection<CatalogGroupSetting>
             {
-                CreateCatalogGroup("ReceiveSource", "Nguồn tiếp nhận", "Dùng trong form nhập hồ sơ", "\uE77B", "#0B5CFF"),
-                CreateCatalogGroup("CaseType", "Loại vụ việc", "Phân loại bản chất hồ sơ", "\uE8A5", "#1FA24A"),
-                CreateCatalogGroup("Field", "Lĩnh vực", "Lọc, thống kê và xuất dữ liệu", "\uE8F9", "#7147D8"),
-                CreateCatalogGroup("ContentGroup", "Nhóm nội dung", "Nhóm hóa nội dung phản ánh", "\uE8FD", "#D18A00"),
-                CreateCatalogGroup("Priority", "Mức độ ưu tiên", "Dùng cho ưu tiên và mức độ xử lý", "\uE7BA", "#E85D04"),
-                CreateCatalogGroup("ExpectedHandlingMethod", "Hướng xử lý", "Định hướng xử lý dự kiến", "\uE9D9", "#00856F")
+                CreateCatalogGroup("ReceiveSource", "Nguồn tiếp nhận", "Dùng trong form nhập hồ sơ", "\uE8A5", "#0B5CFF", "#EEF4FF"),
+                CreateCatalogGroup("CaseType", "Loại vụ việc", "Phân loại bản chất hồ sơ", "\uE9F9", "#1FA24A", "#EAF8F0"),
+                CreateCatalogGroup("Field", "Lĩnh vực", "Lọc, thống kê và xuất dữ liệu", "\uE825", "#7147D8", "#F3EEFF"),
+                CreateCatalogGroup("ContentGroup", "Nhóm nội dung", "Nhóm hóa nội dung phản ánh", "\uECA5", "#E85D04", "#FFF2E7"),
+                CreateCatalogGroup("Priority", "Mức độ ưu tiên", "Dùng cho ưu tiên và mức độ xử lý", "\uE734", "#E43D5C", "#FFF0F3"),
+                CreateCatalogGroup("ProcessorName", "Tên cán bộ xử lý", "Dùng khi cập nhật xử lý hồ sơ", "\uE77B", "#0B5CFF", "#EEF4FF"),
+                CreateCatalogGroup("ExpectedHandlingMethod", "Hướng xử lý", "Định hướng xử lý dự kiến", "\uE774", "#00A6B2", "#E9FAFC")
             };
 
             CatalogValues = new ObservableCollection<CatalogValueSetting>();
-            SoftwareInfos = new ObservableCollection<SoftwareInfo>
+            SystemLogs = new ObservableCollection<SystemLogEntry>();
+            CatalogStatusFilters = new ObservableCollection<string>
             {
-                new SoftwareInfo { Label = "Phiên bản hiện tại", Value = VersionText },
-                new SoftwareInfo { Label = "Khu vực sử dụng", Value = "An Giang" },
-                new SoftwareInfo { Label = "Cơ sở dữ liệu", Value = "SQLite local" },
-                new SoftwareInfo { Label = "Nguồn cập nhật", Value = "GitHub Releases" },
-                new SoftwareInfo { Label = "Đường dẫn DB", Value = _dataService.DatabasePath },
-                new SoftwareInfo { Label = "Đường dẫn log", Value = AppLogger.LogFolder }
+                "Tất cả trạng thái",
+                "Đang sử dụng",
+                "Ngưng sử dụng"
             };
+            _allCatalogValues = new List<CatalogValueSetting>();
+            SoftwareInfos = new ObservableCollection<SoftwareInfo>();
+            Users = new ObservableCollection<AppUser>();
+            UserRoles = new ObservableCollection<string> { Models.UserRoles.Admin, Models.UserRoles.Officer, Models.UserRoles.Leader };
 
             SelectCatalogGroupCommand = new RelayCommand(SelectCatalogGroup);
+            OpenCatalogDialogCommand = new RelayCommand(OpenCatalogDialog);
+            CloseCatalogDialogCommand = new RelayCommand(() => IsCatalogDialogOpen = false);
+            SelectCatalogValueCommand = new RelayCommand(SelectCatalogValue, value => value is CatalogValueSetting);
+            DeleteCatalogValueForRowCommand = new RelayCommand(DeleteCatalogValueForRow, value => value is CatalogValueSetting);
+            PreviousCatalogPageCommand = new RelayCommand(PreviousCatalogPage, () => CatalogCurrentPage > 1);
+            NextCatalogPageCommand = new RelayCommand(NextCatalogPage, () => CatalogCurrentPage < CatalogTotalPages);
+            OpenSystemLogDialogCommand = new RelayCommand(OpenSystemLogDialog);
+            CloseSystemLogDialogCommand = new RelayCommand(() => IsSystemLogDialogOpen = false);
+            RefreshSystemLogsCommand = new RelayCommand(RefreshSystemLogs);
+            OpenGeneralSettingsDialogCommand = new RelayCommand(OpenGeneralSettingsDialog);
+            CloseGeneralSettingsDialogCommand = new RelayCommand(() => IsGeneralSettingsDialogOpen = false);
+            OpenGuideDialogCommand = new RelayCommand(() => IsGuideDialogOpen = true);
+            CloseGuideDialogCommand = new RelayCommand(() => IsGuideDialogOpen = false);
+            OpenUserManagementDialogCommand = new RelayCommand(OpenUserManagementDialog, () => AuthContext.CanManageUsers);
+            CloseUserManagementDialogCommand = new RelayCommand(() => IsUserManagementDialogOpen = false);
+            SaveUserCommand = new RelayCommand(SaveUser);
+            NewUserCommand = new RelayCommand(ClearUserForm);
+            DeleteUserCommand = new RelayCommand(DeleteSelectedUser, () => SelectedUser != null && SelectedUser.Id != AuthContext.CurrentUser?.Id);
+            ChooseDatabasePathCommand = new RelayCommand(ChooseDatabasePath);
+            ChooseLogFolderCommand = new RelayCommand(ChooseLogFolder);
+            SaveGeneralSettingsCommand = new RelayCommand(SaveGeneralSettings);
+            ResetGeneralSettingsCommand = new RelayCommand(ResetGeneralSettings);
+            SaveCatalogValueCommand = new RelayCommand(SaveCatalogValue);
+            CancelCatalogEditCommand = new RelayCommand(CancelCatalogEdit, () => IsEditingCatalogValue);
             AddCatalogValueCommand = new RelayCommand(AddCatalogValue);
             UpdateCatalogValueCommand = new RelayCommand(UpdateCatalogValue, () => SelectedCatalogValue != null);
             DeleteCatalogValueCommand = new RelayCommand(DeleteCatalogValue, () => SelectedCatalogValue != null);
             ChooseBackupFolderCommand = new RelayCommand(ChooseBackupFolder);
-            BackupNowCommand = new RelayCommand(BackupNow);
-            RestoreDataCommand = new RelayCommand(ShowRestoreNotice);
+            BackupNowCommand = new RelayCommand(async () => await BackupNowAsync());
+            RestoreDataCommand = new RelayCommand(async () => await RestoreDataAsync());
             CheckUpdateCommand = new RelayCommand(async () => await CheckUpdateAsync(), () => !IsCheckingUpdate);
             UpdateSoftwareCommand = new RelayCommand(async () => await UpdateSoftwareAsync(), () => HasAvailableUpdate && !IsCheckingUpdate);
 
@@ -78,19 +129,55 @@ namespace QuanLyHoSo.ViewModels
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                 "QuanLyHoSo",
                 "Backup");
+            CatalogSearchText = string.Empty;
+            SelectedCatalogStatusFilter = CatalogStatusFilters.Skip(1).FirstOrDefault() ?? CatalogStatusFilters.FirstOrDefault();
+            CatalogCurrentPage = 1;
+            DatabasePathText = _dataService.DatabasePath;
+            LogFolderText = AppLogger.LogFolder;
+            GeneralSettingsStatus = "Thay đổi đường dẫn DB cần khởi động lại ứng dụng để áp dụng.";
             LastBackupText = "Chưa có bản sao lưu trong phiên này";
             BackupStatus = "Sẵn sàng sao lưu dữ liệu";
             UpdateStatus = "Chưa kiểm tra cập nhật";
             _latestReleaseUrl = GitHubReleasesPageUrl;
+            SelectedUserRole = UserRoles[1];
 
-            SelectCatalogGroup(CatalogGroups.FirstOrDefault());
+            RefreshSoftwareInfos();
+            RefreshCatalogGroupCounts();
         }
 
         public ObservableCollection<CatalogGroupSetting> CatalogGroups { get; }
         public ObservableCollection<CatalogValueSetting> CatalogValues { get; }
+        public ObservableCollection<SystemLogEntry> SystemLogs { get; }
+        public ObservableCollection<string> CatalogStatusFilters { get; }
         public ObservableCollection<SoftwareInfo> SoftwareInfos { get; }
+        public ObservableCollection<AppUser> Users { get; }
+        public ObservableCollection<string> UserRoles { get; }
 
         public ICommand SelectCatalogGroupCommand { get; }
+        public ICommand OpenCatalogDialogCommand { get; }
+        public ICommand CloseCatalogDialogCommand { get; }
+        public ICommand SelectCatalogValueCommand { get; }
+        public ICommand DeleteCatalogValueForRowCommand { get; }
+        public ICommand PreviousCatalogPageCommand { get; }
+        public ICommand NextCatalogPageCommand { get; }
+        public ICommand OpenSystemLogDialogCommand { get; }
+        public ICommand CloseSystemLogDialogCommand { get; }
+        public ICommand RefreshSystemLogsCommand { get; }
+        public ICommand OpenGeneralSettingsDialogCommand { get; }
+        public ICommand CloseGeneralSettingsDialogCommand { get; }
+        public ICommand OpenGuideDialogCommand { get; }
+        public ICommand CloseGuideDialogCommand { get; }
+        public ICommand OpenUserManagementDialogCommand { get; }
+        public ICommand CloseUserManagementDialogCommand { get; }
+        public ICommand SaveUserCommand { get; }
+        public ICommand NewUserCommand { get; }
+        public ICommand DeleteUserCommand { get; }
+        public ICommand ChooseDatabasePathCommand { get; }
+        public ICommand ChooseLogFolderCommand { get; }
+        public ICommand SaveGeneralSettingsCommand { get; }
+        public ICommand ResetGeneralSettingsCommand { get; }
+        public ICommand SaveCatalogValueCommand { get; }
+        public ICommand CancelCatalogEditCommand { get; }
         public ICommand AddCatalogValueCommand { get; }
         public ICommand UpdateCatalogValueCommand { get; }
         public ICommand DeleteCatalogValueCommand { get; }
@@ -120,6 +207,8 @@ namespace QuanLyHoSo.ViewModels
                 if (SetProperty(ref _selectedCatalogValue, value))
                 {
                     CatalogValueText = value?.Name ?? string.Empty;
+                    OnPropertyChanged(nameof(IsEditingCatalogValue));
+                    OnPropertyChanged(nameof(CatalogSubmitButtonText));
                     RaiseCatalogCommandState();
                 }
             }
@@ -130,6 +219,169 @@ namespace QuanLyHoSo.ViewModels
             get => _catalogValueText;
             set => SetProperty(ref _catalogValueText, value);
         }
+
+        public string CatalogSearchText
+        {
+            get => _catalogSearchText;
+            set
+            {
+                if (SetProperty(ref _catalogSearchText, value))
+                {
+                    CatalogCurrentPage = 1;
+                    ApplyCatalogFilters();
+                }
+            }
+        }
+
+        public string SelectedCatalogStatusFilter
+        {
+            get => _selectedCatalogStatusFilter;
+            set
+            {
+                if (SetProperty(ref _selectedCatalogStatusFilter, value))
+                {
+                    CatalogCurrentPage = 1;
+                    ApplyCatalogFilters();
+                }
+            }
+        }
+
+        public bool IsCatalogDialogOpen
+        {
+            get => _isCatalogDialogOpen;
+            set => SetProperty(ref _isCatalogDialogOpen, value);
+        }
+
+        public bool IsSystemLogDialogOpen
+        {
+            get => _isSystemLogDialogOpen;
+            set => SetProperty(ref _isSystemLogDialogOpen, value);
+        }
+
+        public bool IsGeneralSettingsDialogOpen
+        {
+            get => _isGeneralSettingsDialogOpen;
+            set => SetProperty(ref _isGeneralSettingsDialogOpen, value);
+        }
+
+        public bool IsGuideDialogOpen
+        {
+            get => _isGuideDialogOpen;
+            set => SetProperty(ref _isGuideDialogOpen, value);
+        }
+
+        public bool IsUserManagementDialogOpen
+        {
+            get => _isUserManagementDialogOpen;
+            set => SetProperty(ref _isUserManagementDialogOpen, value);
+        }
+
+        public bool CanManageUsers => AuthContext.CanManageUsers;
+
+        public AppUser SelectedUser
+        {
+            get => _selectedUser;
+            set
+            {
+                if (SetProperty(ref _selectedUser, value))
+                {
+                    LoadSelectedUser();
+                    OnPropertyChanged(nameof(IsEditingUser));
+                    OnPropertyChanged(nameof(UserSubmitButtonText));
+                    (DeleteUserCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                }
+            }
+        }
+
+        public bool IsEditingUser => SelectedUser != null;
+        public string UserSubmitButtonText => IsEditingUser ? "Lưu thay đổi" : "Thêm tài khoản";
+
+        public string UserNameText
+        {
+            get => _userNameText;
+            set => SetProperty(ref _userNameText, value);
+        }
+
+        public string UserDisplayNameText
+        {
+            get => _userDisplayNameText;
+            set => SetProperty(ref _userDisplayNameText, value);
+        }
+
+        public string SelectedUserRole
+        {
+            get => _selectedUserRole;
+            set => SetProperty(ref _selectedUserRole, value);
+        }
+
+        public string UserPasswordText
+        {
+            get => _userPasswordText;
+            set => SetProperty(ref _userPasswordText, value);
+        }
+
+        public bool IsUserActive
+        {
+            get => _isUserActive;
+            set => SetProperty(ref _isUserActive, value);
+        }
+
+        public string DatabasePathText
+        {
+            get => _databasePathText;
+            set => SetProperty(ref _databasePathText, value);
+        }
+
+        public string LogFolderText
+        {
+            get => _logFolderText;
+            set => SetProperty(ref _logFolderText, value);
+        }
+
+        public string GeneralSettingsStatus
+        {
+            get => _generalSettingsStatus;
+            set => SetProperty(ref _generalSettingsStatus, value);
+        }
+
+        public int CatalogCurrentPage
+        {
+            get => _catalogCurrentPage;
+            set
+            {
+                if (SetProperty(ref _catalogCurrentPage, value))
+                {
+                    OnPropertyChanged(nameof(CatalogPageText));
+                    OnPropertyChanged(nameof(CatalogRowsText));
+                    RaiseCatalogPageCommandState();
+                }
+            }
+        }
+
+        public int CatalogTotalPages => Math.Max(1, (int)Math.Ceiling(_catalogFilteredCount / (double)CatalogDialogPageSize));
+
+        public string CatalogPageText => $"{CatalogCurrentPage}/{CatalogTotalPages}";
+
+        public string CatalogRowsText
+        {
+            get
+            {
+                if (_catalogFilteredCount == 0)
+                {
+                    return "Không có danh mục phù hợp";
+                }
+
+                return $"Tổng {_catalogFilteredCount} danh mục";
+            }
+        }
+
+        public string CatalogDialogTitle => SelectedCatalogGroup == null
+            ? "QUẢN LÝ DANH MỤC"
+            : $"QUẢN LÝ {SelectedCatalogGroup.Title.ToUpperInvariant()}";
+
+        public bool IsEditingCatalogValue => SelectedCatalogValue != null;
+
+        public string CatalogSubmitButtonText => IsEditingCatalogValue ? "Lưu thay đổi" : "Thêm mới";
 
         public string BackupFolder
         {
@@ -189,6 +441,123 @@ namespace QuanLyHoSo.ViewModels
             }
         }
 
+        private void OpenUserManagementDialog()
+        {
+            if (!AuthContext.CanManageUsers)
+            {
+                MessageBox.Show("Chỉ admin được quản lý tài khoản người dùng.", "Phân quyền", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            RefreshUsers();
+            ClearUserForm();
+            IsUserManagementDialogOpen = true;
+        }
+
+        private void RefreshUsers()
+        {
+            Users.Clear();
+            foreach (var user in _dataService.GetUsers())
+            {
+                Users.Add(user);
+            }
+        }
+
+        private void LoadSelectedUser()
+        {
+            if (SelectedUser == null)
+            {
+                return;
+            }
+
+            UserNameText = SelectedUser.UserName;
+            UserDisplayNameText = SelectedUser.DisplayName;
+            SelectedUserRole = SelectedUser.Role;
+            IsUserActive = SelectedUser.IsActive;
+            UserPasswordText = string.Empty;
+        }
+
+        private void ClearUserForm()
+        {
+            SelectedUser = null;
+            UserNameText = string.Empty;
+            UserDisplayNameText = string.Empty;
+            SelectedUserRole = UserRoles.Count > 1 ? UserRoles[1] : Models.UserRoles.Officer;
+            UserPasswordText = string.Empty;
+            IsUserActive = true;
+            OnPropertyChanged(nameof(IsEditingUser));
+            OnPropertyChanged(nameof(UserSubmitButtonText));
+            (DeleteUserCommand as RelayCommand)?.RaiseCanExecuteChanged();
+        }
+
+        private void SaveUser()
+        {
+            if (!AuthContext.CanManageUsers)
+            {
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(UserNameText) ||
+                string.IsNullOrWhiteSpace(UserDisplayNameText) ||
+                string.IsNullOrWhiteSpace(SelectedUserRole) ||
+                (!IsEditingUser && string.IsNullOrWhiteSpace(UserPasswordText)))
+            {
+                MessageBox.Show("Vui lòng nhập đầy đủ tên đăng nhập, họ tên, vai trò và mật khẩu khi tạo mới.", "Quản lý người dùng", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            var user = new AppUser
+            {
+                Id = SelectedUser?.Id ?? 0,
+                UserName = UserNameText,
+                DisplayName = UserDisplayNameText,
+                Role = SelectedUserRole,
+                IsActive = IsUserActive
+            };
+
+            try
+            {
+                if (!_dataService.SaveUser(user, UserPasswordText))
+                {
+                    MessageBox.Show("Không thể lưu tài khoản. Vui lòng kiểm tra tên đăng nhập hoặc mật khẩu.", "Quản lý người dùng", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                RefreshUsers();
+                ClearUserForm();
+                MessageBox.Show("Đã lưu tài khoản người dùng.", "Quản lý người dùng", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Error("Settings", "SaveUser", ex, "Failed to save user.", UserNameText);
+                MessageBox.Show($"Không thể lưu tài khoản.\n\nChi tiết: {ex.Message}", "Quản lý người dùng", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void DeleteSelectedUser()
+        {
+            if (SelectedUser == null)
+            {
+                return;
+            }
+
+            var confirm = MessageBox.Show(
+                $"Khóa tài khoản {SelectedUser.UserName}?",
+                "Quản lý người dùng",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning);
+            if (confirm != MessageBoxResult.Yes)
+            {
+                return;
+            }
+
+            if (_dataService.DeleteUser(SelectedUser.Id))
+            {
+                RefreshUsers();
+                ClearUserForm();
+            }
+        }
+
         public void MoveCatalogValue(CatalogValueSetting source, CatalogValueSetting target)
         {
             if (source == null || target == null || source == target)
@@ -213,7 +582,7 @@ namespace QuanLyHoSo.ViewModels
             SelectedCatalogValue = source;
         }
 
-        private CatalogGroupSetting CreateCatalogGroup(string type, string title, string description, string iconGlyph, string accentColor)
+        private CatalogGroupSetting CreateCatalogGroup(string type, string title, string description, string iconGlyph, string accentColor, string iconBackground)
         {
             return new CatalogGroupSetting
             {
@@ -222,6 +591,7 @@ namespace QuanLyHoSo.ViewModels
                 Description = description,
                 IconGlyph = iconGlyph,
                 AccentColor = accentColor,
+                IconBackground = iconBackground,
                 ItemCount = 0
             };
         }
@@ -240,11 +610,200 @@ namespace QuanLyHoSo.ViewModels
 
             _selectedCatalogGroup = group;
             OnPropertyChanged(nameof(SelectedCatalogGroup));
+            OnPropertyChanged(nameof(CatalogDialogTitle));
             ReloadCatalogValues();
         }
 
-        private void ReloadCatalogValues()
+        private void OpenCatalogDialog(object parameter)
         {
+            CatalogSearchText = string.Empty;
+            SelectedCatalogStatusFilter = CatalogStatusFilters.Skip(1).FirstOrDefault() ?? CatalogStatusFilters.FirstOrDefault();
+            SelectCatalogGroup(parameter);
+            IsCatalogDialogOpen = true;
+        }
+
+        private void SelectCatalogValue(object parameter)
+        {
+            if (parameter is CatalogValueSetting value)
+            {
+                SelectedCatalogValue = value;
+            }
+        }
+
+        private void DeleteCatalogValueForRow(object parameter)
+        {
+            if (parameter is CatalogValueSetting value)
+            {
+                SelectedCatalogValue = value;
+                DeleteCatalogValue();
+            }
+        }
+
+        private void SaveCatalogValue()
+        {
+            if (IsEditingCatalogValue)
+            {
+                UpdateCatalogValue();
+                return;
+            }
+
+            AddCatalogValue();
+        }
+
+        private void CancelCatalogEdit()
+        {
+            SelectedCatalogValue = null;
+            CatalogValueText = string.Empty;
+        }
+
+        private void RefreshSoftwareInfos()
+        {
+            SoftwareInfos.Clear();
+            SoftwareInfos.Add(new SoftwareInfo { Label = "Phiên bản", Value = VersionText });
+            SoftwareInfos.Add(new SoftwareInfo { Label = "Môi trường chạy", Value = RuntimeInformation.FrameworkDescription });
+            SoftwareInfos.Add(new SoftwareInfo { Label = "Loại cơ sở dữ liệu", Value = "SQLite local" });
+            SoftwareInfos.Add(new SoftwareInfo { Label = "Dung lượng dữ liệu", Value = GetDatabaseSizeText() });
+            SoftwareInfos.Add(new SoftwareInfo { Label = "Đơn vị phát triển", Value = "minhthang3321@gmail.com" });
+        }
+
+        private void OpenGeneralSettingsDialog()
+        {
+            DatabasePathText = AppPathSettings.Current.DatabasePath;
+            LogFolderText = AppPathSettings.Current.LogFolder;
+            GeneralSettingsStatus = "Thay đổi đường dẫn DB cần khởi động lại ứng dụng để áp dụng.";
+            IsGeneralSettingsDialogOpen = true;
+        }
+
+        private void ChooseDatabasePath()
+        {
+            using var dialog = new Forms.SaveFileDialog
+            {
+                Title = "Chọn đường dẫn cơ sở dữ liệu",
+                Filter = "SQLite database (*.db)|*.db|All files (*.*)|*.*",
+                FileName = Path.GetFileName(DatabasePathText),
+                InitialDirectory = Directory.Exists(Path.GetDirectoryName(DatabasePathText))
+                    ? Path.GetDirectoryName(DatabasePathText)
+                    : Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                OverwritePrompt = false
+            };
+
+            if (dialog.ShowDialog() == Forms.DialogResult.OK)
+            {
+                DatabasePathText = dialog.FileName;
+            }
+        }
+
+        private void ChooseLogFolder()
+        {
+            using var dialog = new Forms.FolderBrowserDialog
+            {
+                Description = "Chọn thư mục lưu log",
+                SelectedPath = Directory.Exists(LogFolderText)
+                    ? LogFolderText
+                    : Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                ShowNewFolderButton = true
+            };
+
+            if (dialog.ShowDialog() == Forms.DialogResult.OK)
+            {
+                LogFolderText = dialog.SelectedPath;
+            }
+        }
+
+        private void SaveGeneralSettings()
+        {
+            try
+            {
+                var databasePath = AppPathSettings.NormalizeDatabasePath(DatabasePathText);
+                var logFolder = AppPathSettings.NormalizeLogFolder(LogFolderText);
+                var databaseFolder = Path.GetDirectoryName(databasePath);
+
+                if (string.IsNullOrWhiteSpace(databaseFolder))
+                {
+                    MessageBox.Show("Đường dẫn cơ sở dữ liệu không hợp lệ.", "Cài đặt chung", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                Directory.CreateDirectory(databaseFolder);
+                Directory.CreateDirectory(logFolder);
+
+                if (!databasePath.Equals(_dataService.DatabasePath, StringComparison.OrdinalIgnoreCase) &&
+                    File.Exists(_dataService.DatabasePath) &&
+                    !File.Exists(databasePath))
+                {
+                    _dataService.BackupDatabase(databasePath);
+                }
+
+                AppPathSettings.Save(new AppPathSettings
+                {
+                    DatabasePath = databasePath,
+                    LogFolder = logFolder
+                });
+
+                DatabasePathText = databasePath;
+                LogFolderText = logFolder;
+                RefreshSoftwareInfos();
+                GeneralSettingsStatus = databasePath.Equals(_dataService.DatabasePath, StringComparison.OrdinalIgnoreCase)
+                    ? "Đã lưu cài đặt. Đường dẫn log mới có hiệu lực ngay."
+                    : "Đã lưu cài đặt. Vui lòng khởi động lại ứng dụng để dùng đường dẫn DB mới.";
+
+                MessageBox.Show(GeneralSettingsStatus, "Cài đặt chung", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Error("Settings", "SaveGeneralSettings", ex, "Failed to save path settings.");
+                GeneralSettingsStatus = "Không thể lưu cài đặt đường dẫn.";
+                MessageBox.Show($"Không thể lưu cài đặt đường dẫn.\n{ex.Message}", "Cài đặt chung", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void ResetGeneralSettings()
+        {
+            DatabasePathText = AppPathSettings.DefaultDatabasePath;
+            LogFolderText = AppPathSettings.DefaultLogFolder;
+            GeneralSettingsStatus = "Đã đưa về đường dẫn mặc định. Bấm Lưu cài đặt để áp dụng.";
+        }
+
+        private void OpenSystemLogDialog()
+        {
+            RefreshSystemLogs();
+            IsSystemLogDialogOpen = true;
+        }
+
+        private void RefreshSystemLogs()
+        {
+            SystemLogs.Clear();
+            foreach (var log in _dataService.GetSystemLogs())
+            {
+                SystemLogs.Add(log);
+            }
+        }
+
+        private void PreviousCatalogPage()
+        {
+            if (CatalogCurrentPage <= 1)
+            {
+                return;
+            }
+
+            CatalogCurrentPage--;
+            ApplyCatalogFilters();
+        }
+
+        private void NextCatalogPage()
+        {
+            if (CatalogCurrentPage >= CatalogTotalPages)
+            {
+                return;
+            }
+
+            CatalogCurrentPage++;
+            ApplyCatalogFilters();
+        }
+
+        private void ReloadCatalogValues(int selectedId = 0)
+        {
+            _allCatalogValues.Clear();
             CatalogValues.Clear();
             if (SelectedCatalogGroup == null)
             {
@@ -253,11 +812,67 @@ namespace QuanLyHoSo.ViewModels
 
             foreach (var item in _dataService.GetCatalogItems(SelectedCatalogGroup.CatalogType))
             {
+                _allCatalogValues.Add(item);
+            }
+
+            CatalogCurrentPage = 1;
+            ApplyCatalogFilters(selectedId);
+            RefreshCatalogGroupCounts();
+        }
+
+        private void ApplyCatalogFilters(int selectedId = 0)
+        {
+            if (CatalogValues == null || _allCatalogValues == null)
+            {
+                return;
+            }
+
+            var filtered = _allCatalogValues.AsEnumerable();
+            if (!string.IsNullOrWhiteSpace(CatalogSearchText))
+            {
+                filtered = filtered.Where(item =>
+                    item.Name?.IndexOf(CatalogSearchText.Trim(), StringComparison.CurrentCultureIgnoreCase) >= 0);
+            }
+
+            if (SelectedCatalogStatusFilter == "Äang sá»­ dá»¥ng")
+            {
+                filtered = filtered.Where(item => item.IsActive);
+            }
+            else if (SelectedCatalogStatusFilter == "NgÆ°ng sá»­ dá»¥ng")
+            {
+                filtered = filtered.Where(item => !item.IsActive);
+            }
+
+            var filteredItems = filtered.ToList();
+            _catalogFilteredCount = filteredItems.Count;
+
+            if (selectedId > 0)
+            {
+                var selectedIndex = filteredItems.FindIndex(item => item.Id == selectedId);
+                if (selectedIndex >= 0)
+                {
+                    CatalogCurrentPage = (selectedIndex / CatalogDialogPageSize) + 1;
+                }
+            }
+
+            if (CatalogCurrentPage > CatalogTotalPages)
+            {
+                CatalogCurrentPage = CatalogTotalPages;
+            }
+
+            CatalogValues.Clear();
+            foreach (var item in filteredItems)
+            {
                 CatalogValues.Add(item);
             }
 
-            SelectedCatalogValue = CatalogValues.FirstOrDefault();
-            RefreshCatalogGroupCounts();
+            SelectedCatalogValue = selectedId > 0
+                ? CatalogValues.FirstOrDefault(item => item.Id == selectedId) ?? CatalogValues.FirstOrDefault()
+                : null;
+            OnPropertyChanged(nameof(CatalogTotalPages));
+            OnPropertyChanged(nameof(CatalogPageText));
+            OnPropertyChanged(nameof(CatalogRowsText));
+            RaiseCatalogPageCommandState();
         }
 
         private void AddCatalogValue()
@@ -275,7 +890,7 @@ namespace QuanLyHoSo.ViewModels
             }
 
             ReloadCatalogValues();
-            SelectedCatalogValue = CatalogValues.FirstOrDefault(item => item.Id == newId);
+            CatalogValueText = string.Empty;
             MessageBox.Show("Đã thêm mới danh mục.", "Danh mục nghiệp vụ", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
@@ -292,9 +907,8 @@ namespace QuanLyHoSo.ViewModels
                 return;
             }
 
-            var updatedId = SelectedCatalogValue.Id;
             ReloadCatalogValues();
-            SelectedCatalogValue = CatalogValues.FirstOrDefault(item => item.Id == updatedId);
+            CatalogValueText = string.Empty;
             MessageBox.Show("Đã cập nhật danh mục.", "Danh mục nghiệp vụ", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
@@ -354,14 +968,35 @@ namespace QuanLyHoSo.ViewModels
             }
         }
 
-        private void BackupNow()
+        private string GetDatabaseSizeText()
+        {
+            if (!File.Exists(_dataService.DatabasePath))
+            {
+                return "Chưa có dữ liệu";
+            }
+
+            var bytes = new FileInfo(_dataService.DatabasePath).Length;
+            if (bytes < 1024)
+            {
+                return $"{bytes} B";
+            }
+
+            if (bytes >= 1024 * 1024)
+            {
+                return $"{bytes / 1024d / 1024d:0.#} MB";
+            }
+
+            return $"{bytes / 1024d:0.#} KB";
+        }
+
+        private async Task BackupNowAsync()
         {
             try
             {
                 Directory.CreateDirectory(BackupFolder);
                 var fileName = $"quanlyhoso_backup_{DateTime.Now:yyyyMMdd_HHmmss}.db";
                 var destinationPath = Path.Combine(BackupFolder, fileName);
-                File.Copy(_dataService.DatabasePath, destinationPath, overwrite: false);
+                await Task.Run(() => _dataService.BackupDatabase(destinationPath));
                 LastBackupText = DateTime.Now.ToString("dd/MM/yyyy HH:mm");
                 BackupStatus = $"Đã sao lưu: {fileName}";
                 MessageBox.Show($"Đã sao lưu dữ liệu vào:\n{destinationPath}", "Sao lưu dữ liệu", MessageBoxButton.OK, MessageBoxImage.Information);
@@ -374,9 +1009,51 @@ namespace QuanLyHoSo.ViewModels
             }
         }
 
-        private void ShowRestoreNotice()
+        private async Task RestoreDataAsync()
         {
-            MessageBox.Show("Chức năng khôi phục sẽ được thực hiện ở bước riêng để tránh ghi đè nhầm dữ liệu đang dùng.", "Khôi phục dữ liệu", MessageBoxButton.OK, MessageBoxImage.Information);
+            using var dialog = new Forms.OpenFileDialog
+            {
+                Title = "Chọn file sao lưu để khôi phục",
+                Filter = "SQLite database (*.db)|*.db|All files (*.*)|*.*",
+                Multiselect = false,
+                InitialDirectory = Directory.Exists(BackupFolder)
+                    ? BackupFolder
+                    : Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments)
+            };
+
+            if (dialog.ShowDialog() != Forms.DialogResult.OK)
+            {
+                return;
+            }
+
+            var confirm = MessageBox.Show(
+                "Khôi phục sẽ thay thế cơ sở dữ liệu hiện tại bằng file đã chọn. Hệ thống sẽ tạo một bản sao lưu an toàn trước khi khôi phục.\n\nBạn có muốn tiếp tục không?",
+                "Khôi phục dữ liệu",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning);
+            if (confirm != MessageBoxResult.Yes)
+            {
+                return;
+            }
+
+            try
+            {
+                Directory.CreateDirectory(BackupFolder);
+                var safetyBackupPath = Path.Combine(BackupFolder, $"quanlyhoso_before_restore_{DateTime.Now:yyyyMMdd_HHmmss}.db");
+                var restorePath = dialog.FileName;
+                await Task.Run(() => _dataService.RestoreDatabaseFromFile(restorePath, safetyBackupPath));
+                LastBackupText = DateTime.Now.ToString("dd/MM/yyyy HH:mm");
+                BackupStatus = "Đã khôi phục dữ liệu";
+                RefreshSoftwareInfos();
+                RefreshCatalogGroupCounts();
+                MessageBox.Show($"Đã khôi phục dữ liệu.\nBản sao lưu an toàn được lưu tại:\n{safetyBackupPath}", "Khôi phục dữ liệu", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Error("Settings", "RestoreData", ex, "Failed to restore database.");
+                BackupStatus = "Khôi phục không thành công";
+                MessageBox.Show($"Không thể khôi phục dữ liệu.\n{ex.Message}", "Khôi phục dữ liệu", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
         private async Task CheckUpdateAsync()
@@ -589,8 +1266,15 @@ Remove-Item -LiteralPath $extractDir -Recurse -Force -ErrorAction SilentlyContin
 
         private void RaiseCatalogCommandState()
         {
+            (CancelCatalogEditCommand as RelayCommand)?.RaiseCanExecuteChanged();
             (UpdateCatalogValueCommand as RelayCommand)?.RaiseCanExecuteChanged();
             (DeleteCatalogValueCommand as RelayCommand)?.RaiseCanExecuteChanged();
+        }
+
+        private void RaiseCatalogPageCommandState()
+        {
+            (PreviousCatalogPageCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            (NextCatalogPageCommand as RelayCommand)?.RaiseCanExecuteChanged();
         }
 
         private sealed class GitHubReleaseInfo

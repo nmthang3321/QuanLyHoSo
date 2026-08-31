@@ -10,6 +10,7 @@ namespace QuanLyHoSo.Models
         public string Description { get; set; }
         public string IconGlyph { get; set; }
         public string AccentColor { get; set; }
+        public string IconBackground { get; set; }
 
         public int ItemCount
         {
@@ -31,6 +32,7 @@ namespace QuanLyHoSo.Models
         public int Id { get; set; }
         public string CatalogType { get; set; }
         public string Name { get; set; }
+        public bool IsActive { get; set; } = true;
 
         public int DisplayOrder
         {
@@ -43,5 +45,16 @@ namespace QuanLyHoSo.Models
     {
         public string Label { get; set; }
         public string Value { get; set; }
+    }
+
+    public sealed class SystemLogEntry
+    {
+        public int Index { get; set; }
+        public string CreatedAt { get; set; }
+        public string UserName { get; set; }
+        public string Module { get; set; }
+        public string Action { get; set; }
+        public string Target { get; set; }
+        public string Detail { get; set; }
     }
 }

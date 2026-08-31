@@ -6,13 +6,24 @@ using System.Windows;
 using System.Windows.Input;
 using QuanLyHoSo.Infrastructure.Data;
 using QuanLyHoSo.Infrastructure.Logging;
+using QuanLyHoSo.Infrastructure.Security;
 using QuanLyHoSo.Models;
 
 namespace QuanLyHoSo.ViewModels
 {
     public sealed class RecordProcessingViewModel : ViewModelBase
     {
+        private const int DefaultPageSize = 20;
+        private const int MinimumPageSize = 1;
+        private const int MaximumPageSize = 50;
+
         private readonly AppDataService _dataService;
+        private readonly Action _goBackToPreviousPage;
+        private readonly RelayCommand _nextPageCommand;
+        private readonly RelayCommand _previousPageCommand;
+        private int _currentPage = 1;
+        private int _pageSize = DefaultPageSize;
+        private string _pageSizeText = DefaultPageSize.ToString(CultureInfo.InvariantCulture);
         private string _searchText;
         private RecordFormDraft _selectedRecordDetail;
         private ProcessingRecordDetail _selectedProcessingDetail;
@@ -22,16 +33,22 @@ namespace QuanLyHoSo.ViewModels
         private string _processingProcessorName;
         private string _processingStatus;
         private string _selectedArea;
+        private string _selectedMetricKey = "All";
         private string _selectedPriority;
         private string _selectedStatus;
+        private bool _shouldReturnToPreviousPage;
+        private int _totalPages = 1;
+        private string _totalRecordsText;
 
-        public RecordProcessingViewModel()
+        public RecordProcessingViewModel(Action goBackToPreviousPage = null)
         {
             _dataService = AppDataService.Instance;
+            _goBackToPreviousPage = goBackToPreviousPage ?? (() => { });
             Metrics = new ObservableCollection<DashboardMetric>();
             QueueRecords = new ObservableCollection<ProcessingQueueRecord>();
             ProcessSteps = new ObservableCollection<ProcessStep>();
             History = new ObservableCollection<ProcessHistoryItem>();
+            ProcessorNames = new ObservableCollection<string>(_dataService.GetProcessorNames());
             ProcessingStatuses = new ObservableCollection<string>
             {
                 "Mới tiếp nhận",
@@ -60,9 +77,12 @@ namespace QuanLyHoSo.ViewModels
             ViewRecordCommand = new RelayCommand(ViewRecord);
             ViewProcessingDetailCommand = new RelayCommand(ViewProcessingDetail);
             OpenProcessingDetailCommand = new RelayCommand(OpenProcessingDetail);
+            SelectMetricCommand = new RelayCommand(SelectMetric);
+            _previousPageCommand = new RelayCommand(PreviousPage, () => CurrentPage > 1);
+            _nextPageCommand = new RelayCommand(NextPage, () => CurrentPage < TotalPages);
             CloseDetailCommand = new RelayCommand(CloseDetail);
             BackToQueueCommand = new RelayCommand(BackToQueue);
-            SaveProcessingCommand = new RelayCommand(SaveProcessing);
+            SaveProcessingCommand = new RelayCommand(SaveProcessing, () => CanUpdateProcessing);
 
             _selectedStatus = StatusFilters[0];
             _selectedArea = AreaFilters.Count > 0 ? AreaFilters[0] : "Tất cả";
@@ -75,6 +95,7 @@ namespace QuanLyHoSo.ViewModels
         public ObservableCollection<ProcessingQueueRecord> QueueRecords { get; }
         public ObservableCollection<ProcessStep> ProcessSteps { get; }
         public ObservableCollection<ProcessHistoryItem> History { get; }
+        public ObservableCollection<string> ProcessorNames { get; }
         public ObservableCollection<string> ProcessingStatuses { get; }
         public ObservableCollection<string> StatusFilters { get; }
         public ObservableCollection<string> AreaFilters { get; }
@@ -83,9 +104,83 @@ namespace QuanLyHoSo.ViewModels
         public ICommand ViewRecordCommand { get; }
         public ICommand ViewProcessingDetailCommand { get; }
         public ICommand OpenProcessingDetailCommand { get; }
+        public ICommand SelectMetricCommand { get; }
+        public ICommand PreviousPageCommand => _previousPageCommand;
+        public ICommand NextPageCommand => _nextPageCommand;
         public ICommand CloseDetailCommand { get; }
         public ICommand BackToQueueCommand { get; }
         public ICommand SaveProcessingCommand { get; }
+        public bool CanUpdateProcessing => SelectedProcessingDetail != null && AuthContext.CanEditRecord(SelectedProcessingDetail.ProcessorName);
+
+        public int CurrentPage
+        {
+            get => _currentPage;
+            private set
+            {
+                if (SetProperty(ref _currentPage, value))
+                {
+                    OnPropertyChanged(nameof(PageText));
+                    RaisePageCommandStates();
+                }
+            }
+        }
+
+        public int TotalPages
+        {
+            get => _totalPages;
+            private set
+            {
+                if (SetProperty(ref _totalPages, value))
+                {
+                    OnPropertyChanged(nameof(PageText));
+                    RaisePageCommandStates();
+                }
+            }
+        }
+
+        public string PageText => $"Trang {CurrentPage}/{TotalPages}";
+
+        public string PageSizeText
+        {
+            get => _pageSizeText;
+            set
+            {
+                if (!SetProperty(ref _pageSizeText, value))
+                {
+                    return;
+                }
+
+                if (!int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var pageSize))
+                {
+                    return;
+                }
+
+                pageSize = Math.Max(MinimumPageSize, Math.Min(MaximumPageSize, pageSize));
+                var normalizedPageSizeText = pageSize.ToString(CultureInfo.InvariantCulture);
+                if (!string.Equals(_pageSizeText, normalizedPageSizeText, StringComparison.Ordinal))
+                {
+                    _pageSizeText = normalizedPageSizeText;
+                    OnPropertyChanged(nameof(PageSizeText));
+                }
+
+                if (_pageSize == pageSize)
+                {
+                    return;
+                }
+
+                _pageSize = pageSize;
+                OnPropertyChanged(nameof(TableHeight));
+                ReloadFromFirstPage();
+            }
+        }
+
+        public string TotalRecordsText
+        {
+            get => _totalRecordsText;
+            private set => SetProperty(ref _totalRecordsText, value);
+        }
+
+        public int TableHeight => 38 + _pageSize * 34;
 
         public string SearchText
         {
@@ -151,6 +246,8 @@ namespace QuanLyHoSo.ViewModels
                 if (SetProperty(ref _selectedProcessingDetail, value))
                 {
                     OnPropertyChanged(nameof(IsProcessingDetailOpen));
+                    OnPropertyChanged(nameof(CanUpdateProcessing));
+                    (SaveProcessingCommand as RelayCommand)?.RaiseCanExecuteChanged();
                 }
             }
         }
@@ -189,13 +286,93 @@ namespace QuanLyHoSo.ViewModels
 
         public void Reload()
         {
-            ReplaceItems(Metrics, _dataService.GetProcessingQueueMetrics());
+            var metrics = _dataService.GetProcessingQueueMetrics();
+            UpdateMetricSelection(metrics);
+            ReplaceItems(Metrics, metrics);
+
+            var totalRecords = _dataService.CountProcessingQueueRecords(
+                SearchText,
+                SelectedStatus,
+                SelectedArea,
+                SelectedPriority,
+                _selectedMetricKey);
+            TotalRecordsText = $"{totalRecords:N0} hồ sơ phù hợp";
+            TotalPages = Math.Max(1, (int)Math.Ceiling(totalRecords / (double)_pageSize));
+            if (CurrentPage > TotalPages)
+            {
+                CurrentPage = TotalPages;
+            }
+
+            LoadPage();
+        }
+
+        private void ReloadFromFirstPage()
+        {
+            CurrentPage = 1;
+            Reload();
+        }
+
+        private void LoadPage()
+        {
+            var skip = (CurrentPage - 1) * _pageSize;
             ReplaceItems(QueueRecords, _dataService.GetProcessingQueueRecords(
                 SearchText,
                 SelectedStatus,
                 SelectedArea,
                 SelectedPriority,
-                take: 20));
+                _selectedMetricKey,
+                skip,
+                _pageSize));
+            RaisePageCommandStates();
+        }
+
+        private void NextPage()
+        {
+            if (CurrentPage >= TotalPages)
+            {
+                return;
+            }
+
+            CurrentPage++;
+            LoadPage();
+        }
+
+        private void PreviousPage()
+        {
+            if (CurrentPage <= 1)
+            {
+                return;
+            }
+
+            CurrentPage--;
+            LoadPage();
+        }
+
+        private void SelectMetric(object parameter)
+        {
+            if (parameter is not DashboardMetric metric || string.IsNullOrWhiteSpace(metric.FilterKey))
+            {
+                return;
+            }
+
+            _selectedMetricKey = metric.FilterKey;
+            _selectedStatus = StatusFilters.Count > 0 ? StatusFilters[0] : "Tất cả";
+            _selectedArea = AreaFilters.Count > 0 ? AreaFilters[0] : "Tất cả";
+            _selectedPriority = PriorityFilters.Count > 0 ? PriorityFilters[0] : "Tất cả";
+            _searchText = string.Empty;
+            OnPropertyChanged(nameof(SelectedStatus));
+            OnPropertyChanged(nameof(SelectedArea));
+            OnPropertyChanged(nameof(SelectedPriority));
+            OnPropertyChanged(nameof(SearchText));
+            ReloadFromFirstPage();
+        }
+
+        private void UpdateMetricSelection(IEnumerable<DashboardMetric> metrics)
+        {
+            foreach (var metric in metrics)
+            {
+                metric.IsSelected = string.Equals(metric.FilterKey, _selectedMetricKey, StringComparison.Ordinal);
+            }
         }
 
         private void ViewRecord(object parameter)
@@ -221,7 +398,24 @@ namespace QuanLyHoSo.ViewModels
                 return;
             }
 
-            SelectedProcessingDetail = _dataService.GetProcessingRecordDetail(record.RecordCode);
+            OpenProcessingDetail(record.RecordCode);
+        }
+
+        public void OpenRecord(string recordCode, bool returnToPreviousPage = false)
+        {
+            _shouldReturnToPreviousPage = returnToPreviousPage;
+            OpenProcessingDetail(recordCode);
+        }
+
+        private void OpenProcessingDetail(string recordCode)
+        {
+            if (string.IsNullOrWhiteSpace(recordCode))
+            {
+                return;
+            }
+
+            SelectedProcessingDetail = _dataService.GetProcessingRecordDetail(recordCode);
+            ReplaceItems(ProcessorNames, _dataService.GetProcessorNames());
             ReplaceItems(ProcessSteps, SelectedProcessingDetail.Steps);
             ReplaceItems(History, SelectedProcessingDetail.History);
             ProcessingStatus = SelectedProcessingDetail.Status;
@@ -241,11 +435,24 @@ namespace QuanLyHoSo.ViewModels
             SelectedProcessingDetail = null;
             ProcessSteps.Clear();
             History.Clear();
+            if (_shouldReturnToPreviousPage)
+            {
+                _shouldReturnToPreviousPage = false;
+                _goBackToPreviousPage();
+                return;
+            }
+
             Reload();
         }
 
         private void SaveProcessing()
         {
+            if (!CanUpdateProcessing)
+            {
+                MessageBox.Show("Bạn chỉ được cập nhật hồ sơ đứng dưới tên mình. Tài khoản lãnh đạo chỉ được xem.", "Phân quyền", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
             if (SelectedProcessingDetail == null)
             {
                 return;
@@ -293,6 +500,7 @@ namespace QuanLyHoSo.ViewModels
                 SelectedProcessingDetail = _dataService.GetProcessingRecordDetail(recordCode);
                 ReplaceItems(ProcessSteps, SelectedProcessingDetail.Steps);
                 ReplaceItems(History, SelectedProcessingDetail.History);
+                ReplaceItems(ProcessorNames, _dataService.GetProcessorNames());
                 ProcessingStatus = SelectedProcessingDetail.Status;
                 ProcessingProcessorName = SelectedProcessingDetail.ProcessorName;
                 MessageBox.Show("Đã cập nhật xử lý hồ sơ.", "Cập nhật xử lý", MessageBoxButton.OK, MessageBoxImage.Information);
@@ -323,6 +531,12 @@ namespace QuanLyHoSo.ViewModels
             {
                 target.Add(item);
             }
+        }
+
+        private void RaisePageCommandStates()
+        {
+            _previousPageCommand.RaiseCanExecuteChanged();
+            _nextPageCommand.RaiseCanExecuteChanged();
         }
     }
 }

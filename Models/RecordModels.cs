@@ -34,6 +34,17 @@ namespace QuanLyHoSo.Models
         public IReadOnlyList<AttachmentDraft> Attachments { get; set; } = new List<AttachmentDraft>();
     }
 
+    public sealed class SimilarRecordMatch
+    {
+        public string RecordCode { get; set; }
+        public string ReceivedDate { get; set; }
+        public string SenderName { get; set; }
+        public string SenderPhone { get; set; }
+        public string AreaName { get; set; }
+        public string CaseType { get; set; }
+        public string Status { get; set; }
+    }
+
     public sealed class ProcessStep
     {
         public int StepNumber { get; set; }

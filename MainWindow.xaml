@@ -11,8 +11,51 @@
         MinHeight="720"
         Background="{StaticResource AppBackgroundBrush}"
         FontFamily="Segoe UI"
+        Icon="Assets/AppIcon.ico"
         WindowStartupLocation="CenterScreen">
+    <Window.Resources>
+        <Style x:Key="SidebarNavigationButton" TargetType="Button">
+            <Setter Property="Height" Value="52" />
+            <Setter Property="Padding" Value="14,0" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Root"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="6">
+                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                              VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                              Margin="{TemplateBinding Padding}" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Root" Property="Background" Value="#174EA6" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Root" Property="Background" Value="#0F3E86" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.45" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
     <Grid>
+        <ContentControl Content="{Binding CurrentViewModel}"
+                        Visibility="{Binding IsAuthenticated, Converter={StaticResource InverseBooleanToVisibilityConverter}}" />
+
+        <Grid Visibility="{Binding IsAuthenticated, Converter={StaticResource BooleanToVisibilityConverter}}">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="220" />
             <ColumnDefinition Width="*" />
@@ -46,13 +89,9 @@
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
                             <Button Command="{Binding Command}"
-                                    Height="52"
                                     Margin="0,0,0,8"
-                                    Padding="14,0"
-                                    HorizontalContentAlignment="Stretch"
                                     Background="{Binding IsSelected, Converter={StaticResource BooleanToNavBrushConverter}}"
-                                    BorderThickness="0"
-                                    Cursor="Hand">
+                                    Style="{StaticResource SidebarNavigationButton}">
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="34" />
@@ -74,37 +113,63 @@
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
 
-                <Button Grid.Row="2"
-                        Command="{Binding SettingsNavigationItem.Command}"
-                        Height="52"
-                        Padding="14,0"
-                        HorizontalContentAlignment="Stretch"
-                        Background="{Binding SettingsNavigationItem.IsSelected, Converter={StaticResource BooleanToNavBrushConverter}}"
-                        BorderThickness="0"
-                        Cursor="Hand">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="34" />
-                            <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Text="{Binding SettingsNavigationItem.IconGlyph}"
-                                   FontFamily="Segoe MDL2 Assets"
-                                   FontSize="20"
-                                   Foreground="White"
-                                   VerticalAlignment="Center" />
-                        <TextBlock Grid.Column="1"
-                                   Text="{Binding SettingsNavigationItem.Title}"
-                                   Foreground="White"
-                                   FontSize="15"
-                                   VerticalAlignment="Center" />
-                    </Grid>
-                </Button>
+                <StackPanel Grid.Row="2">
+                    <Border BorderBrush="#2F66B8" BorderThickness="0,0,0,1" Padding="2,0,2,12" Margin="0,0,0,12">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="34" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="&#xE77B;" FontFamily="Segoe MDL2 Assets" FontSize="18" Foreground="White" VerticalAlignment="Center" />
+                            <StackPanel Grid.Column="1">
+                                <TextBlock Text="{Binding CurrentUserDisplayName}" Foreground="White" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                <TextBlock Text="{Binding CurrentUserRoleText}" Foreground="#BFD4FF" FontSize="12" />
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                    <Button Command="{Binding SettingsNavigationItem.Command}"
+                            Background="{Binding SettingsNavigationItem.IsSelected, Converter={StaticResource BooleanToNavBrushConverter}}"
+                            Style="{StaticResource SidebarNavigationButton}"
+                            Margin="0,0,0,8">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="34" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="{Binding SettingsNavigationItem.IconGlyph}"
+                                       FontFamily="Segoe MDL2 Assets"
+                                       FontSize="20"
+                                       Foreground="White"
+                                       VerticalAlignment="Center" />
+                            <TextBlock Grid.Column="1"
+                                       Text="{Binding SettingsNavigationItem.Title}"
+                                       Foreground="White"
+                                       FontSize="15"
+                                       VerticalAlignment="Center" />
+                        </Grid>
+                    </Button>
+
+                    <Button Command="{Binding SignOutCommand}"
+                            Background="Transparent"
+                            Style="{StaticResource SidebarNavigationButton}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="34" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="&#xE8AC;" FontFamily="Segoe MDL2 Assets" FontSize="20" Foreground="White" VerticalAlignment="Center" />
+                            <TextBlock Grid.Column="1" Text="Đăng xuất" Foreground="White" FontSize="15" VerticalAlignment="Center" />
+                        </Grid>
+                    </Button>
+                </StackPanel>
             </Grid>
         </Border>
 
         <ContentControl Grid.Column="1"
                         Content="{Binding CurrentViewModel}"
                         Margin="22" />
+        </Grid>
     </Grid>
 </Window>
 

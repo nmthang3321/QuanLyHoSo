@@ -12,6 +12,7 @@ DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes
 PrivilegesRequired=lowest
 OutputBaseFilename=QuanLyHoSo-Setup-{#AppVersion}-win-x64
+SetupIconFile={#IconPath}
 Compression=lzma
 SolidCompression=yes
 WizardStyle=modern

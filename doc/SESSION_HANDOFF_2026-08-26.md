@@ -1,663 +1,318 @@
-# Handoff Session 2026-08-26
+# Session handoff - QuanLyHoSo
 
-File này ghi lại trạng thái làm việc hiện tại để mở session mới có thể tiếp tục nhanh, không phải đọc lại toàn bộ chat.
+Cap nhat gan nhat: 2026-08-31
 
-## Bối cảnh dự án
+File nay la ban do ngan gon de AI tiep theo tiep tuc nhanh, tranh doc het repo va analyse nhung phan khong lien quan.
 
-- Dự án: `QuanLyHoSo`
-- Loại app: WPF desktop app, C#, `.NET 5.0`
-- Workspace: `D:\PROJECT\QuanLyHoSo`
-- Mục tiêu đang làm: dựng giao diện draft 5 page, sau đó nối dữ liệu SQLite thay cho dữ liệu hard-code, seed dữ liệu mẫu và tinh chỉnh dashboard.
+## Cach AI nen doc file nay
 
-## Commit đã có
-
-- `3bf901d Add system design documentation`
-  - Thêm tài liệu thiết kế hệ thống WPF/.NET 5.
-- `388a67e Draft UI design for records app`
-  - Thêm UI draft 5 page, MVVM cơ bản, `.gitignore` ban đầu.
-
-## Trạng thái Git hiện tại
-
-Hiện có nhiều thay đổi **chưa commit**. Kết quả `git status --short` gần nhất:
-
-```text
- M .gitignore
- M App.xaml
- M Models/RecordModels.cs
- M QuanLyHoSo.csproj
-D  QuanLyHoSo.csproj.user
- M ViewModels/DashboardViewModel.cs
- M ViewModels/ExportViewModel.cs
- M ViewModels/RecordInputViewModel.cs
- M ViewModels/RecordProcessingViewModel.cs
- M ViewModels/SettingsViewModel.cs
- M ViewModels/ShellViewModel.cs
- M Views/Dashboard/DashboardView.xaml
- M Views/Dashboard/DashboardView.xaml.cs
- M Views/Export/ExportView.xaml
- M Views/Records/RecordInputView.xaml
- M Views/Records/RecordProcessingView.xaml
- M Views/Settings/SettingsView.xaml
-?? Infrastructure/
-```
-
-`QuanLyHoSo.csproj.user` đã được đưa ra khỏi Git index và nên để ignored/local, không commit lại.
-
-## Những phần đã làm trong session này
-
-### 1. Git ignore
-
-- Sửa `.gitignore` để bỏ qua output build, `.vs`, `.vscode` local settings, Rider, coverage, logs và local data.
-- Lưu ý quan trọng: đã chỉnh pattern `Data/` thành `/Data/` để không ignore nhầm thư mục source `Infrastructure/Data`.
-
-### 2. Kết nối dữ liệu SQLite
-
-- Thêm package vào `QuanLyHoSo.csproj`:
-
-```xml
-<PackageReference Include="Microsoft.Data.Sqlite" Version="5.0.17" />
-```
-
-- Thêm service chính: `Infrastructure/Data/AppDataService.cs`
-- DB local được tạo tại:
-
-```text
-%LocalAppData%\QuanLyHoSo\Data\quanlyhoso.db
-```
-
-- Service hiện tạo schema và seed dữ liệu:
-  - `Areas`
-  - `CatalogItems`
-  - `Records`
-  - `RecordAttachments`
-  - `ProcessHistories`
-
-- Đã seed:
-  - 102 đơn vị hành chính An Giang theo danh sách user đưa: 85 xã, 14 phường, 3 đặc khu.
-  - 50 hồ sơ mẫu ngẫu nhiên.
-  - Dữ liệu danh mục cho nguồn tiếp nhận, loại vụ việc, lĩnh vực, nhóm nội dung, mức độ ưu tiên, hướng xử lý.
-  - File đính kèm và lịch sử xử lý mẫu.
-
-### 3. Bỏ dữ liệu hard-code trên UI chính
-
-Các ViewModel đã chuyển sang đọc dữ liệu từ `AppDataService`:
-
-- `DashboardViewModel`
-- `RecordInputViewModel`
-- `RecordProcessingViewModel`
-- `ExportViewModel`
-- `SettingsViewModel`
-- `ShellViewModel`
-
-`ShellViewModel` gọi `AppDataService.Instance.Initialize()` để đảm bảo DB/schema/data sẵn sàng trước khi tạo các page ViewModel.
-
-### 4. Model/DTO đã bổ sung
-
-Trong `Models/RecordModels.cs` đã thêm/cập nhật:
-
-- `RecordFormDraft`
-- `ProcessingRecordDetail`
-- `ProcessStep.IconGlyph`
-
-Các model dashboard nằm trong `Models/DashboardModels.cs`.
-
-### 5. Dashboard đã chỉnh gần nhất
-
-File chính:
-
-- `Views/Dashboard/DashboardView.xaml`
-- `Views/Dashboard/DashboardView.xaml.cs`
-- `ViewModels/DashboardViewModel.cs`
-- `Infrastructure/Data/AppDataService.cs`
-
-Đã làm:
-
-- Bộ lọc thời gian trên dashboard dùng dropdown preset:
-  - `Tuần này`
-  - `Tháng này`
-  - `Năm này`
-  - `Khác`
-- Thanh filter hiển thị dạng giống draft GUI:
-
-```text
-Tháng này (01/08/2026 - 31/08/2026)
-```
-
-- Với `Tuần này / Tháng này / Năm này`, app tự tính khoảng ngày và reload dữ liệu.
-- Với `Khác`, app mở `Popup` chứa 2 control `Calendar`:
-  - `Ngày bắt đầu`
-  - `Ngày kết thúc`
-- Không còn hiển thị 2 ô `DatePicker` trực tiếp trên thanh filter.
-- Có nút `Áp dụng` trong popup để reload dashboard theo khoảng ngày custom.
-- Query dashboard lọc theo `Records.ReceivedDate`.
-- Bảng `HỒ SƠ CẬP NHẬT GẦN ĐÂY`:
-  - `IsReadOnly="True"`
-  - lấy 10 hồ sơ bằng `_dataService.GetRecentRecords(10, FromDate, ToDate)`
-  - `DataGrid.Height="378"` để hiển thị tối thiểu 10 dòng.
-
-### 6. Style/UI đã có
-
-Trong `App.xaml`:
-
-- Có resource màu chung.
-- Style chung cho:
-  - `TextBlock`
-  - `Button`
-  - `TextBox`
-  - `ComboBox`
-  - `DatePicker`
-  - `DataGrid`
-  - `DataGridColumnHeader`
-- Đã thêm:
-
-```xml
-<BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
-```
-
-Status badge đang dùng `StatusToBrushConverter`.
-
-### 7. Nội dung tiếng Việt
-
-Yêu cầu của user: toàn bộ nội dung hiển thị nên là tiếng Việt có dấu.
-
-Lưu ý: khi xem output PowerShell trong một số lần đọc file, tiếng Việt có thể hiện mojibake do encoding terminal, nhưng file/app vẫn đang dùng tiếng Việt.
-
-## Cách chạy/build
-
-Build:
-
-```powershell
-dotnet build QuanLyHoSo.sln
-```
-
-Chạy app:
-
-```powershell
-dotnet run --project QuanLyHoSo.csproj
-```
-
-Nếu build báo lỗi không copy được `QuanLyHoSo.exe`, thường là do app đang mở và khóa file output. Đóng app hoặc kill đúng process `QuanLyHoSo` rồi build lại.
-
-## Kết quả kiểm tra gần nhất
-
-Đã chạy:
-
-```powershell
-dotnet build QuanLyHoSo.sln
-```
-
-Kết quả: build thành công.
-
-Warning còn lại:
-
-- `NETSDK1138`: target framework `net5.0-windows` đã hết support.
-
-Không có lỗi compile sau các chỉnh sửa gần nhất.
-
-## Lưu ý kỹ thuật cho session sau
-
-- Không dùng dữ liệu hard-code cho dashboard/record/export nữa nếu có thể lấy từ `AppDataService`.
-- Khi thêm logic dữ liệu, ưu tiên mở rộng `AppDataService` hoặc tách repository/service có lớp lang, tránh nhồi logic SQL vào ViewModel.
-- ViewModel giữ vai trò state + command + bindable collection.
-- Code-behind chỉ nên xử lý behavior thuần UI. Hiện `DashboardView.xaml.cs` chỉ mở popup lịch khi combobox đang ở mode `Khác`.
-- Tránh commit file local/user-specific như `*.csproj.user`, `.vs/`, `bin/`, `obj/`.
-- User có nhiều Git account, không đụng global Git config.
-- Nếu cần commit, nên review `git diff` trước vì có nhiều thay đổi chưa commit từ các bước trước.
-
-## Việc nên làm tiếp
-
-- Chạy app trực tiếp để nhìn lại căn chỉnh dashboard sau thay đổi popup lịch.
-- Nếu layout filter vẫn chưa giống mockup, chỉnh tiếp width/height của `DateFilterHost`, `ComboBox` và `Popup`.
-- Cân nhắc thêm paging cho bảng recent nếu sau này cần xem hơn 10 dòng.
-- Sau khi user đồng ý, commit nhóm thay đổi SQLite + dashboard filter + ignore vào một commit rõ nghĩa.
-
-## Cập nhật bổ sung trong session hiện tại
-
-Các thay đổi mới nhất sau phần handoff ban đầu:
-
-### 1. Sửa biểu đồ trạng thái trên Dashboard
-
-- Vòng tròn trong khối `HỒ SƠ THEO TRẠNG THÁI` không còn là vòng màu tĩnh gây hiểu nhầm toàn bộ hồ sơ đã giải quyết.
-- Đã chuyển sang donut chart thật, mỗi trạng thái chiếm một lát theo tỷ lệ dữ liệu hiện tại.
-- Ví dụ: tổng 10 hồ sơ, 5 `Đã giải quyết` thì lát xanh lá chiếm 50% vòng; các trạng thái còn lại chiếm phần tương ứng.
-- File liên quan:
-  - `Models/DashboardModels.cs`: thêm `StatusStat.Width`, `StatusStat.StartAngle`, `StatusStat.SweepAngle`.
-  - `Infrastructure/Data/AppDataService.cs`: `GetStatusStats(...)` tính thêm chiều rộng thanh tỷ lệ và góc donut.
-  - `Presentation/Converters/StatusDonutSegmentConverter.cs`: converter mới để vẽ từng cung donut.
-  - `App.xaml`: đăng ký resource `StatusDonutSegmentConverter`.
-  - `Views/Dashboard/DashboardView.xaml`: thay vòng tròn tĩnh bằng `ItemsControl` + `Path` vẽ từng lát màu theo `StatusStats`.
-- Lỗi runtime đã gặp và đã sửa:
-  - `PenLineCap` không nhận giá trị `Butt` trong WPF.
-  - Đã đổi sang `StrokeStartLineCap="Flat"` và `StrokeEndLineCap="Flat"`.
-
-### 2. Bảng `HỒ SƠ CẬP NHẬT GẦN ĐÂY`
-
-- Yêu cầu mới nhất của user: bảng không dùng scroll để xem nhiều dòng, mà dùng phân trang.
-- Bảng hiện mặc định tối đa 5 dòng/trang.
-- Có ô nhập `Số dòng` để user chọn số dòng muốn hiển thị mỗi trang.
-- Giới hạn số dòng/trang: tối thiểu `1`, tối đa `20`, mặc định `5`.
-- Khi đổi số dòng/trang hoặc đổi bộ lọc ngày, dashboard tự quay về trang 1 và tính lại tổng số trang.
-- File liên quan:
-  - `ViewModels/DashboardViewModel.cs`: thêm `CurrentRecentPage`, `TotalRecentPages`, `RecentPageText`, `RecentRecordsPageSizeText`, `RecentTableHeight`, `PreviousRecentPageCommand`, `NextRecentPageCommand`.
-  - `Infrastructure/Data/AppDataService.cs`: `GetRecentRecords(...)` hỗ trợ tham số `skip`, query dùng `LIMIT $take OFFSET $skip`.
-  - `Views/Dashboard/DashboardView.xaml`: `DataGrid.Height` bind với `RecentTableHeight`, tắt scroll dọc, thêm footer nhập số dòng và phân trang.
-
-### 3. Làm đẹp nút phân trang
-
-- Thêm style cục bộ `PaginationButton` trong `Views/Dashboard/DashboardView.xaml`.
-- Nút phân trang hiện là nút nhỏ `36x36`, bo góc 6px, icon căn giữa.
-- Có hover/pressed/disabled state rõ ràng.
-- Text `Trang x/y` nằm trong pill riêng giữa hai nút.
-
-### 4. Chỉnh alignment Dashboard
-
-- Cụm filter ngày phía trên Dashboard đã đổi từ `StackPanel` sang `Grid` với cột rõ ràng để icon, text ngày và dropdown thẳng hàng hơn.
-- Dropdown preset ngày giữ width cố định `116`.
-- Các cột trong bảng recent đổi sang width theo tỷ lệ `*` kết hợp `MinWidth`/`MaxWidth` để bảng lấp đầy chiều ngang card nhưng vẫn không resize vỡ layout.
-
-### 5. Build/start gần nhất
-
-- Đã build thành công bằng:
-
-```powershell
-dotnet build QuanLyHoSo.sln
-```
-
-- Khi app đang chạy khóa file exe, dùng build kiểm tra tạm:
-
-```powershell
-dotnet build QuanLyHoSo.sln -p:OutputPath=.verify-build\
-```
-
-- `.verify-build/` đã được thêm vào `.gitignore` vì đây chỉ là output build tạm.
-- Warning còn lại: `NETSDK1138`, target framework `net5.0-windows` đã hết support.
-
-### 6. Việc nên kiểm tra tiếp
-
-- Mở app và kiểm tra lại trực quan Dashboard:
-  - Donut chart có chia lát đúng theo tỷ lệ trạng thái.
-  - Bảng recent mặc định 5 dòng.
-  - Ô `Số dòng` đổi được số dòng và phân trang cập nhật đúng.
-  - Nút trang trước/sau chỉ disable khi đang ở trang đầu/cuối.
-  - Filter ngày và DataGrid đã thẳng hàng, không còn hụt về bên phải như ảnh user gửi.
-
-## Cập nhật 2026-08-27
-
-### 1. Commit đã tạo trong phiên trước
-
-- Đã commit nhóm thay đổi lớn:
-
-```text
-f44eba2 Add record input and list workflows
-```
-
-- Commit này bao gồm phần nhập dữ liệu, danh sách hồ sơ, dashboard responsive, tài liệu đính kèm và các workflow liên quan trước khi bắt đầu chỉnh sâu trang phân loại xử lý.
-
-### 2. Trang nhập dữ liệu hồ sơ
-
-- Khi vào trang nhập dữ liệu lần đầu, form để trống, không tự đổ dữ liệu user/hồ sơ mẫu.
-- Các label ở phần input đã in đậm hơn.
-- Trường `Địa bàn xã/phường` có ô nhập tìm nhanh để lọc trong danh sách 102 địa bàn.
-- Nút `Xóa`, `Lưu`, `Hủy bỏ` được đưa xuống cuối form.
-- `Ngày tiếp nhận` dùng popup chọn ngày thiết kế lại cho gọn và đẹp hơn.
-- Nút `Lưu` kiểm tra các field có dấu sao. Nếu thiếu sẽ hiện popup báo người nhập; đủ dữ liệu thì lưu database.
-- Nút `Hủy bỏ` chỉ clean form, không thao tác database.
-- Nút `Xóa` hiện popup xác nhận; nếu đồng ý thì xóa database, hiện popup đã xóa và clean form.
-
-### 3. Tài liệu liên quan / đính kèm
-
-- Phần tài liệu liên quan đã có thao tác chọn file từ File Explorer.
-- Hỗ trợ kéo thả file vào toàn bộ vùng drop zone, không cần thả đúng vào nút `Chọn file`.
-- Khi kéo file vào vùng drop zone, vùng này highlight để người dùng biết có thể thả.
-- Khi chưa có tài liệu, chỉ hiển thị text căn giữa, bỏ icon và dòng mô tả định dạng.
-- Khi có tài liệu, danh sách tài liệu hiển thị trong GUI nhập liệu theo dạng item đính kèm.
-- Model `AttachmentDraft` có thêm `FilePath`; database `RecordAttachments` cũng lưu đường dẫn file.
-
-### 4. Danh sách hồ sơ trong phần nhập dữ liệu
-
-- Nút `Danh sách hồ sơ` mở trang danh sách riêng.
-- Danh sách giống bảng ở trang tổng quan nhưng hiển thị nhiều hơn, tối đa 20 hồ sơ mới nhất.
-- Có phân trang và chọn số dòng/trang tương tự dashboard.
-- Mỗi hàng có nút icon:
-  - `Xem`: mở popup chi tiết hồ sơ, nền phía sau bị xám và chỉ thao tác được trên popup.
-  - `Chỉnh sửa`: quay về trang nhập dữ liệu và đổ thông tin hàng đó vào form.
-  - `Xóa`: hiện popup xác nhận trước khi xóa.
-- Trang danh sách có nút back về trang trước.
-- Đã xử lý lỗi scroll chuột trong vùng bảng: khi rê chuột vào bảng vẫn scroll được danh sách/trang thay vì bị kẹt ở DataGrid.
-
-### 5. Dashboard
-
-- Khối `Hồ sơ theo trạng thái` đã chỉnh responsive cho màn hình nhỏ hơn để tránh legend bị cắt chữ và các cột số bị ép sát.
-- Donut/legend dùng layout linh hoạt hơn, có giới hạn width và khoảng cách tốt hơn.
-
-### 6. Trang phân loại xử lý - trang chính
-
-- Trang `Phân loại & xử lý` hiện tại được thiết kế lại thành trang chính dạng danh sách hồ sơ cần xử lý, không mở ngay trang chi tiết.
-- Có header, ô tìm kiếm, bộ lọc trạng thái/địa bàn/ưu tiên và các thẻ số liệu nhanh:
-  - Cần phân loại
-  - Đang xử lý
-  - Chờ bổ sung
-  - Quá hạn
-- Bảng danh sách lấy tối đa 20 hồ sơ mới nhất đang cần xử lý từ database.
-- Cột thao tác chỉ còn:
-  - Nút `Xem`: mở popup chi tiết người/hồ sơ giống danh sách hồ sơ ở phần nhập dữ liệu.
-  - Nút `Phân loại xử lý`: mở trang phụ xử lý hồ sơ.
-- Đã bỏ nút `Chuyển xử lý`.
-
-### 7. Trang phụ phân loại/xử lý theo GUI mẫu
-
-- Trang phụ làm theo hình chỉ định:
-
-```text
-D:\PROJECT\QuanLyHoSo\doc\GUI\phan_loai_xu_ly.png
-```
-
-- Phần đầu hiển thị card tóm tắt hồ sơ đang xử lý: mã hồ sơ, trạng thái, ngày tiếp nhận, nguồn tiếp nhận, người gửi, điện thoại, địa bàn, loại vụ việc, lĩnh vực.
-- Có nút quay lại danh sách hồ sơ.
-- Có khu `QUY TRÌNH XỬ LÝ HỒ SƠ` gồm 7 bước:
-  1. Tiếp nhận
-  2. Phân loại
-  3. Phân công
-  4. Xác minh
-  5. Gia hạn
-  6. Kết thúc
-  7. Lưu hồ sơ
-- Đã bỏ số nhỏ trên icon timeline.
-- Với bước chưa tới: vòng tròn màu xám, icon màu đen để nhìn rõ.
-- Text bước hiển thị dạng `1. Tiếp nhận`; nếu bước đã qua có dấu tick xanh phía sau.
-- Đã thêm đường nối ngang giữa các bước trong quy trình.
-- Khu `LỊCH SỬ XỬ LÝ` hiển thị lịch sử theo chiều dọc và có đường nối giữa các bước.
-- Khu `CẬP NHẬT XỬ LÝ` có form:
-  - Trạng thái hiện tại
-  - Ngày xử lý
-  - Người xử lý
-  - Nội dung xử lý
-  - Ghi chú
-  - Nút `Hủy xử lý`
-  - Nút `Cập nhật`
-
-### 8. Lưu lịch sử xử lý và nhảy bước quy trình
-
-- `AppDataService` đã bổ sung:
-  - `GetProcessingQueueMetrics()`
-  - `GetProcessingQueueRecords(...)`
-  - `GetProcessingRecordDetail(string recordCode = null)`
-  - `UpdateProcessingRecord(...)`
-- Khi cập nhật xử lý:
-  - Cập nhật `Status`, `ProcessorName`, `Note`, `UpdatedAt` trong bảng `Records`.
-  - Ghi thêm dòng lịch sử vào `ProcessHistories`.
-  - Nếu hồ sơ nhảy sang bước sau mà các bước trước chưa có lịch sử, hệ thống tự tạo lịch sử cho các bước trước với cùng ngày xử lý hiện tại.
-- `ProcessStep` đã thêm:
-  - `DateText`
-  - `HasPreviousStep`
-  - `HasNextStep`
-- `ProcessHistoryItem` đã thêm:
-  - `IsCurrent`
-- Lịch sử được sắp theo thứ tự quy trình cố định, không chỉ theo thời gian insert.
-
-### 9. Kiểm tra build mới nhất
-
-- Đã build kiểm tra bằng output tạm để tránh lỗi file exe bị app đang chạy khóa:
-
-```powershell
-dotnet build QuanLyHoSo.sln -p:OutputPath=.verify-build\
-```
-
-- Kết quả: build thành công.
-- Warning còn lại: `NETSDK1138`, target framework `net5.0-windows` đã hết support.
-
-### 10. Trạng thái Git sau cập nhật này
-
-- Các file đang có thay đổi chưa commit liên quan trực tiếp đến phần phân loại/xử lý và các chỉnh giao diện gần đây:
-  - `Infrastructure/Data/AppDataService.cs`
-  - `Models/RecordModels.cs`
-  - `ViewModels/RecordProcessingViewModel.cs`
-  - `Views/Records/RecordProcessingView.xaml`
-- File handoff này hiện vẫn là untracked nếu chưa được add vào Git:
-  - `doc/SESSION_HANDOFF_2026-08-26.md`
-
-## Cập nhật 2026-08-28
-
-### 1. Commit đã tạo sau phần nhập liệu/phân loại
-
-- Đã commit nhóm chỉnh giao diện nhập dữ liệu và phân loại/xử lý:
-
-```text
-d3ac157 Polish record input and processing views
-```
-
-- Commit này gồm:
-  - Làm đẹp trang `Nhập dữ liệu`.
-  - Chỉnh timeline và lịch sử xử lý của trang `Phân loại & xử lý`.
-  - Thêm popup xem chi tiết hồ sơ trong trang xử lý.
-
-### 2. Trang phân loại & xử lý
-
-- Đã chỉnh `QUY TRÌNH XỬ LÝ HỒ SƠ`:
-  - Đường nối ngang giữa các bước đã qua có màu xanh.
-  - Đường nối các bước chưa tới có màu xám.
-  - Bước hiện tại màu xanh dương.
-  - Bước đã qua có badge tròn xanh chứa dấu tick trắng.
-  - Số thứ tự trước tên bước cũng đổi màu theo trạng thái.
-- Đã chỉnh `LỊCH SỬ XỬ LÝ`:
-  - Không còn hiển thị như bảng có từng hàng bị chia cắt.
-  - Marker là vòng tròn nhỏ có tick bên trong với bước đã qua/hiện tại.
-  - Đường nối dọc xanh cho phần đã qua, xám cho phần chưa tới.
-  - Bước chưa xử lý vẫn hiện text `Chưa thực hiện`.
-  - Bước chưa xử lý không hiện dòng `Người xử lý` và nội dung xử lý.
-- Khi người dùng cập nhật lùi trạng thái, ví dụ từ `Kết thúc` về `Phân công`:
-  - App đặt lại bước hiện tại theo trạng thái mới.
-  - Xóa lịch sử từ bước hiện tại mới trở về sau, rồi ghi lại lịch sử cho bước vừa cập nhật.
-  - Các bước trước đó vẫn giữ nếu đã có lịch sử thật.
-- Đã normalize trạng thái lịch sử khi đọc dữ liệu:
-  - Mọi bước nhỏ hơn bước hiện tại được xem là đã hoàn thành để tránh timeline bị xanh/xám xen kẽ do dữ liệu cũ.
-- File liên quan:
-  - `Infrastructure/Data/AppDataService.cs`
-  - `Models/RecordModels.cs`
-  - `ViewModels/RecordProcessingViewModel.cs`
-  - `Views/Records/RecordProcessingView.xaml`
-
-### 3. Trang nhập dữ liệu
-
-- Đã làm lại bố cục trang `Nhập dữ liệu` cho gọn và đồng bộ hơn với dashboard/phân loại:
-  - Label đậm và rõ hơn.
-  - Các card `Thông tin chung`, `Thông tin liên quan`, `Thông tin bổ sung` thoáng hơn.
-  - Tăng chiều cao ô nội dung và ghi chú.
-  - Khối `Tài liệu liên quan` gọn hơn, có icon info nhỏ ở tiêu đề.
-  - Danh sách file đính kèm hiển thị dạng dòng/bullet nhẹ, không còn card dày từng file.
-  - Nút xem/xóa tài liệu nhỏ gọn hơn.
-  - Drop zone thấp hơn, cân hơn.
-- Sau chỉnh sửa cuối, hàng nút `Xóa / Lưu / Hủy bỏ` đã được đưa xuống dưới cùng, nằm sau khối tài liệu liên quan.
-- File liên quan:
-  - `Views/Records/RecordInputView.xaml`
-
-### 4. Trang xuất dữ liệu - bộ lọc
-
-- Đã chỉnh card `CHỌN BỘ LỌC DỮ LIỆU`:
-  - Bỏ filter `Thời gian tiếp nhận`.
-  - Bỏ filter riêng `Xã / Phường`.
-  - Gộp thành một filter `Địa bàn`.
-  - `Đến ngày` nằm cạnh `Từ ngày`.
-  - `Từ ngày` và `Đến ngày` dùng `DatePicker` có popup lịch, style giống ngày tiếp nhận.
-- Layout filter hiện gồm:
-  - Hàng 1: `Từ ngày`, `Đến ngày`, `Trạng thái hồ sơ`, `Loại vụ việc`, `Lĩnh vực`.
-  - Hàng 2: `Địa bàn`, `Người xử lý`, `Từ khóa tìm kiếm`, `Sắp xếp theo`.
-- Nút `Xem dữ liệu` đã lọc thật preview theo:
-  - khoảng ngày,
-  - trạng thái,
-  - loại vụ việc,
-  - lĩnh vực,
-  - địa bàn,
-  - người xử lý,
-  - từ khóa,
-  - sắp xếp.
-- Nút `Đặt lại` reset filter về mặc định:
-  - `Từ ngày`: ngày đầu tháng hiện tại.
-  - `Đến ngày`: hôm nay.
-  - Các combobox: `Tất cả`.
-  - Từ khóa: rỗng.
-  - Sắp xếp: `Ngày tiếp nhận mới nhất trước`.
-- File liên quan:
-  - `Views/Export/ExportView.xaml`
-  - `ViewModels/ExportViewModel.cs`
-  - `Infrastructure/Data/AppDataService.cs`
-
-### 5. Trang xuất dữ liệu - chọn cột và định dạng
-
-- Trong card `CHỌN ĐỊNH DẠNG XUẤT`:
-  - Bỏ checkbox `Định dạng ngày dd/mm/yyyy`.
-  - Bỏ checkbox `Chỉ xuất cột đang hiển thị`.
-  - Thêm khu `Cột dữ liệu` với checkbox chọn từng cột:
-    - `STT`
-    - `Mã hồ sơ`
-    - `Ngày tiếp nhận`
-    - `Người gửi đơn`
-    - `Địa bàn`
-    - `Loại vụ việc`
-    - `Lĩnh vực`
-    - `Trạng thái`
-- Checkbox cột có tác dụng ngay trên bảng xem trước:
-  - Bỏ tick cột nào thì cột đó ẩn trong preview.
-- Do `DataGridColumn` không nằm trong visual tree, đã thêm helper:
-
-```text
-Presentation/BindingProxy.cs
-```
-
-- `ExportView.xaml` dùng `ViewModelProxy` để bind `Visibility` của các cột.
-
-### 6. Trang xuất dữ liệu - xuất file thật
-
-- Nút `Xuất dữ liệu` đã hoạt động thật:
-  - Lấy toàn bộ dữ liệu theo filter hiện tại.
-  - Tôn trọng định dạng đang chọn: `Excel (.xlsx)` hoặc `CSV (.csv)`.
-  - Tôn trọng các cột được đánh dấu trong khu `Cột dữ liệu`.
-  - Tôn trọng checkbox `Xuất kèm tiêu đề cột`.
-  - Tự sinh tên file dạng:
-
-```text
-QuanLyHoSo_yyyyMMdd_HHmmss.xlsx
-QuanLyHoSo_yyyyMMdd_HHmmss.csv
-```
-
-  - Mở `SaveFileDialog` để người dùng chọn nơi lưu file.
-- Xuất CSV:
-  - Ghi file UTF-8 có BOM.
-  - Escape giá trị theo CSV.
-  - Cột `Ngày tiếp nhận` được ghi dạng `="dd/MM/yyyy"` để Excel không tự parse ngày lẫn lộn kiểu `14/08/2026` và `12/8/2026`.
-- Xuất XLSX:
-  - Tạo file `.xlsx` bằng OpenXML package tối giản qua `ZipArchive`, không thêm package ngoài.
-  - Cột `STT` được ghi là number cell thật, tránh cảnh báo Excel `number stored as text`.
-  - Các cột còn lại ghi dạng inline string.
-- `AppDataService.GetExportPreview(...)` đã bỏ giới hạn cứng 200 dòng khi export; preview vẫn gọi mặc định 50 dòng.
-
-### 7. Lỗi đã sửa
-
-- Trang `Xuất dữ liệu` từng crash khi mở do `DataGridColumn.Visibility` bind tới `ViewModelProxy` nhưng thiếu resource trong `ExportView.xaml`.
-- Đã thêm:
-
-```xml
-<presentation:BindingProxy x:Key="ViewModelProxy" Data="{Binding}" />
-```
-
-- Sau đó build thành công.
-
-### 8. Build mới nhất
-
-- Đã build kiểm tra nhiều lần bằng:
-
-```powershell
-dotnet build QuanLyHoSo.sln -p:OutputPath=.verify-build\
-```
-
-- Kết quả mới nhất: build thành công.
-- Warning còn lại:
-  - `NETSDK1138`: target framework `net5.0-windows` đã hết support.
-
-### 9. Trạng thái Git hiện tại
-
-Kết quả `git status --short` gần nhất:
-
-```text
- M Infrastructure/Data/AppDataService.cs
- M ViewModels/ExportViewModel.cs
- M Views/Export/ExportView.xaml
-?? Presentation/BindingProxy.cs
-?? doc/SESSION_HANDOFF_2026-08-26.md
-```
-
-- Các thay đổi trang xuất dữ liệu và `BindingProxy.cs` hiện chưa commit.
-- File handoff này vẫn untracked nếu chưa được add vào Git.
-
----
-
-## 2026-08-28 - Performance instrumentation and UI polish
-
-### 1. Performance instrumentation
-
-- Đã thêm log đo thời gian cho các điểm tải dữ liệu chính:
-  - `AppDataService.Initialize()`
-  - `AppDataService.GetProcessingQueueRecords(...)`
-  - `AppDataService.GetExportPreview(...)`
-  - `AppDataService.CountExportRecords(...)`
-  - `ShellViewModel` khi khởi tạo database và tạo các page ViewModel.
-- Đã thêm `AppDataService.CountCatalogItemsByType()` để lấy số lượng item theo từng loại danh mục bằng một query thay vì gọi nhiều query lặp lại trong trang cài đặt.
-- `SettingsViewModel.RefreshCatalogGroupCounts()` đã dùng batch count mới.
-- Đã commit và push trước đó:
-
-```text
-3b7773a Add performance instrumentation and optimize catalog counts
-```
-
-### 2. Typography polish
-
-- Đã thêm màu chữ `StrongTextColor` / `StrongTextBrush` trong `App.xaml`.
-- Chữ đậm nhỏ trong app được chuyển sang xám đậm hơn để giảm cảm giác quá nặng.
-- `PageTitleText` vẫn giữ `TextBrush` để title lớn còn rõ và đậm.
-- `DataGridColumnHeader` vẫn giữ `TextBrush`, đúng yêu cầu header bảng vẫn đậm.
-- `ExportFilterLabel` trên trang xuất dữ liệu dùng `StrongTextBrush`.
-- `InputLabelText` trên trang nhập dữ liệu đổi từ `Bold` sang `SemiBold` và dùng `StrongTextBrush`.
-- `PrimaryButton` đã ép `TextBlock` con dùng màu trắng để icon/text trong nút xanh nhất quán.
-- Đã commit phần này:
-
-```text
-81cfe4b Refine bold text styling
-```
-
-### 3. UI consistency polish đang chuẩn bị commit
-
-- Thêm style dùng chung:
-  - `FieldLabelText`: label nhỏ màu xám.
-  - `DetailValueText`: value quan trọng màu xám đậm vừa phải.
-  - `SubsectionTitleText`: tiêu đề phụ trong khối chi tiết.
-- Áp dụng các style này cho:
-  - popup chi tiết hồ sơ trong `Views/Records/RecordListView.xaml`;
-  - card chi tiết xử lý và popup chi tiết hồ sơ trong `Views/Records/RecordProcessingView.xaml`;
-  - form `Cập nhật xử lý` trong `Views/Records/RecordProcessingView.xaml`.
-- Sửa hover highlight bị kỳ trong trang cài đặt:
-  - thêm `CatalogGroupButton` trong `Views/Settings/SettingsView.xaml`;
-  - bỏ hover background mặc định của WPF `Button` quanh card danh mục;
-  - giữ nguyên trạng thái selected bằng `CatalogGroupBorder`.
-
-### 4. Verification mới nhất
-
-- Đã build kiểm tra bằng:
+1. Doc file nay truoc khi mo code.
+2. Chay `git status --short` de biet working tree dang dirty o dau.
+3. Xac dinh user dang noi toi trang nao/chuc nang nao.
+4. Chi mo cac file trong muc "Kien truc theo trang" tuong ung. Neu can tim them, dung `rg -n "keyword" <folder/file> -S`.
+5. Khong doc toan bo `AppDataService.cs` neu task khong lien quan database. File nay dai; neu can thi mo theo ten method bang `rg -n "MethodName" Infrastructure\Data\AppDataService.cs -C 5`.
+6. Khi sua XAML/ViewModel, uu tien doc 80-180 dong quanh khu vuc can sua, khong dump ca file.
+7. Sau khi sua code, build bang:
 
 ```powershell
 dotnet build QuanLyHoSo.csproj -o .verify-build
 ```
 
-- Kết quả: build thành công, `0 errors`.
-- Warning còn lại:
-  - `NETSDK1138`: target framework `net5.0-windows` đã hết support.
-- Build mặc định có thể fail nếu app `QuanLyHoSo.exe` đang mở vì file output trong `bin/Debug/net5.0-windows` bị khóa.
+Warning `NETSDK1138` ve `net5.0-windows` het support la warning cu, hien build van OK neu khong co error khac.
 
-### 5. Git / remote
+## Tong quan du an
 
-- Remote hiện tại:
+- Project: `QuanLyHoSo`
+- Loai app: WPF desktop app, C#, MVVM tu viet, `.NET 5.0-windows`
+- Workspace: `D:\PROJECT\QuanLyHoSo`
+- Database local: `%LocalAppData%\QuanLyHoSo\Data\quanlyhoso.db`
+- Log file ky thuat: `%LocalAppData%\QuanLyHoSo\Logs`
+- Service du lieu chinh: `Infrastructure\Data\AppDataService.cs`
+- Logger file: `Infrastructure\Logging\AppLogger.cs`
+
+## Quy tac lam viec trong repo
+
+- Working tree co nhieu thay doi chua commit; khong revert thay doi khong lien quan.
+- Khong khoi phuc lai trang `Xuat du lieu`; page nay da bi bo vi da tich hop filter/export vao `Danh sach ho so`.
+- File `QuanLyHoSo.csproj.user`, `bin/`, `obj/`, `.verify-build/`, local data/log khong nen commit.
+- Noi dung UI dung tieng Viet co dau. Neu PowerShell hien mojibake, dung tin vao source UTF-8 trong file/app hon la output terminal.
+- ViewModel giu state/command/collection. Code-behind chi xu ly behavior UI nhu drag/drop, mouse wheel, animation.
+
+## Kien truc chung
+
+- `App.xaml`: resource mau/style chung, DataTemplate ViewModel -> View, converters, DataGrid copy behavior.
+- `MainWindow.xaml`, `MainWindow.xaml.cs`: khung shell, sidebar, content.
+- `ViewModels\ShellViewModel.cs`: initialize DB, tao page ViewModel, navigation/sidebar highlight.
+- `Infrastructure\Data\AppDataService.cs`: schema, seed data, query SQLite. Chi mo method lien quan task.
+- `Models\*.cs`: DTO/bindable model.
+- `Presentation\*.cs`: converter/helper/behavior UI dung chung.
+
+## Kien truc theo trang
+
+### 1. Tong quan
+
+Dung khi user noi `Tong quan`, `dashboard`, `bieu do`, `filter ngay`, `donut`, `top dia ban`, `trend`.
+
+File can doc:
+- `ViewModels\DashboardViewModel.cs`
+- `Views\Dashboard\DashboardView.xaml`
+- `Views\Dashboard\DashboardView.xaml.cs`
+- `Models\DashboardModels.cs`
+- Neu can query: cac method dashboard trong `Infrastructure\Data\AppDataService.cs`
+
+Da lam:
+- Dashboard mac dinh loc `Nam nay`.
+- Co metric cards, donut theo trang thai, top dia ban, chart tiep nhan/giai quyet.
+- Metric cards co so sanh voi ky truoc:
+  - `Nam nay`: so voi cung khoang nam truoc.
+  - `Thang nay`: so voi thang truoc.
+  - `Tuan nay`: so voi tuan truoc.
+  - Custom range: so voi khoang lien ke truoc do, cung so ngay inclusive.
+- Tren metric cards, mui ten va so delta in dam, cung mau xanh/do/xam; phan chu mo ta dung mau chu thuong cua app.
+- Donut animation da fix nhay/flash: khong fade ve 0, co throttle.
+- Mouse wheel trong chart van scroll page.
+
+### 2. Nhap du lieu
+
+Dung khi user noi `Nhap du lieu`, `form ho so`, `ma ho so`, `file dinh kem`, `xoa/luu ho so`.
+
+File can doc:
+- `ViewModels\RecordInputViewModel.cs`
+- `Views\Records\RecordInputView.xaml`
+- `Views\Records\RecordInputView.xaml.cs`
+- `Models\RecordModels.cs`
+- Service methods: `GetNextRecordCode`, `FindSimilarRecord`, `SaveRecordForm`, `DeleteRecord`
+
+Da lam:
+- Ma ho so tu sinh dang `HS-{yyyy}-{000000}` va readonly tren UI.
+- Form tao moi de trong, khong tu do ho so mau.
+- Kiem tra field bat buoc truoc khi luu.
+- Canh bao ho so co kha nang trung theo nguoi gui, dia ban, loai vu viec, ngay +/-30 ngay, va so dien thoai neu co.
+- Tai lieu dinh kem co chon file, drag/drop, luu `FilePath`.
+
+### 3. Danh sach ho so
+
+Dung khi user noi `Danh sach ho so`, `bo loc danh sach`, `xuat excel`, `phan loai trong thao tac`, `copy bang`, `icon thao tac`.
+
+File can doc:
+- `ViewModels\RecordListViewModel.cs`
+- `ViewModels\RecordListRowViewModel.cs`
+- `Views\Records\RecordListView.xaml`
+- `Views\Records\RecordListView.xaml.cs`
+- Service methods: `GetFilteredRecords`, `CountFilteredRecords`, `GetExportPreview`, `DeleteRecord`, `GetRecordForm`
+
+Da lam:
+- Da tich hop bo loc va nut `Xuat Excel` vao trang danh sach.
+- Mac dinh export file Excel `.xlsx`.
+- Page `Xuat du lieu` da bi xoa khoi navigation/template.
+- Header trang danh sach da bo nut `Quay lai` va `Lam moi`.
+- Bang co phan trang, chon so dong/trang.
+- Cot thao tac co icon xem/sua/phan loai/xoa, mau dong bo, khong in dam.
+- Da chong highlight ca cum icon khi click.
+- Copy bang chi copy vung chon, khong copy header.
+- Nut `Phan loai` trong thao tac mo chi tiet xu ly va giu sidebar highlight `Danh sach ho so`.
+
+### 4. Phan loai & xu ly
+
+Dung khi user noi `Phan loai`, `xu ly`, `queue`, `card loc`, `timeline`, `trang thai xu ly`.
+
+File can doc:
+- `ViewModels\RecordProcessingViewModel.cs`
+- `Views\Records\RecordProcessingView.xaml`
+- `Views\Records\RecordProcessingView.xaml.cs`
+- `Models\RecordModels.cs`
+- Service methods: `GetProcessingQueueMetrics`, `GetProcessingQueueRecords`, `CountProcessingQueueRecords`, `GetProcessingRecordDetail`, `UpdateProcessingRecord`
+
+Da lam:
+- Trang chinh la danh sach ho so can xu ly, co cards loc thay cho bo loc cu.
+- Click card se loc bang theo card.
+- Cards hien co: `All`, `NeedClassify`, `Processing`, `Waiting`, `DueSoon`, `Overdue`, `HighPriority`.
+- Bang queue co phan trang that, khong gioi han toi da 20 trang.
+- Mouse wheel tren bang van scroll page.
+- Chi tiet xu ly co timeline 7 buoc va form cap nhat trang thai.
+- O `Nguoi xu ly` la combobox editable, lay danh sach tu catalog `ProcessorName` va ten can bo tung co trong `Records`.
+- Quay lai tu chi tiet ve dung trang nguon. Neu vao tu `Danh sach ho so` thi sidebar van highlight `Danh sach ho so`.
+
+### 5. Cai dat
+
+Dung khi user noi `Cai dat`, `danh muc`, `quan ly popup`, `nhat ky he thong`, `backup`, `cap nhat phan mem`.
+
+File can doc:
+- `ViewModels\SettingsViewModel.cs`
+- `Views\Settings\SettingsView.xaml`
+- `Views\Settings\SettingsView.xaml.cs`
+- `Models\SettingsModels.cs`
+- Service methods: catalog methods va system log methods trong `AppDataService.cs`
+
+Da lam gan nhat:
+- Trang cai dat bo nut `Lam moi`.
+- `Danh muc he thong` hien card co icon trong vong tron nen nhat. Click vao card de mo popup, khong co nut `Quan ly` rieng.
+- Card danh muc chi highlight khi hover, khong highlight mac dinh va khong giu highlight sau click.
+- Danh muc hien co: `Nguon tiep nhan`, `Loai vu viec`, `Linh vuc`, `Nhom noi dung`, `Muc do uu tien`, `Ten can bo xu ly`, `Huong xu ly`.
+- Popup danh muc da bo filter, bo xem trang thai, bo phan trang. Chi can them moi, sua, xoa danh muc hien co.
+- Trong popup danh muc, nut sua/xoa la icon. Bam sua se dua gia tri len o `Danh muc hien tai`; bam `Luu thay doi` de luu. Danh sach co keo tha len/xuong de doi thu tu hien thi va luu order.
+- `Thao tac nhanh` xep doc, gom `Nhat ky he thong`, `Cai dat chung`, `Huong dan`.
+- `Cai dat chung` cho doi duong dan DB va thu muc log. DB path luu trong `%LocalAppData%\QuanLyHoSo\Settings\path-settings.json`; doi DB path can restart app.
+- `Huong dan` mo popup huong dan ngan cho cac phan trong trang cai dat.
+- `Thong tin phan mem` hien theo thu tu: phien ban, moi truong chay, loai co so du lieu, dung luong du lieu, don vi phat trien `minhthang3321@gmail.com`.
+- `Sao luu du lieu` da chong overlap dong `Chua co du lieu sao luu` khi man hinh co lai.
+- Click `Nhat ky he thong` mo popup danh sach audit log.
+
+### 6. Page xuat du lieu da bo
+
+Khong doc/sua cac file nay vi da xoa:
+- `ViewModels\ExportViewModel.cs`
+- `Views\Export\ExportView.xaml`
+- `Views\Export\ExportView.xaml.cs`
+
+Neu user hoi export, xu ly trong:
+- `RecordListViewModel.cs`
+- `RecordListView.xaml`
+
+## Database/schema
+
+Bang chinh:
+- `Areas`: dia ban.
+- `CatalogItems`: danh muc dung cho combobox/filter.
+- Catalog `ProcessorName`: ten can bo xu ly; duoc sync tu `Records.ProcessorName` va cap nhat khi luu xu ly ho so.
+- `Records`: ho so.
+- `RecordAttachments`: file dinh kem cua ho so.
+- `ProcessHistories`: lich su/timeline xu ly ho so.
+- `SystemLogs`: audit log thao tac anh huong database.
+
+Audit log:
+- Model UI: `SystemLogEntry` trong `Models\SettingsModels.cs`.
+- Doc log: `AppDataService.GetSystemLogs(int take = 200)`.
+- Ghi log: helper `WriteDatabaseLog(...)` trong `AppDataService.cs`.
+- Dang ghi cho:
+  - Them/sua/xoa/sap xep danh muc.
+  - Them/sua/xoa ho so.
+  - Cap nhat xu ly/trang thai ho so.
+- Khong log thao tac doc du lieu, filter, xem chi tiet, export file, backup file, refresh UI.
+- Khong log seed/init de tranh nhat ky bi day boi du lieu tu dong khi mo app.
+
+## Presentation helpers
+
+- `Presentation\DataGridCopyBehavior.cs`: Ctrl+C cho DataGrid, chi copy vung chon, khong copy header.
+- `Presentation\BindingProxy.cs`: dung khi can bind trong `DataGridColumn`.
+- `Presentation\Converters\StatusToBrushConverter.cs`: mau badge trang thai.
+- `Presentation\Converters\StatusDonutSegmentConverter.cs`: ve lat donut chart.
+- `Presentation\Converters\BooleanToNavBrushConverter.cs`: mau sidebar/nav.
+
+## Navigation/highlight can nho
+
+Flow mong muon cua user:
 
 ```text
-origin https://github.com/nmthang3321/QuanLyHoSo.git
+Dung o Danh sach ho so
+-> sidebar highlight Danh sach ho so
+-> bam Chi tiet/Phan loai ho so
+-> vao trang chi tiet/xu ly nhung sidebar van highlight Danh sach ho so
+-> Back
+-> ve Danh sach ho so va sidebar van highlight Danh sach ho so
 ```
 
-- File handoff này được cập nhật để commit cùng phase UI polish.
+Lien quan:
+- `ShellViewModel.NavigateTo(key, selectedNavigationKey)`
+- `ShellViewModel.ClassifyRecordFromList(...)`
+- `RecordProcessingViewModel.OpenRecord(recordCode, returnToPreviousPage: true)`
+- `RecordProcessingViewModel.BackToQueue()`
+
+## Build/verify
+
+Lenh verify nen dung:
+
+```powershell
+dotnet build QuanLyHoSo.csproj -o .verify-build
+```
+
+Ly do: build mac dinh co the fail neu app dang mo va khoa file exe trong `bin/Debug/net5.0-windows`.
+
+Ket qua gan nhat:
+- Build thanh cong.
+- 0 errors.
+- Warning con lai: `NETSDK1138` do `net5.0-windows` het support.
+
+## Git status gan nhat
+
+Working tree dang co nhieu thay doi chua commit, gom cac nhom:
+- Xoa page xuat du lieu.
+- Tich hop export vao danh sach ho so.
+- Cap nhat dashboard animation/chart va delta so sanh voi ky truoc.
+- Cap nhat danh sach ho so va phan loai/xu ly.
+- Them copy behavior DataGrid.
+- Cap nhat trang cai dat popup danh muc, thong tin phan mem, cai dat chung, huong dan, backup UI va nhat ky he thong.
+- Them audit log DB.
+- Them cau hinh path DB/log trong `Infrastructure\Configuration\AppPathSettings.cs`.
+- Co thay doi script/release/installer/assets.
+
+Truoc khi commit hay revert, phai xem `git diff --stat` va `git diff <file>`; khong revert cac thay doi khong lien quan.
+
+## Cach tiep can task moi
+
+- Task UI trang nao: mo XAML + ViewModel cua trang do, sau do moi mo service neu binding can du lieu.
+- Task query/du lieu: tim method service bang `rg`, mo dung method va model lien quan.
+- Task style chung: mo `App.xaml`; can than vi anh huong toan app.
+- Task table/copy/icon: mo XAML cua trang + `Presentation\DataGridCopyBehavior.cs` neu lien quan copy.
+- Task navigation/back/sidebar: mo `ShellViewModel.cs` va ViewModel trang nguon/dich.
+- Task release/build: mo `QuanLyHoSo.csproj`, `.github\workflows\release.yml`, `scripts\build-release.ps1`, `installer\QuanLyHoSo.iss`.
+
+## Viec vua lam trong request gan nhat
+
+1. Trang tong quan:
+   - Metric cards co delta so voi ky truoc theo filter thoi gian.
+   - Mui ten va so delta in dam/cung mau; phan chu mo ta dung mau chu thuong.
+2. Trang cai dat:
+   - Bo nut `Lam moi`.
+   - Danh muc he thong dung card click-to-open, hover highlight, popup gon lai de them/sua/xoa/keo tha sap xep.
+   - Them catalog `Ten can bo xu ly`, lay va sync voi nguoi xu ly trong ho so.
+   - Thao tac nhanh xep doc, them `Cai dat chung` va `Huong dan`.
+   - Thong tin phan mem chi giu cac muc can thiet theo thu tu moi.
+3. Trang danh sach ho so:
+   - Bo nut `Quay lai` va `Lam moi` tren header.
+
+## Cap nhat 2026-08-31 - Safe finding fixes
+
+User yeu cau: fix tat ca finding co the fix, nhung khong doi business logic va khong doi GUI.
+
+Da lam:
+- `ViewModels\DashboardViewModel.cs`
+  - `Reload()` da load lai bang ho so gan day va tinh `TotalRecentPages`.
+  - Fix tinh trang section recent records co the trong cho toi khi user bam phan trang.
+- `ViewModels\RecordListViewModel.cs`
+  - Export Excel chuyen sang async/background cho buoc load data va ghi `.xlsx`.
+  - Them `_isExporting` va raise `CanExecuteChanged` de tranh bam export lap khi dang chay.
+  - Them catch/log rieng khi load du lieu export loi, tranh roi vao global exception handler.
+  - UI/filter/output format/message ve co ban giu nhu cu.
+- `Infrastructure\Data\AppDataService.cs`
+  - Them `BackupDatabase(...)` dung SQLite `BackupDatabase` API thay vi `File.Copy` DB song.
+  - Them `RestoreDatabaseFromFile(...)`: validate file backup, tao safety backup truoc restore, restore bang SQLite backup API, `PRAGMA quick_check` sau restore.
+  - Them `ValidateDatabaseFile(...)` va helper validate connection bang `PRAGMA quick_check`.
+  - Bo dead/unreachable fallback trong `GetProcessingQueueMetrics()` (`metrics.Count >= 0`).
+  - Them `CreateIndexes(...)` voi `CREATE INDEX IF NOT EXISTS` cho cac query hien co: ngay tiep nhan, updated/status/area/case type/field/processor/priority, attachment/history theo `RecordId`, catalog, system logs.
+- `ViewModels\SettingsViewModel.cs`
+  - `BackupNowCommand` va `RestoreDataCommand` chuyen sang async command.
+  - Backup button van dung flow cu nhung copy DB an toan hon.
+  - Restore button khong con placeholder: cho chon file `.db`, confirm, tao safety backup, restore, refresh thong tin/counter.
+  - Khi doi DB path trong cai dat chung, copy DB ban dau cung dung backup API.
+- `ViewModels\ShellViewModel.cs`
+  - Page ViewModel duoc lazy-create theo navigation.
+  - Startup khong con khoi tao san tat ca page ViewModel, giam chi phi mo app.
+  - Navigation/workflow/sidebar highlight giu nguyen.
+- `App.xaml`
+  - DataGrid style chung bat `EnableRowVirtualization`, `EnableColumnVirtualization`, `VirtualizingPanel.IsVirtualizing`, `VirtualizationMode=Recycling`.
+- `Models\SettingsModels.cs`
+  - `CatalogValueSetting` co them `IsActive` de data service co the doc trang thai danh muc khi can.
+
+Khong tu sua vi se doi business logic/data migration/UX:
+- Hard delete ho so sang soft delete.
+- Ep rule/policy chuyen trang thai ho so.
+- Copy attachment vao managed app storage thay vi luu path goc.
+- Nang target framework khoi `.NET 5.0-windows`.
+- Tach lon `AppDataService` thanh nhieu repository/service. Nen lam rieng theo tung PR nho neu user approve.
+
+Verify gan nhat:
+- `dotnet build QuanLyHoSo.sln -p:UseAppHost=false`
+- Ket qua: build thanh cong, 0 errors.
+- Warning con lai: `NETSDK1138` do `.NET 5.0-windows` het support.
+- Build mac dinh `dotnet build QuanLyHoSo.sln` co the fail neu app dang mo va khoa `bin\Debug\net5.0-windows\QuanLyHoSo.exe` (da gap process `QuanLyHoSo (33316)`).

@@ -1,6 +1,7 @@
 using System;
 using System.Globalization;
 using System.IO;
+using QuanLyHoSo.Infrastructure.Configuration;
 
 namespace QuanLyHoSo.Infrastructure.Logging
 {
@@ -8,10 +9,7 @@ namespace QuanLyHoSo.Infrastructure.Logging
     {
         private static readonly object SyncRoot = new object();
 
-        public static string LogFolder { get; } = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "QuanLyHoSo",
-            "Logs");
+        public static string LogFolder => AppPathSettings.Current.LogFolder;
 
         public static void Info(string module, string action, string message, string recordCode = null, string correlationId = null)
         {

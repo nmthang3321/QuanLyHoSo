@@ -11,6 +11,7 @@ using System.Windows.Data;
 using System.Windows.Input;
 using QuanLyHoSo.Infrastructure.Data;
 using QuanLyHoSo.Infrastructure.Logging;
+using QuanLyHoSo.Infrastructure.Security;
 using QuanLyHoSo.Models;
 
 namespace QuanLyHoSo.ViewModels
@@ -20,7 +21,7 @@ namespace QuanLyHoSo.ViewModels
         private readonly AppDataService _dataService;
         private string _editingRecordCode;
 
-        public RecordInputViewModel(Action showRecordList)
+        public RecordInputViewModel()
         {
             _dataService = AppDataService.Instance;
 
@@ -35,11 +36,10 @@ namespace QuanLyHoSo.ViewModels
             HandlingMethods = new ObservableCollection<string>(_dataService.GetCatalogValues("ExpectedHandlingMethod"));
             Attachments = new ObservableCollection<AttachmentDraft>();
             Attachments.CollectionChanged += Attachments_CollectionChanged;
-            ShowRecordListCommand = new RelayCommand(showRecordList ?? (() => { }));
             NewCommand = new RelayCommand(ClearForm);
-            SaveCommand = new RelayCommand(Save);
+            SaveCommand = new RelayCommand(Save, () => CanWrite);
             CancelCommand = new RelayCommand(ClearForm);
-            DeleteCommand = new RelayCommand(DeleteCurrentRecord);
+            DeleteCommand = new RelayCommand(DeleteCurrentRecord, () => CanWrite);
             RemoveAttachmentCommand = new RelayCommand(RemoveAttachment);
             OpenAttachmentCommand = new RelayCommand(OpenAttachment);
 
@@ -56,13 +56,13 @@ namespace QuanLyHoSo.ViewModels
         public ObservableCollection<string> HandlingMethods { get; }
         public ObservableCollection<AttachmentDraft> Attachments { get; }
         public bool HasAttachments => Attachments.Count > 0;
-        public ICommand ShowRecordListCommand { get; }
         public ICommand NewCommand { get; }
         public ICommand SaveCommand { get; }
         public ICommand CancelCommand { get; }
         public ICommand DeleteCommand { get; }
         public ICommand RemoveAttachmentCommand { get; }
         public ICommand OpenAttachmentCommand { get; }
+        public bool CanWrite => AuthContext.CanWrite;
 
         public string RecordCode { get; set; }
         public string ReceiveSource { get; set; }
@@ -126,7 +126,7 @@ namespace QuanLyHoSo.ViewModels
         private void ClearForm()
         {
             _editingRecordCode = null;
-            RecordCode = string.Empty;
+            RecordCode = _dataService.GetNextRecordCode();
             ReceivedDate = string.Empty;
             SelectedReceivedDate = null;
             ReceiveSource = null;
@@ -199,6 +199,12 @@ namespace QuanLyHoSo.ViewModels
 
         private void Save()
         {
+            if (!CanWrite)
+            {
+                MessageBox.Show("Tài khoản hiện tại chỉ được xem dữ liệu.", "Phân quyền", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
             var validationMessage = ValidateRequiredFields();
             if (!string.IsNullOrWhiteSpace(validationMessage))
             {
@@ -208,8 +214,16 @@ namespace QuanLyHoSo.ViewModels
 
             try
             {
-                _dataService.SaveRecordForm(BuildDraft(), _editingRecordCode);
-                _editingRecordCode = RecordCode?.Trim();
+                var draft = BuildDraft();
+                if (string.IsNullOrWhiteSpace(_editingRecordCode) && !ConfirmSaveWhenSimilarRecordExists(draft))
+                {
+                    return;
+                }
+
+                var savedRecordCode = _dataService.SaveRecordForm(draft, _editingRecordCode);
+                RecordCode = savedRecordCode;
+                _editingRecordCode = savedRecordCode;
+                OnPropertyChanged(nameof(RecordCode));
                 MessageBox.Show("Đã lưu hồ sơ vào cơ sở dữ liệu.", "Lưu hồ sơ", MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception ex)
@@ -219,8 +233,54 @@ namespace QuanLyHoSo.ViewModels
             }
         }
 
+        private bool ConfirmSaveWhenSimilarRecordExists(RecordFormDraft draft)
+        {
+            var similarRecord = _dataService.FindSimilarRecord(draft);
+            if (similarRecord == null)
+            {
+                return true;
+            }
+
+            var message =
+                "Hệ thống phát hiện hồ sơ có thể trùng với hồ sơ đã có.\n\n" +
+                $"Mã hồ sơ: {similarRecord.RecordCode}\n" +
+                $"Ngày tiếp nhận: {similarRecord.ReceivedDate}\n" +
+                $"Người gửi: {similarRecord.SenderName}\n" +
+                $"Số điện thoại: {similarRecord.SenderPhone}\n" +
+                $"Địa bàn: {similarRecord.AreaName}\n" +
+                $"Loại vụ việc: {similarRecord.CaseType}\n" +
+                $"Trạng thái: {similarRecord.Status}\n\n" +
+                "Chọn Yes để vẫn tạo hồ sơ mới.\n" +
+                "Chọn No để mở hồ sơ đã có.\n" +
+                "Chọn Cancel để hủy lưu.";
+
+            var result = MessageBox.Show(
+                message,
+                "Cảnh báo hồ sơ nghi trùng",
+                MessageBoxButton.YesNoCancel,
+                MessageBoxImage.Warning);
+
+            if (result == MessageBoxResult.Yes)
+            {
+                return true;
+            }
+
+            if (result == MessageBoxResult.No)
+            {
+                LoadRecord(similarRecord.RecordCode);
+            }
+
+            return false;
+        }
+
         private void DeleteCurrentRecord()
         {
+            if (!CanWrite)
+            {
+                MessageBox.Show("Tài khoản hiện tại chỉ được xem dữ liệu.", "Phân quyền", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
             var recordCode = string.IsNullOrWhiteSpace(_editingRecordCode) ? RecordCode : _editingRecordCode;
             if (string.IsNullOrWhiteSpace(recordCode))
             {
@@ -319,7 +379,6 @@ namespace QuanLyHoSo.ViewModels
         {
             var missingFields = new[]
             {
-                (Name: "Số hồ sơ / Số đơn", IsMissing: string.IsNullOrWhiteSpace(RecordCode)),
                 (Name: "Ngày tiếp nhận", IsMissing: !SelectedReceivedDate.HasValue),
                 (Name: "Nguồn tiếp nhận", IsMissing: string.IsNullOrWhiteSpace(ReceiveSource)),
                 (Name: "Người tiếp nhận", IsMissing: string.IsNullOrWhiteSpace(ReceiverName)),

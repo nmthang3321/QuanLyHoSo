@@ -2,6 +2,7 @@
 bin/
 obj/
 .verify-build/
+artifacts/
 
 # Visual Studio user files
 .vs/

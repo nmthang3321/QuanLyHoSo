@@ -2,17 +2,75 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <UserControl.Resources>
-        <Style x:Key="QueueIconButton" TargetType="Button" BasedOn="{StaticResource SecondaryButton}">
+        <Style x:Key="QueueIconButton" TargetType="Button">
             <Setter Property="Width" Value="32" />
             <Setter Property="MinWidth" Value="32" />
             <Setter Property="Height" Value="32" />
             <Setter Property="Padding" Value="0" />
             <Setter Property="Margin" Value="0,0,6,0" />
+            <Setter Property="FontWeight" Value="Normal" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Root"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="4">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Root" Property="Background" Value="#F0F6FF" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Root" Property="Background" Value="#E4EEFF" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.45" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="ActionCellStyle" TargetType="DataGridCell">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="DataGridCell">
+                        <Border Background="Transparent"
+                                BorderBrush="Transparent"
+                                BorderThickness="0">
+                            <ContentPresenter />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="MetricCardButton" TargetType="Button">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="VerticalContentAlignment" Value="Stretch" />
         </Style>
     </UserControl.Resources>
 
     <Grid>
-        <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <ScrollViewer x:Name="ProcessingQueueScrollViewer"
+                      VerticalScrollBarVisibility="Auto">
             <ScrollViewer.Style>
                 <Style TargetType="ScrollViewer">
                     <Setter Property="Visibility" Value="Visible" />
@@ -39,74 +97,66 @@
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <Border Style="{StaticResource CardBorder}" Margin="6,0">
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="58" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
-                                    <Border Width="46" Height="46" CornerRadius="23" Background="{Binding AccentColor}">
-                                        <TextBlock Text="{Binding IconGlyph}"
-                                                   FontFamily="Segoe MDL2 Assets"
-                                                   Foreground="White"
-                                                   FontSize="22"
-                                                   HorizontalAlignment="Center"
-                                                   VerticalAlignment="Center" />
-                                    </Border>
-                                    <StackPanel Grid.Column="1">
-                                        <TextBlock Text="{Binding Title}" FontSize="13" FontWeight="SemiBold" Foreground="{Binding AccentColor}" />
-                                        <TextBlock Text="{Binding Value}" FontSize="28" FontWeight="Bold" Margin="0,6,0,4" />
-                                        <TextBlock Text="{Binding Delta}" Style="{StaticResource MutedText}" FontSize="12" TextTrimming="CharacterEllipsis" />
-                                    </StackPanel>
-                                </Grid>
-                            </Border>
+                            <Button Style="{StaticResource MetricCardButton}"
+                                    Command="{Binding DataContext.SelectMetricCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                    CommandParameter="{Binding}"
+                                    Margin="6,0,6,12">
+                                <Border>
+                                    <Border.Style>
+                                        <Style TargetType="Border" BasedOn="{StaticResource CardBorder}">
+                                            <Setter Property="BorderBrush" Value="{StaticResource LineBrush}" />
+                                            <Setter Property="BorderThickness" Value="1" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                                    <Setter Property="BorderBrush" Value="{Binding AccentColor}" />
+                                                    <Setter Property="BorderThickness" Value="2" />
+                                                    <Setter Property="Background" Value="#F8FAFD" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="58" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <Border Width="46" Height="46" CornerRadius="23" Background="{Binding AccentColor}">
+                                            <TextBlock Text="{Binding IconGlyph}"
+                                                       FontFamily="Segoe MDL2 Assets"
+                                                       Foreground="White"
+                                                       FontSize="22"
+                                                       HorizontalAlignment="Center"
+                                                       VerticalAlignment="Center" />
+                                        </Border>
+                                        <StackPanel Grid.Column="1">
+                                            <TextBlock Text="{Binding Title}" FontSize="13" FontWeight="SemiBold" Foreground="{Binding AccentColor}" />
+                                            <TextBlock Text="{Binding Value}" FontSize="28" FontWeight="Bold" Margin="0,6,0,4" />
+                                            <TextBlock Text="{Binding Delta}" Style="{StaticResource MutedText}" FontSize="12" TextTrimming="CharacterEllipsis" />
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+                            </Button>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
-
-                <Border Style="{StaticResource CardBorder}" Margin="0,0,0,14">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="2*" />
-                            <ColumnDefinition Width="170" />
-                            <ColumnDefinition Width="220" />
-                            <ColumnDefinition Width="150" />
-                            <ColumnDefinition Width="110" />
-                        </Grid.ColumnDefinitions>
-
-                        <TextBox Text="{Binding SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                 Height="36"
-                                 Margin="0,0,10,0" />
-                        <ComboBox Grid.Column="1" ItemsSource="{Binding StatusFilters}" SelectedItem="{Binding SelectedStatus}" Height="36" Margin="0,0,10,0" />
-                        <ComboBox Grid.Column="2" ItemsSource="{Binding AreaFilters}" SelectedItem="{Binding SelectedArea}" Height="36" Margin="0,0,10,0" />
-                        <ComboBox Grid.Column="3" ItemsSource="{Binding PriorityFilters}" SelectedItem="{Binding SelectedPriority}" Height="36" Margin="0,0,10,0" />
-                        <Button Grid.Column="4" Style="{StaticResource PrimaryButton}" Command="{Binding ApplyFilterCommand}" MinWidth="100">
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="&#xE71C;" FontFamily="Segoe MDL2 Assets" Margin="0,0,8,0" />
-                                <TextBlock Text="Lọc" />
-                            </StackPanel>
-                        </Button>
-                    </Grid>
-                </Border>
 
                 <Border Style="{StaticResource CardBorder}">
                     <StackPanel>
                         <Grid Margin="0,0,0,12">
                             <StackPanel>
                                 <TextBlock Text="HỒ SƠ CẦN XỬ LÝ" Style="{StaticResource SectionTitleText}" />
-                                <TextBlock Text="Mặc định hiển thị tối đa 20 hồ sơ chưa hoàn tất, mới cập nhật ở trên cùng." Style="{StaticResource MutedText}" Margin="0,4,0,0" />
+                                <TextBlock Text="{Binding TotalRecordsText}" Style="{StaticResource MutedText}" Margin="0,4,0,0" />
                             </StackPanel>
                         </Grid>
 
                         <DataGrid ItemsSource="{Binding QueueRecords}"
-                                  Height="378"
+                                  Height="{Binding TableHeight}"
                                   CanUserResizeColumns="True"
                                   HorizontalScrollBarVisibility="Disabled"
-                                  VerticalScrollBarVisibility="Auto"
+                                  VerticalScrollBarVisibility="Disabled"
+                                  PreviewMouseWheel="ProcessingQueueDataGrid_PreviewMouseWheel"
                                   GridLinesVisibility="Horizontal"
-                                  IsReadOnly="True"
-                                  SelectionMode="Single"
-                                  SelectionUnit="FullRow">
+                                  IsReadOnly="True">
                             <DataGrid.Columns>
                                 <DataGridTextColumn Header="STT" Binding="{Binding Index}" Width="52" MinWidth="48" />
                                 <DataGridTextColumn Header="Số hồ sơ" Binding="{Binding RecordCode}" Width="0.8*" MinWidth="110" />
@@ -114,7 +164,7 @@
                                 <DataGridTextColumn Header="Người gửi" Binding="{Binding SenderName}" Width="1.25*" MinWidth="160" />
                                 <DataGridTextColumn Header="Địa bàn" Binding="{Binding AreaName}" Width="1.05*" MinWidth="140" />
                                 <DataGridTextColumn Header="Loại vụ việc" Binding="{Binding CaseType}" Width="0.95*" MinWidth="120" />
-                                <DataGridTemplateColumn Header="Mức độ" Width="0.8*" MinWidth="105">
+                                <DataGridTemplateColumn Header="Mức độ" Width="0.8*" MinWidth="105" ClipboardContentBinding="{Binding PriorityLevel}">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
                                             <Border Background="#FFF7E8" BorderBrush="#FFE0A8" BorderThickness="1" CornerRadius="4" Height="22" Padding="7,1" HorizontalAlignment="Left">
@@ -123,7 +173,7 @@
                                         </DataTemplate>
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
-                                <DataGridTemplateColumn Header="Trạng thái" Width="1.0*" MinWidth="140">
+                                <DataGridTemplateColumn Header="Trạng thái" Width="1.0*" MinWidth="140" ClipboardContentBinding="{Binding Status}">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
                                             <Border Background="{Binding Status, Converter={StaticResource StatusToBrushConverter}}" CornerRadius="4" Height="22" Padding="7,1" VerticalAlignment="Center" HorizontalAlignment="Left">
@@ -132,7 +182,7 @@
                                         </DataTemplate>
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
-                                <DataGridTemplateColumn Header="Thao tác" Width="88" MinWidth="88" MaxWidth="88">
+                                <DataGridTemplateColumn Header="Thao tác" Width="88" MinWidth="88" MaxWidth="88" CellStyle="{StaticResource ActionCellStyle}">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
                                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
@@ -155,6 +205,68 @@
                                 </DataGridTemplateColumn>
                             </DataGrid.Columns>
                         </DataGrid>
+
+                        <Grid Margin="0,12,0,0">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <TextBlock Text="Số dòng"
+                                           Style="{StaticResource MutedText}"
+                                           VerticalAlignment="Center"
+                                           Margin="0,0,8,0" />
+                                <TextBox Text="{Binding PageSizeText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                         Width="58"
+                                         Height="36"
+                                         HorizontalContentAlignment="Center" />
+                                <TextBlock Text="Tối đa 50"
+                                           Style="{StaticResource MutedText}"
+                                           FontSize="12"
+                                           VerticalAlignment="Center"
+                                           Margin="10,0,0,0" />
+                            </StackPanel>
+
+                            <StackPanel Orientation="Horizontal"
+                                        HorizontalAlignment="Right"
+                                        VerticalAlignment="Center">
+                                <Button Style="{StaticResource SecondaryButton}"
+                                        Width="36"
+                                        MinWidth="36"
+                                        Height="36"
+                                        Padding="0"
+                                        Command="{Binding PreviousPageCommand}"
+                                        ToolTip="Trang trước">
+                                    <TextBlock Text="&#xE76B;"
+                                               FontFamily="Segoe MDL2 Assets"
+                                               FontSize="14"
+                                               FontWeight="SemiBold" />
+                                </Button>
+                                <Border Background="#F8FAFD"
+                                        BorderBrush="{StaticResource LineBrush}"
+                                        BorderThickness="1"
+                                        CornerRadius="6"
+                                        Height="36"
+                                        MinWidth="92"
+                                        Margin="8,0"
+                                        Padding="14,0">
+                                    <TextBlock Text="{Binding PageText}"
+                                               FontSize="13"
+                                               FontWeight="SemiBold"
+                                               Foreground="{StaticResource MutedTextBrush}"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center" />
+                                </Border>
+                                <Button Style="{StaticResource SecondaryButton}"
+                                        Width="36"
+                                        MinWidth="36"
+                                        Height="36"
+                                        Padding="0"
+                                        Command="{Binding NextPageCommand}"
+                                        ToolTip="Trang sau">
+                                    <TextBlock Text="&#xE76C;"
+                                               FontFamily="Segoe MDL2 Assets"
+                                               FontSize="14"
+                                               FontWeight="SemiBold" />
+                                </Button>
+                            </StackPanel>
+                        </Grid>
                     </StackPanel>
                 </Border>
             </StackPanel>
@@ -237,7 +349,7 @@
 
                 <Border Style="{StaticResource CardBorder}" Margin="0,0,0,12">
                     <StackPanel>
-                        <TextBlock Text="QUY TRÌNH XỬ LÝ HỒ SƠ" Style="{StaticResource SectionTitleText}" Margin="0,0,0,18" />
+                        <TextBlock Text="QUY TRÌNH XỬ LÝ HỒ SƠ" Style="{StaticResource SectionTitleText}" Foreground="{StaticResource PrimaryBrush}" Margin="0,0,0,18" />
                         <ItemsControl ItemsSource="{Binding ProcessSteps}">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
@@ -379,7 +491,7 @@
 
                     <Border Grid.Column="0" Style="{StaticResource CardBorder}" Margin="0,0,8,0">
                         <StackPanel>
-                            <TextBlock Text="LỊCH SỬ XỬ LÝ" Style="{StaticResource SectionTitleText}" Margin="0,0,0,14" />
+                            <TextBlock Text="LỊCH SỬ XỬ LÝ" Style="{StaticResource SectionTitleText}" Foreground="{StaticResource PrimaryBrush}" Margin="0,0,0,14" />
                             <ItemsControl ItemsSource="{Binding History}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
@@ -476,7 +588,7 @@
                         </StackPanel>
                     </Border>
 
-                    <Border Grid.Column="1" Style="{StaticResource CardBorder}" Margin="8,0,0,0">
+                    <Border Grid.Column="1" Style="{StaticResource CardBorder}" Margin="8,0,0,0" IsEnabled="{Binding CanUpdateProcessing}">
                         <StackPanel>
                             <TextBlock Text="CẬP NHẬT XỬ LÝ" Style="{StaticResource SectionTitleText}" Foreground="{StaticResource PrimaryBrush}" Margin="0,0,0,14" />
                             <Grid>
@@ -494,7 +606,11 @@
                                 </StackPanel>
                             </Grid>
                             <TextBlock Style="{StaticResource FieldLabelText}"><Run Text="Người xử lý" /><Run Text=" *" Foreground="#E11414" /></TextBlock>
-                            <TextBox Text="{Binding ProcessingProcessorName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,12" />
+                            <ComboBox ItemsSource="{Binding ProcessorNames}"
+                                      Text="{Binding ProcessingProcessorName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                      IsEditable="True"
+                                      IsTextSearchEnabled="True"
+                                      Margin="0,0,0,12" />
                             <TextBlock Style="{StaticResource FieldLabelText}"><Run Text="Nội dung xử lý" /><Run Text=" *" Foreground="#E11414" /></TextBlock>
                             <TextBox Height="96" TextWrapping="Wrap" AcceptsReturn="True" VerticalContentAlignment="Top" Text="{Binding ProcessingContent, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,12" />
                             <TextBlock Text="Ghi chú" Style="{StaticResource FieldLabelText}" />
