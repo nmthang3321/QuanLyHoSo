@@ -247,7 +247,62 @@
 
                         <StackPanel Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,0,14,14">
                             <TextBlock Text="Địa bàn" Style="{StaticResource RecordListFilterLabel}" />
-                            <ComboBox ItemsSource="{Binding Areas}" SelectedItem="{Binding SelectedArea, Mode=TwoWay}" />
+                            <Button x:Name="AreaFilterDropDownButton"
+                                    Click="AreaFilterDropDownButton_Click"
+                                    HorizontalContentAlignment="Stretch"
+                                    Height="34"
+                                    Padding="10,0"
+                                    BorderBrush="{StaticResource LineBrush}"
+                                    Background="White">
+                                <Button.ContextMenu>
+                                    <ContextMenu x:Name="AreaFilterContextMenu"
+                                                 ItemsSource="{Binding PlacementTarget.DataContext.Areas, RelativeSource={RelativeSource Self}}"
+                                                 Placement="Bottom"
+                                                 MaxHeight="420">
+                                        <ContextMenu.ItemContainerStyle>
+                                            <Style TargetType="MenuItem">
+                                                <Setter Property="Header" Value="{Binding DisplayName}" />
+                                                <Setter Property="ItemsSource" Value="{Binding Children}" />
+                                                <Setter Property="Padding" Value="14,7" />
+                                                <Setter Property="MinWidth" Value="280" />
+                                                <EventSetter Event="Click" Handler="AreaFilterOptionMenuItem_Click" />
+                                                <Setter Property="ItemContainerStyle">
+                                                    <Setter.Value>
+                                                        <Style TargetType="MenuItem">
+                                                            <Setter Property="Header" Value="{Binding DisplayName}" />
+                                                            <Setter Property="Padding" Value="14,7" />
+                                                            <Setter Property="MinWidth" Value="240" />
+                                                            <EventSetter Event="Click" Handler="AreaFilterOptionMenuItem_Click" />
+                                                        </Style>
+                                                    </Setter.Value>
+                                                </Setter>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsGroup}" Value="True">
+                                                        <Setter Property="FontWeight" Value="SemiBold" />
+                                                        <Setter Property="Foreground" Value="{StaticResource PrimaryBrush}" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </ContextMenu.ItemContainerStyle>
+                                    </ContextMenu>
+                                </Button.ContextMenu>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="18" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="{Binding SelectedAreaDisplayName}"
+                                               VerticalAlignment="Center"
+                                               TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Grid.Column="1"
+                                               Text="&#xE70D;"
+                                               FontFamily="Segoe MDL2 Assets"
+                                               FontSize="10"
+                                               Foreground="{StaticResource MutedTextBrush}"
+                                               HorizontalAlignment="Right"
+                                               VerticalAlignment="Center" />
+                                </Grid>
+                            </Button>
                         </StackPanel>
                         <StackPanel Grid.Row="1" Grid.Column="2" Margin="0,0,14,14">
                             <TextBlock Text="Người xử lý" Style="{StaticResource RecordListFilterLabel}" />

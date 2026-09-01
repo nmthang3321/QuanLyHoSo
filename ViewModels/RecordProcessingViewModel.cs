@@ -71,7 +71,7 @@ namespace QuanLyHoSo.ViewModels
                 "Đang chờ bổ sung tài liệu",
                 "Chuyển cơ quan khác"
             };
-            AreaFilters = new ObservableCollection<string>(_dataService.GetAreaNames(includeAll: true));
+            AreaFilters = AreaSelectionOptions.Build(_dataService.GetAreaNames(includeAll: true), includeGroupRows: true, groupRowsSelectable: true);
             PriorityFilters = new ObservableCollection<string>(_dataService.GetCatalogValues("Priority", includeAll: true));
             ApplyFilterCommand = new RelayCommand(Reload);
             ViewRecordCommand = new RelayCommand(ViewRecord);
@@ -85,7 +85,7 @@ namespace QuanLyHoSo.ViewModels
             SaveProcessingCommand = new RelayCommand(SaveProcessing, () => CanUpdateProcessing);
 
             _selectedStatus = StatusFilters[0];
-            _selectedArea = AreaFilters.Count > 0 ? AreaFilters[0] : "Tất cả";
+            _selectedArea = AreaFilters.Count > 0 ? AreaFilters[0].FilterValue : "Tất cả";
             _selectedPriority = PriorityFilters.Count > 0 ? PriorityFilters[0] : "Tất cả";
 
             Reload();
@@ -98,7 +98,7 @@ namespace QuanLyHoSo.ViewModels
         public ObservableCollection<string> ProcessorNames { get; }
         public ObservableCollection<string> ProcessingStatuses { get; }
         public ObservableCollection<string> StatusFilters { get; }
-        public ObservableCollection<string> AreaFilters { get; }
+        public ObservableCollection<AreaSelectionOption> AreaFilters { get; }
         public ObservableCollection<string> PriorityFilters { get; }
         public ICommand ApplyFilterCommand { get; }
         public ICommand ViewRecordCommand { get; }
@@ -207,10 +207,13 @@ namespace QuanLyHoSo.ViewModels
             {
                 if (SetProperty(ref _selectedArea, value))
                 {
+                    OnPropertyChanged(nameof(SelectedAreaDisplayName));
                     Reload();
                 }
             }
         }
+
+        public string SelectedAreaDisplayName => AreaSelectionOptions.GetDisplayName(AreaFilters, SelectedArea);
 
         public string SelectedPriority
         {
@@ -357,7 +360,7 @@ namespace QuanLyHoSo.ViewModels
 
             _selectedMetricKey = metric.FilterKey;
             _selectedStatus = StatusFilters.Count > 0 ? StatusFilters[0] : "Tất cả";
-            _selectedArea = AreaFilters.Count > 0 ? AreaFilters[0] : "Tất cả";
+            _selectedArea = AreaFilters.Count > 0 ? AreaFilters[0].FilterValue : "Tất cả";
             _selectedPriority = PriorityFilters.Count > 0 ? PriorityFilters[0] : "Tất cả";
             _searchText = string.Empty;
             OnPropertyChanged(nameof(SelectedStatus));

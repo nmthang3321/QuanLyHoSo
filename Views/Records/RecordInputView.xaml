@@ -115,14 +115,62 @@
 
                         <StackPanel Grid.Row="2" Grid.Column="0" Margin="0,0,14,14">
                             <TextBlock Style="{StaticResource InputLabelText}"><Run Text="Địa bàn (xã/phường/đặc khu)" /><Run Text=" *" Foreground="#E11414" /></TextBlock>
-                            <ComboBox x:Name="AreaComboBox"
-                                      ItemsSource="{Binding FilteredAreas}"
-                                      SelectedItem="{Binding AreaName, Mode=TwoWay}"
-                                      Text="{Binding AreaSearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                      IsEditable="True"
-                                      IsTextSearchEnabled="False"
-                                      StaysOpenOnEdit="True"
-                                      KeyUp="AreaComboBox_KeyUp" />
+                            <Button x:Name="AreaDropDownButton"
+                                    Click="AreaDropDownButton_Click"
+                                    HorizontalContentAlignment="Stretch"
+                                    Height="34"
+                                    Padding="10,0"
+                                    BorderBrush="{StaticResource LineBrush}"
+                                    Background="White">
+                                <Button.ContextMenu>
+                                    <ContextMenu x:Name="AreaContextMenu"
+                                                 ItemsSource="{Binding PlacementTarget.DataContext.Areas, RelativeSource={RelativeSource Self}}"
+                                                 Placement="Bottom"
+                                                 MaxHeight="420">
+                                        <ContextMenu.ItemContainerStyle>
+                                            <Style TargetType="MenuItem">
+                                                <Setter Property="Header" Value="{Binding DisplayName}" />
+                                                <Setter Property="ItemsSource" Value="{Binding Children}" />
+                                                <Setter Property="Padding" Value="14,7" />
+                                                <Setter Property="MinWidth" Value="260" />
+                                                <EventSetter Event="Click" Handler="AreaOptionMenuItem_Click" />
+                                                <Setter Property="ItemContainerStyle">
+                                                    <Setter.Value>
+                                                        <Style TargetType="MenuItem">
+                                                            <Setter Property="Header" Value="{Binding DisplayName}" />
+                                                            <Setter Property="Padding" Value="14,7" />
+                                                            <Setter Property="MinWidth" Value="240" />
+                                                            <EventSetter Event="Click" Handler="AreaOptionMenuItem_Click" />
+                                                        </Style>
+                                                    </Setter.Value>
+                                                </Setter>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsGroup}" Value="True">
+                                                        <Setter Property="FontWeight" Value="SemiBold" />
+                                                        <Setter Property="Foreground" Value="{StaticResource PrimaryBrush}" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </ContextMenu.ItemContainerStyle>
+                                    </ContextMenu>
+                                </Button.ContextMenu>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="18" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="{Binding AreaDisplayName}"
+                                               VerticalAlignment="Center"
+                                               TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Grid.Column="1"
+                                               Text="&#xE70D;"
+                                               FontFamily="Segoe MDL2 Assets"
+                                               FontSize="10"
+                                               Foreground="{StaticResource MutedTextBrush}"
+                                               HorizontalAlignment="Right"
+                                               VerticalAlignment="Center" />
+                                </Grid>
+                            </Button>
                         </StackPanel>
                         <StackPanel Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="3" Margin="0,0,0,14">
                             <TextBlock Text="Địa chỉ xảy ra vụ việc" Style="{StaticResource InputLabelText}" />

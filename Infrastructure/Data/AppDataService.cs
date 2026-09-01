@@ -57,6 +57,7 @@ namespace QuanLyHoSo.Infrastructure.Data
             CreateSchema(connection);
             SeedUsers(connection);
             SeedAreas(connection);
+            EnsureStandardOrganizationAreas(connection);
             SeedCatalogs(connection);
             SeedRecords(connection);
             NormalizeFutureRecordDates(connection);
@@ -84,7 +85,7 @@ namespace QuanLyHoSo.Infrastructure.Data
             using var reader = command.ExecuteReader();
             while (reader.Read())
             {
-                result.Add($"{reader.GetString(0)} {reader.GetString(1)}");
+                result.Add(FormatAreaDisplayName(reader.GetString(0), reader.GetString(1)));
             }
 
             return result;
@@ -1356,11 +1357,7 @@ WHERE Id = $recordId;";
                 command.Parameters.AddWithValue("$status", status);
             }
 
-            if (!string.IsNullOrWhiteSpace(areaName) && areaName != "Tất cả")
-            {
-                conditions.Add("AreaName = $areaName");
-                command.Parameters.AddWithValue("$areaName", areaName);
-            }
+            AddOptionalAreaFilter(command, conditions, areaName);
 
             if (!string.IsNullOrWhiteSpace(priorityLevel) && priorityLevel != "Tất cả")
             {
@@ -1436,11 +1433,7 @@ LIMIT $take OFFSET $skip;";
                 command.Parameters.AddWithValue("$status", status);
             }
 
-            if (!string.IsNullOrWhiteSpace(areaName) && areaName != "Tất cả")
-            {
-                conditions.Add("AreaName = $areaName");
-                command.Parameters.AddWithValue("$areaName", areaName);
-            }
+            AddOptionalAreaFilter(command, conditions, areaName);
 
             if (!string.IsNullOrWhiteSpace(priorityLevel) && priorityLevel != "Tất cả")
             {
@@ -1843,6 +1836,35 @@ VALUES ($userName, $displayName, $role, $passwordHash, 1, $now, $now);";
                 command.Parameters.AddWithValue("$type", areas[i].Type);
                 command.Parameters.AddWithValue("$displayOrder", i + 1);
                 command.Parameters.AddWithValue("$isArranged", areas[i].IsArranged ? 1 : 0);
+                command.ExecuteNonQuery();
+            }
+
+            transaction.Commit();
+        }
+
+        private static void EnsureStandardOrganizationAreas(SqliteConnection connection)
+        {
+            var standardAreas = AreaSelectionOptions.GetStandardOrganizationAreas();
+            using var transaction = connection.BeginTransaction();
+            foreach (var area in standardAreas)
+            {
+                if (AreaExists(connection, transaction, area.AreaType, area.Name))
+                {
+                    continue;
+                }
+
+                using var command = connection.CreateCommand();
+                command.Transaction = transaction;
+                command.CommandText = @"
+INSERT INTO Areas (Name, AreaType, DisplayOrder, IsArranged)
+VALUES (
+    $name,
+    $type,
+    COALESCE((SELECT MAX(DisplayOrder) + 1 FROM Areas), 1),
+    1
+);";
+                command.Parameters.AddWithValue("$name", area.Name);
+                command.Parameters.AddWithValue("$type", area.AreaType);
                 command.ExecuteNonQuery();
             }
 
@@ -2305,7 +2327,7 @@ WHERE RecordId = $recordId
             using var reader = command.ExecuteReader();
             while (reader.Read())
             {
-                result.Add($"{reader.GetString(0)} {reader.GetString(1)}");
+                result.Add(FormatAreaDisplayName(reader.GetString(0), reader.GetString(1)));
             }
 
             return result;
@@ -2606,7 +2628,7 @@ WHERE RecordCode LIKE $prefixLike;";
             AddOptionalExportFilter(command, conditions, "Status", "$status", status);
             AddOptionalExportFilter(command, conditions, "CaseType", "$caseType", caseType);
             AddOptionalExportFilter(command, conditions, "Field", "$field", field);
-            AddOptionalExportFilter(command, conditions, "AreaName", "$areaName", areaName);
+            AddOptionalAreaFilter(command, conditions, areaName);
             AddOptionalExportFilter(command, conditions, "ProcessorName", "$processorName", processorName);
             if (applyUserScope)
             {
@@ -2701,6 +2723,51 @@ WHERE RecordCode LIKE $prefixLike;";
 
             conditions.Add($"{columnName} = {parameterName}");
             command.Parameters.AddWithValue(parameterName, value);
+        }
+
+        private static void AddOptionalAreaFilter(SqliteCommand command, List<string> conditions, string areaName)
+        {
+            if (string.IsNullOrWhiteSpace(areaName) || areaName == "Tất cả")
+            {
+                return;
+            }
+
+            if (!AreaSelectionOptions.IsGroupFilter(areaName))
+            {
+                conditions.Add("AreaName = $areaName");
+                command.Parameters.AddWithValue("$areaName", areaName);
+                return;
+            }
+
+            conditions.Add(@"
+AreaName IN (
+    SELECT CASE
+        WHEN AreaType IN ('Xã', 'Phường', 'Đặc khu') THEN AreaType || ' ' || Name
+        ELSE Name
+    END
+    FROM Areas
+    WHERE
+        ($areaGroup = 'Cấp xã' AND AreaType IN ('Xã', 'Phường', 'Đặc khu'))
+        OR AreaType = $areaGroup
+)");
+            command.Parameters.AddWithValue("$areaGroup", areaName);
+        }
+
+        private static bool AreaExists(SqliteConnection connection, SqliteTransaction transaction, string areaType, string name)
+        {
+            using var command = connection.CreateCommand();
+            command.Transaction = transaction;
+            command.CommandText = "SELECT COUNT(*) FROM Areas WHERE AreaType = $type AND Name = $name;";
+            command.Parameters.AddWithValue("$type", areaType);
+            command.Parameters.AddWithValue("$name", name);
+            return Convert.ToInt32(command.ExecuteScalar(), CultureInfo.InvariantCulture) > 0;
+        }
+
+        private static string FormatAreaDisplayName(string areaType, string name)
+        {
+            return areaType == "Xã" || areaType == "Phường" || areaType == "Đặc khu"
+                ? $"{areaType} {name}"
+                : name;
         }
 
         private static string BuildExportOrderBy(string sortOption)

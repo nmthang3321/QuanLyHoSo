@@ -1,7 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Input;
 using System.Windows.Media;
+using QuanLyHoSo.Models;
 using Microsoft.Win32;
 using QuanLyHoSo.ViewModels;
 
@@ -19,17 +19,28 @@ namespace QuanLyHoSo.Views.Records
             InitializeComponent();
         }
 
-        private void AreaComboBox_KeyUp(object sender, KeyEventArgs e)
+        private void AreaDropDownButton_Click(object sender, RoutedEventArgs e)
         {
-            if (e.Key == Key.Enter || e.Key == Key.Escape || e.Key == Key.Tab)
+            AreaContextMenu.PlacementTarget = AreaDropDownButton;
+            AreaContextMenu.IsOpen = true;
+            e.Handled = true;
+        }
+
+        private void AreaOptionMenuItem_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is not MenuItem menuItem ||
+                menuItem.DataContext is not AreaSelectionOption option ||
+                option.IsGroup ||
+                string.IsNullOrWhiteSpace(option.FilterValue) ||
+                DataContext is not RecordInputViewModel viewModel)
             {
                 return;
             }
 
-            if (sender is ComboBox comboBox && comboBox.IsKeyboardFocusWithin)
-            {
-                comboBox.IsDropDownOpen = true;
-            }
+            viewModel.AreaName = option.FilterValue;
+            viewModel.AreaSearchText = option.DisplayName;
+            AreaContextMenu.IsOpen = false;
+            e.Handled = true;
         }
 
         private void ChooseAttachmentFilesButton_Click(object sender, RoutedEventArgs e)

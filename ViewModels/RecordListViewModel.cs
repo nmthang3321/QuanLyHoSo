@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Globalization;
 using System.IO;
 using System.IO.Compression;
@@ -8,6 +9,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Data;
 using System.Windows.Input;
 using System.Xml;
 using Microsoft.Win32;
@@ -30,6 +32,7 @@ namespace QuanLyHoSo.ViewModels
         private readonly RelayCommand _nextPageCommand;
         private readonly RelayCommand _previousPageCommand;
         private readonly RelayCommand _refreshCommand;
+        private string _areaSearchText;
         private DateTime? _fromDate;
         private string _searchText;
         private string _selectedArea;
@@ -70,7 +73,8 @@ namespace QuanLyHoSo.ViewModels
             };
             CaseTypes = new ObservableCollection<string>(_dataService.GetCatalogValues("CaseType", includeAll: true));
             Fields = new ObservableCollection<string>(_dataService.GetCatalogValues("Field", includeAll: true));
-            Areas = new ObservableCollection<string>(_dataService.GetAreaNames(includeAll: true));
+            Areas = AreaSelectionOptions.Build(_dataService.GetAreaNames(includeAll: true), includeGroupRows: true, groupRowsSelectable: true);
+            FilteredAreas = AreaSelectionOptions.Filter(Areas, null);
             Processors = new ObservableCollection<string>(_dataService.GetProcessorNames(includeAll: true));
             SortOptions = new ObservableCollection<string> { "Ngày tiếp nhận mới nhất trước", "Ngày tiếp nhận cũ nhất trước", "Trạng thái", "Địa bàn" };
 
@@ -89,7 +93,8 @@ namespace QuanLyHoSo.ViewModels
         public ObservableCollection<string> Statuses { get; }
         public ObservableCollection<string> CaseTypes { get; }
         public ObservableCollection<string> Fields { get; }
-        public ObservableCollection<string> Areas { get; }
+        public ObservableCollection<AreaSelectionOption> Areas { get; }
+        public ObservableCollection<AreaSelectionOption> FilteredAreas { get; }
         public ObservableCollection<string> Processors { get; }
         public ObservableCollection<string> SortOptions { get; }
         public ObservableCollection<RecordListRowViewModel> Records { get; }
@@ -141,7 +146,45 @@ namespace QuanLyHoSo.ViewModels
         public string SelectedArea
         {
             get => _selectedArea;
-            set => SetProperty(ref _selectedArea, value);
+            set
+            {
+                if (SetProperty(ref _selectedArea, value))
+                {
+                    var displayName = SelectedAreaDisplayName;
+                    if (!string.Equals(_areaSearchText, displayName, StringComparison.Ordinal))
+                    {
+                        _areaSearchText = displayName;
+                        OnPropertyChanged(nameof(AreaSearchText));
+                        ReplaceAreaOptions(FilteredAreas, AreaSelectionOptions.Filter(Areas, displayName));
+                    }
+
+                    OnPropertyChanged(nameof(SelectedAreaDisplayName));
+                }
+            }
+        }
+
+        public string SelectedAreaDisplayName => AreaSelectionOptions.GetDisplayName(Areas, SelectedArea);
+
+        public string AreaSearchText
+        {
+            get => _areaSearchText;
+            set
+            {
+                if (!SetProperty(ref _areaSearchText, value))
+                {
+                    return;
+                }
+
+                ReplaceAreaOptions(FilteredAreas, AreaSelectionOptions.Filter(Areas, value));
+
+                var exactMatch = AreaSelectionOptions.Flatten(Areas).FirstOrDefault(area => area.IsSelectable && string.Equals(area.DisplayName, value, StringComparison.CurrentCultureIgnoreCase));
+                if (exactMatch != null && !string.Equals(_selectedArea, exactMatch.FilterValue, StringComparison.Ordinal))
+                {
+                    _selectedArea = exactMatch.FilterValue;
+                    OnPropertyChanged(nameof(SelectedArea));
+                    OnPropertyChanged(nameof(SelectedAreaDisplayName));
+                }
+            }
         }
 
         public string SelectedProcessor
@@ -341,6 +384,7 @@ namespace QuanLyHoSo.ViewModels
             SelectedCaseType = GetFirstOrDefault(CaseTypes);
             SelectedField = GetFirstOrDefault(Fields);
             SelectedArea = GetFirstOrDefault(Areas);
+            AreaSearchText = SelectedAreaDisplayName;
             SelectedProcessor = GetFirstOrDefault(Processors);
             SearchText = string.Empty;
             SelectedSortOption = GetFirstOrDefault(SortOptions);
@@ -600,6 +644,62 @@ namespace QuanLyHoSo.ViewModels
         private static string GetFirstOrDefault(ObservableCollection<string> items)
         {
             return items.Count > 0 ? items[0] : null;
+        }
+
+        private static string GetFirstOrDefault(ObservableCollection<AreaSelectionOption> items)
+        {
+            return items.Count > 0 ? items[0].FilterValue : null;
+        }
+
+        private static void ReplaceAreaOptions(ObservableCollection<AreaSelectionOption> target, ObservableCollection<AreaSelectionOption> source)
+        {
+            target.Clear();
+            foreach (var item in source)
+            {
+                target.Add(item);
+            }
+        }
+
+        private bool FilterArea(object item)
+        {
+            if (!(item is AreaSelectionOption area))
+            {
+                return false;
+            }
+
+            if (string.IsNullOrWhiteSpace(AreaSearchText))
+            {
+                return true;
+            }
+
+            var search = NormalizeText(AreaSearchText);
+            return NormalizeText(area.DisplayName).Contains(search)
+                || NormalizeText(area.GroupName).Contains(search)
+                || area.Children.Any(child => NormalizeText(child.DisplayName).Contains(search));
+        }
+
+        private static string NormalizeText(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return string.Empty;
+            }
+
+            var normalized = value.ToLower(CultureInfo.CurrentCulture).Normalize(NormalizationForm.FormD);
+            var builder = new StringBuilder(normalized.Length);
+
+            foreach (var character in normalized)
+            {
+                if (CharUnicodeInfo.GetUnicodeCategory(character) != UnicodeCategory.NonSpacingMark)
+                {
+                    builder.Append(character);
+                }
+            }
+
+            return builder.ToString()
+                .Replace("Ä‘", "d")
+                .Replace("Ä", "d")
+                .Normalize(NormalizationForm.FormC);
         }
 
         private sealed class ExportColumn

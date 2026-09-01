@@ -27,9 +27,8 @@ namespace QuanLyHoSo.ViewModels
             _dataService = AppDataService.Instance;
 
             ReceiveSources = new ObservableCollection<string>(_dataService.GetCatalogValues("ReceiveSource"));
-            Areas = new ObservableCollection<string>(_dataService.GetAreaNames());
-            FilteredAreas = CollectionViewSource.GetDefaultView(Areas);
-            FilteredAreas.Filter = FilterArea;
+            Areas = AreaSelectionOptions.Build(_dataService.GetAreaNames(), includeGroupRows: true, groupRowsSelectable: false);
+            FilteredAreas = AreaSelectionOptions.Filter(Areas, null);
             CaseTypes = new ObservableCollection<string>(_dataService.GetCatalogValues("CaseType"));
             Fields = new ObservableCollection<string>(_dataService.GetCatalogValues("Field"));
             ContentGroups = new ObservableCollection<string>(_dataService.GetCatalogValues("ContentGroup"));
@@ -48,8 +47,8 @@ namespace QuanLyHoSo.ViewModels
         }
 
         public ObservableCollection<string> ReceiveSources { get; }
-        public ObservableCollection<string> Areas { get; }
-        public ICollectionView FilteredAreas { get; }
+        public ObservableCollection<AreaSelectionOption> Areas { get; }
+        public ObservableCollection<AreaSelectionOption> FilteredAreas { get; }
         public ObservableCollection<string> CaseTypes { get; }
         public ObservableCollection<string> Fields { get; }
         public ObservableCollection<string> ContentGroups { get; }
@@ -414,6 +413,7 @@ namespace QuanLyHoSo.ViewModels
             OnPropertyChanged(nameof(ContactAddress));
             OnPropertyChanged(nameof(AreaName));
             OnPropertyChanged(nameof(AreaSearchText));
+            OnPropertyChanged(nameof(AreaDisplayName));
             OnPropertyChanged(nameof(IncidentAddress));
             OnPropertyChanged(nameof(Content));
             OnPropertyChanged(nameof(CaseType));
@@ -457,12 +457,23 @@ namespace QuanLyHoSo.ViewModels
             get => _areaName;
             set
             {
-                if (SetProperty(ref _areaName, value) && !string.Equals(_areaSearchText, value, System.StringComparison.Ordinal))
+                if (!SetProperty(ref _areaName, value))
+                {
+                    return;
+                }
+
+                if (!string.Equals(_areaSearchText, value, System.StringComparison.Ordinal))
                 {
                     AreaSearchText = value;
                 }
+
+                OnPropertyChanged(nameof(AreaDisplayName));
             }
         }
+
+        public string AreaDisplayName => string.IsNullOrWhiteSpace(AreaName)
+            ? "Chọn địa bàn"
+            : AreaSelectionOptions.GetDisplayName(Areas, AreaName);
 
         private string _areaSearchText;
         public string AreaSearchText
@@ -475,20 +486,30 @@ namespace QuanLyHoSo.ViewModels
                     return;
                 }
 
-                FilteredAreas.Refresh();
+                ReplaceAreaOptions(FilteredAreas, AreaSelectionOptions.Filter(Areas, value));
 
-                var exactMatch = Areas.FirstOrDefault(area => string.Equals(area, value, System.StringComparison.CurrentCultureIgnoreCase));
-                if (exactMatch != null && !string.Equals(_areaName, exactMatch, System.StringComparison.Ordinal))
+                var exactMatch = AreaSelectionOptions.Flatten(Areas).FirstOrDefault(area => area.IsSelectable && string.Equals(area.DisplayName, value, System.StringComparison.CurrentCultureIgnoreCase));
+                if (exactMatch != null && !string.Equals(_areaName, exactMatch.FilterValue, System.StringComparison.Ordinal))
                 {
-                    _areaName = exactMatch;
+                    _areaName = exactMatch.FilterValue;
                     OnPropertyChanged(nameof(AreaName));
+                    OnPropertyChanged(nameof(AreaDisplayName));
                 }
+            }
+        }
+
+        private static void ReplaceAreaOptions(ObservableCollection<AreaSelectionOption> target, ObservableCollection<AreaSelectionOption> source)
+        {
+            target.Clear();
+            foreach (var item in source)
+            {
+                target.Add(item);
             }
         }
 
         private bool FilterArea(object item)
         {
-            if (!(item is string area))
+            if (!(item is AreaSelectionOption area))
             {
                 return false;
             }
@@ -498,7 +519,9 @@ namespace QuanLyHoSo.ViewModels
                 return true;
             }
 
-            return NormalizeText(area).Contains(NormalizeText(AreaSearchText));
+            return NormalizeText(area.DisplayName).Contains(NormalizeText(AreaSearchText))
+                || NormalizeText(area.GroupName).Contains(NormalizeText(AreaSearchText))
+                || area.Children.Any(child => NormalizeText(child.DisplayName).Contains(NormalizeText(AreaSearchText)));
         }
 
         private static string NormalizeText(string value)
