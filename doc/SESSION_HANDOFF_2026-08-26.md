@@ -32,7 +32,7 @@ Warning `NETSDK1138` ve `.NET 5.0-windows` het support la warning cu. Build OK n
 Lan verify gan nhat cho thay doi dia ban:
 
 ```powershell
-dotnet build QuanLyHoSo.csproj -o .verify-build-commit-area-menu
+dotnet build QuanLyHoSo.csproj -o .verify-build-area-root-overlay-final
 ```
 
 Ket qua: build OK, 0 error, chi con warning `NETSDK1138`.
@@ -151,7 +151,7 @@ Client mode hien chua cho vao trang nhap/sua ho so de tranh mo SQLite; can noi A
 
 ### Dia ban hierarchical menu
 
-Yeu cau moi nhat cua user: giu giao dien dropdown/menu nhu ban da OK, khong lam search/filter bang go text nua, bo tooltip. Khi click vao hang item thi chon duoc ca hang, khong can click dung chu.
+Yeu cau moi nhat cua user: input dia ban can co search/filter bang go text va van giu hierarchy theo group. Khong dung `Popup`/`ContextMenu` cho o search vi bo go tieng Viet/IME co the hien edit box o goc trai man hinh.
 
 File chinh:
 - `Models\AreaSelectionModels.cs`
@@ -172,10 +172,10 @@ Nhom dia ban theo thu tu tu cap nho den cap lon:
 - `Don vi trong nganh ngoai tinh`: 1 option cung ten.
 
 Behavior hien tai:
-- Trang nhap lieu: button mo `ContextMenu`; group chi la menu cha, chi chon item con. Chon item set `AreaName = option.FilterValue`.
+- Trang nhap lieu: button mo panel inline tren root overlay `AreaOverlayCanvas`, khong phai popup, khong lam gian layout doc va khong bi card/section khac cat. Code-behind tinh vi tri theo `AreaDropDownButton` bang `TransformToVisual(AreaOverlayCanvas)`; khong dung `TransformToAncestor` vi canvas la sibling, se crash. Panel co textbox search, group header bung/thu bang click; khi dang search thi group tu bung va chi hien item khop. Chon item set `AreaName = option.FilterValue`.
 - Trang danh sach ho so: button mo `ContextMenu`; co the chon `Tat ca`, group, hoac item con. Group filter xu ly bang SQL theo `AreaType`/tap `AreaName`.
 - Da bo tooltip khoi menu item.
-- Khong dung search textbox/filter UI nua. Trong ViewModel van con mot so helper cu tu lan thu search (`FilteredAreas`, `AreaSearchText`, `AreaSelectionOptions.Filter/Flatten`) nhung UI hien tai khong bind de loc; co the don sau neu muon.
+- Trang nhap lieu dang dung `FilteredAreas`, `AreaSearchText`, `AreaSelectionOptions.Filter/Flatten` de search. Trang danh sach ho so hien van dung menu chon, chua co search.
 - `AppDataService.Initialize()` goi `EnsureStandardOrganizationAreas(connection)` de dam bao cac don vi cap tinh/bo/cong an tinh/ngoai tinh co trong bang `Areas`.
 - `GetAreaNames()` format xa/phuong/dac khu thanh `"AreaType Name"`; cac don vi to chuc tra ve `Name` de khong hien tien to thua.
 - Cac filter record/export/processing queue dung `AddOptionalAreaFilter()`; manual save/update `AreaName = $areaName` khong doi.
