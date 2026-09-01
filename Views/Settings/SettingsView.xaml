@@ -483,6 +483,28 @@
                     </Grid>
 
                     <StackPanel Grid.Row="1" Margin="0,18,0,0">
+                        <TextBlock Text="Chế độ dữ liệu" Style="{StaticResource SettingsLabel}" Margin="0,0,0,6" />
+                        <Grid Margin="0,0,0,14">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="180" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <ComboBox ItemsSource="{Binding DataAccessModes}"
+                                      SelectedItem="{Binding SelectedDataAccessMode, Mode=TwoWay}" />
+                            <TextBlock Grid.Column="1"
+                                       Text="{Binding DataAccessModeText}"
+                                       Foreground="{StaticResource PrimaryBrush}"
+                                       FontWeight="SemiBold"
+                                       VerticalAlignment="Center"
+                                       Margin="12,0,0,0" />
+                        </Grid>
+
+                        <TextBlock Text="Tên máy admin" Style="{StaticResource SettingsLabel}" Margin="0,0,0,6" />
+                        <TextBox Text="{Binding AdminMachineNameText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,14" />
+
+                        <TextBlock Text="URL máy admin" Style="{StaticResource SettingsLabel}" Margin="0,0,0,6" />
+                        <TextBox Text="{Binding AdminServerUrlText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,14" />
+
                         <TextBlock Text="Đường dẫn cơ sở dữ liệu" Style="{StaticResource SettingsLabel}" Margin="0,0,0,6" />
                         <Grid Margin="0,0,0,14">
                             <Grid.ColumnDefinitions>
@@ -681,6 +703,8 @@
                                   SelectedItem="{Binding SelectedUser, Mode=TwoWay}"
                                   Height="360"
                                   IsReadOnly="True"
+                                  SelectionMode="Single"
+                                  SelectionUnit="FullRow"
                                   CanUserSortColumns="False"
                                   CanUserResizeRows="False"
                                   Margin="0,0,14,0">
@@ -689,6 +713,28 @@
                                 <DataGridTextColumn Header="Họ tên" Binding="{Binding DisplayName}" Width="*" MinWidth="160" />
                                 <DataGridTextColumn Header="Vai trò" Binding="{Binding RoleText}" Width="100" />
                                 <DataGridCheckBoxColumn Header="Hoạt động" Binding="{Binding IsActive}" Width="82" />
+                                <DataGridTemplateColumn Header="Thao tác" Width="86">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                                <Button Style="{StaticResource PopupIconButton}"
+                                                        Foreground="{StaticResource PrimaryBrush}"
+                                                        Command="{Binding DataContext.EditUserCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                        CommandParameter="{Binding}"
+                                                        ToolTip="Sửa">
+                                                    <TextBlock Text="&#xE70F;" FontFamily="Segoe MDL2 Assets" />
+                                                </Button>
+                                                <Button Style="{StaticResource PopupIconButton}"
+                                                        Foreground="#E11414"
+                                                        Command="{Binding DataContext.DeleteUserCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                        CommandParameter="{Binding}"
+                                                        ToolTip="Khóa">
+                                                    <TextBlock Text="&#xE74D;" FontFamily="Segoe MDL2 Assets" />
+                                                </Button>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
                             </DataGrid.Columns>
                         </DataGrid>
 
@@ -714,7 +760,11 @@
                                     <TextBlock Text="{Binding UserSubmitButtonText}" Foreground="White" />
                                 </Button>
                                 <Button Content="Tạo mới" Style="{StaticResource SecondaryButton}" Command="{Binding NewUserCommand}" HorizontalAlignment="Stretch" Margin="0,0,0,10" />
-                                <Button Content="Khóa tài khoản" Style="{StaticResource DangerButton}" Command="{Binding DeleteUserCommand}" HorizontalAlignment="Stretch" />
+                                <Button Content="Khóa tài khoản"
+                                        Style="{StaticResource DangerButton}"
+                                        Command="{Binding DeleteUserCommand}"
+                                        CommandParameter="{Binding SelectedUser}"
+                                        HorizontalAlignment="Stretch" />
                             </StackPanel>
                         </Border>
                     </Grid>

@@ -1,8 +1,11 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Windows;
 using System.Windows.Input;
+using QuanLyHoSo.Infrastructure.Configuration;
 using QuanLyHoSo.Infrastructure.Data;
 using QuanLyHoSo.Infrastructure.Logging;
+using QuanLyHoSo.Infrastructure.Network;
 using QuanLyHoSo.Infrastructure.Security;
 using QuanLyHoSo.Models;
 
@@ -23,8 +26,16 @@ namespace QuanLyHoSo.ViewModels
         public ShellViewModel()
         {
             var stopwatch = Stopwatch.StartNew();
-            AppDataService.Instance.Initialize();
-            LogElapsed("InitializeDatabase", stopwatch);
+            try
+            {
+                AppDataService.Instance.Initialize();
+                LogElapsed("InitializeDatabase", stopwatch);
+            }
+            catch (LanServerUnavailableException ex)
+            {
+                AppLogger.Error("Shell", "InitializeDatabase", ex, "Cannot connect to admin LAN server.");
+                MessageBox.Show(ex.Message, "Không kết nối được máy server", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
 
             NavigationItems = new ObservableCollection<NavigationItem>
             {
@@ -118,7 +129,7 @@ namespace QuanLyHoSo.ViewModels
 
         private void EditRecordFromList(string recordCode)
         {
-            if (!AuthContext.CanWrite)
+            if (!AuthContext.CanWrite || AppPathSettings.Current.IsClientMode)
             {
                 return;
             }
@@ -138,7 +149,7 @@ namespace QuanLyHoSo.ViewModels
         private RecordInputViewModel RecordInputViewModel => _recordInputViewModel ??= new RecordInputViewModel();
 
         private RecordListViewModel RecordListViewModel => _recordListViewModel ??= new RecordListViewModel(
-            () => NavigateTo("Input"),
+            () => NavigateTo(AppPathSettings.Current.IsClientMode ? "Dashboard" : "Input"),
             EditRecordFromList,
             ClassifyRecordFromList);
 
@@ -155,7 +166,7 @@ namespace QuanLyHoSo.ViewModels
             OnPropertyChanged(nameof(CurrentUserDisplayName));
             OnPropertyChanged(nameof(CurrentUserRoleText));
             RaiseNavigationCommandStates();
-            NavigateTo("Dashboard");
+            NavigateTo(AuthContext.IsOfficer ? "RecordList" : "Dashboard");
         }
 
         private void SignOut()
@@ -181,6 +192,11 @@ namespace QuanLyHoSo.ViewModels
             if (key == "Settings")
             {
                 return AuthContext.IsAdmin;
+            }
+
+            if (key == "Input" && AppPathSettings.Current.IsClientMode)
+            {
+                return false;
             }
 
             return key != "Input" || AuthContext.CanWrite;

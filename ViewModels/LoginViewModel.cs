@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Input;
 using QuanLyHoSo.Infrastructure.Data;
 using QuanLyHoSo.Infrastructure.Logging;
+using QuanLyHoSo.Infrastructure.Network;
 using QuanLyHoSo.Models;
 
 namespace QuanLyHoSo.ViewModels
@@ -64,7 +65,9 @@ namespace QuanLyHoSo.ViewModels
             catch (Exception ex)
             {
                 AppLogger.Error("Auth", "SignIn", ex, "Failed to sign in.");
-                ErrorMessage = "Không thể đăng nhập. Vui lòng thử lại.";
+                ErrorMessage = ex is LanServerUnavailableException
+                    ? "Không kết nối được máy server/admin."
+                    : "Không thể đăng nhập. Vui lòng thử lại.";
                 MessageBox.Show(ex.Message, "Lỗi đăng nhập", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }

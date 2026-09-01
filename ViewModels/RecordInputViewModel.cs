@@ -9,6 +9,7 @@ using System.Text;
 using System.Windows;
 using System.Windows.Data;
 using System.Windows.Input;
+using QuanLyHoSo.Infrastructure.Configuration;
 using QuanLyHoSo.Infrastructure.Data;
 using QuanLyHoSo.Infrastructure.Logging;
 using QuanLyHoSo.Infrastructure.Security;
@@ -62,7 +63,7 @@ namespace QuanLyHoSo.ViewModels
         public ICommand DeleteCommand { get; }
         public ICommand RemoveAttachmentCommand { get; }
         public ICommand OpenAttachmentCommand { get; }
-        public bool CanWrite => AuthContext.CanWrite;
+        public bool CanWrite => AuthContext.CanWrite && !AppPathSettings.Current.IsClientMode;
 
         public string RecordCode { get; set; }
         public string ReceiveSource { get; set; }

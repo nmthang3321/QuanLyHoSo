@@ -7,6 +7,7 @@ using System.Linq;
 using Microsoft.Data.Sqlite;
 using QuanLyHoSo.Infrastructure.Configuration;
 using QuanLyHoSo.Infrastructure.Logging;
+using QuanLyHoSo.Infrastructure.Network;
 using QuanLyHoSo.Infrastructure.Security;
 using QuanLyHoSo.Models;
 
@@ -18,12 +19,21 @@ namespace QuanLyHoSo.Infrastructure.Data
         private const int RecordCodeSequenceWidth = 6;
         private static readonly Lazy<AppDataService> LazyInstance = new Lazy<AppDataService>(() => new AppDataService());
         private readonly string _connectionString;
+        private readonly LanDataClient _lanClient;
+        private readonly LanDataServer _lanServer;
 
         private AppDataService()
         {
             DatabasePath = AppPathSettings.Current.DatabasePath;
+            if (AppPathSettings.Current.IsClientMode)
+            {
+                _lanClient = new LanDataClient();
+                return;
+            }
+
             Directory.CreateDirectory(Path.GetDirectoryName(DatabasePath));
             _connectionString = new SqliteConnectionStringBuilder { DataSource = DatabasePath }.ToString();
+            _lanServer = new LanDataServer(this);
         }
 
         public static AppDataService Instance => LazyInstance.Value;
@@ -33,7 +43,16 @@ namespace QuanLyHoSo.Infrastructure.Data
         public void Initialize()
         {
             var stopwatch = Stopwatch.StartNew();
+            if (AppPathSettings.Current.IsClientMode)
+            {
+                AppLogger.Info("Database", "Initialize", $"Client mode enabled. Using admin server {AppPathSettings.Current.AdminServerUrl}.");
+                _lanClient.Ping();
+                LogElapsed("Database", "InitializeClient", stopwatch);
+                return;
+            }
+
             AppLogger.Info("Database", "Initialize", $"Initializing database at {DatabasePath}.");
+
             using var connection = OpenConnection();
             CreateSchema(connection);
             SeedUsers(connection);
@@ -42,11 +61,17 @@ namespace QuanLyHoSo.Infrastructure.Data
             SeedRecords(connection);
             NormalizeFutureRecordDates(connection);
             SyncProcessorCatalogFromRecords(connection);
+            _lanServer.Start();
             LogElapsed("Database", "Initialize", stopwatch);
         }
 
         public IReadOnlyList<string> GetAreaNames(bool includeAll = false)
         {
+            if (AppPathSettings.Current.IsClientMode)
+            {
+                return _lanClient.Call<IReadOnlyList<string>>("catalog/areas", new IncludeAllRequest { IncludeAll = includeAll });
+            }
+
             var result = new List<string>();
             if (includeAll)
             {
@@ -67,6 +92,11 @@ namespace QuanLyHoSo.Infrastructure.Data
 
         public IReadOnlyList<string> GetCatalogValues(string catalogType, bool includeAll = false)
         {
+            if (AppPathSettings.Current.IsClientMode)
+            {
+                return _lanClient.Call<IReadOnlyList<string>>("catalog/values", new CatalogValuesRequest { CatalogType = catalogType, IncludeAll = includeAll });
+            }
+
             var result = new List<string>();
             if (includeAll)
             {
@@ -180,6 +210,11 @@ LIMIT $take;";
 
         public AppUser AuthenticateUser(string userName, string password)
         {
+            if (AppPathSettings.Current.IsClientMode)
+            {
+                return _lanClient.Call<AppUser>("auth/login", new LoginRequest { UserName = userName, Password = password });
+            }
+
             if (string.IsNullOrWhiteSpace(userName))
             {
                 return null;
@@ -426,6 +461,11 @@ SELECT last_insert_rowid();";
 
         public IReadOnlyList<string> GetProcessorNames(bool includeAll = false)
         {
+            if (AppPathSettings.Current.IsClientMode)
+            {
+                return _lanClient.Call<IReadOnlyList<string>>("catalog/processors", new IncludeAllRequest { IncludeAll = includeAll });
+            }
+
             var result = new List<string>();
             if (includeAll)
             {
@@ -462,6 +502,11 @@ ORDER BY Name;";
 
         public string GetNextRecordCode()
         {
+            if (AppPathSettings.Current.IsClientMode)
+            {
+                return string.Empty;
+            }
+
             using var connection = OpenConnection();
             return GenerateNextRecordCode(connection, null, DateTime.Today.Year);
         }
@@ -533,6 +578,17 @@ LIMIT 1;";
             DateTime? previousFromDate = null,
             DateTime? previousToDate = null)
         {
+            if (AppPathSettings.Current.IsClientMode)
+            {
+                return _lanClient.Call<IReadOnlyList<DashboardMetric>>("dashboard/metrics", new DashboardMetricsRequest
+                {
+                    FromDate = fromDate,
+                    ToDate = toDate,
+                    PreviousFromDate = previousFromDate,
+                    PreviousToDate = previousToDate
+                });
+            }
+
             using var connection = OpenConnection();
             var culture = CultureInfo.GetCultureInfo("vi-VN");
             var total = CountRecords(connection, fromDate, toDate);
@@ -555,6 +611,11 @@ LIMIT 1;";
 
         public IReadOnlyList<StatusStat> GetStatusStats(DateTime? fromDate = null, DateTime? toDate = null)
         {
+            if (AppPathSettings.Current.IsClientMode)
+            {
+                return _lanClient.Call<IReadOnlyList<StatusStat>>("dashboard/status", new DateRangeRequest { FromDate = fromDate, ToDate = toDate });
+            }
+
             using var connection = OpenConnection();
             var total = Math.Max(CountRecords(connection, fromDate, toDate), 1);
             var result = new List<StatusStat>();
@@ -614,6 +675,11 @@ ORDER BY COUNT(*) DESC, Status;";
 
         public IReadOnlyList<AreaStat> GetTopAreas(int take = 5, DateTime? fromDate = null, DateTime? toDate = null)
         {
+            if (AppPathSettings.Current.IsClientMode)
+            {
+                return _lanClient.Call<IReadOnlyList<AreaStat>>("dashboard/areas", new TopAreasRequest { Take = take, FromDate = fromDate, ToDate = toDate });
+            }
+
             using var connection = OpenConnection();
             var rows = new List<(string AreaName, int Count)>();
             using var command = connection.CreateCommand();
@@ -650,6 +716,11 @@ LIMIT $take;";
 
         public IReadOnlyList<TrendStat> GetReceivedTrendStats(DateTime? fromDate = null, DateTime? toDate = null)
         {
+            if (AppPathSettings.Current.IsClientMode)
+            {
+                return _lanClient.Call<IReadOnlyList<TrendStat>>("dashboard/trend", new DateRangeRequest { FromDate = fromDate, ToDate = toDate });
+            }
+
             using var connection = OpenConnection();
             var records = new List<(DateTime ReceivedDate, bool IsResolved)>();
             using var command = connection.CreateCommand();
@@ -683,6 +754,11 @@ ORDER BY ReceivedDate;";
 
         public IReadOnlyList<RecentRecord> GetRecentRecords(int take = 8, DateTime? fromDate = null, DateTime? toDate = null, int skip = 0)
         {
+            if (AppPathSettings.Current.IsClientMode)
+            {
+                return _lanClient.Call<IReadOnlyList<RecentRecord>>("dashboard/recent", new RecentRecordsRequest { Take = take, FromDate = fromDate, ToDate = toDate, Skip = skip });
+            }
+
             using var connection = OpenConnection();
             var result = new List<RecentRecord>();
             using var command = connection.CreateCommand();
@@ -726,6 +802,24 @@ LIMIT $take OFFSET $skip;";
             int take = 20,
             int skip = 0)
         {
+            if (AppPathSettings.Current.IsClientMode)
+            {
+                return _lanClient.Call<IReadOnlyList<RecentRecord>>("records/list", new FilteredRecordsRequest
+                {
+                    FromDate = fromDate,
+                    ToDate = toDate,
+                    Status = status,
+                    CaseType = caseType,
+                    Field = field,
+                    AreaName = areaName,
+                    ProcessorName = processorName,
+                    SearchText = searchText,
+                    SortOption = sortOption,
+                    Take = take,
+                    Skip = skip
+                });
+            }
+
             using var connection = OpenConnection();
             var result = new List<RecentRecord>();
             using var command = connection.CreateCommand();
@@ -772,6 +866,11 @@ LIMIT 1;";
 
         public RecordFormDraft GetRecordForm(string recordCode)
         {
+            if (AppPathSettings.Current.IsClientMode)
+            {
+                return _lanClient.Call<RecordFormDraft>("records/detail", new RecordCodeRequest { RecordCode = recordCode });
+            }
+
             if (string.IsNullOrWhiteSpace(recordCode))
             {
                 return new RecordFormDraft();
@@ -795,6 +894,11 @@ LIMIT 1;";
 
         public string SaveRecordForm(RecordFormDraft record, string originalRecordCode = null)
         {
+            if (AppPathSettings.Current.IsClientMode)
+            {
+                throw new InvalidOperationException("Chế độ máy trạm chưa hỗ trợ nhập mới hồ sơ qua máy admin trong bản thử LAN này.");
+            }
+
             EnsureCanWriteRecords();
             if (record == null)
             {
@@ -880,6 +984,11 @@ SELECT last_insert_rowid();";
 
         public bool DeleteRecord(string recordCode)
         {
+            if (AppPathSettings.Current.IsClientMode)
+            {
+                return _lanClient.Call<bool>("records/delete", new RecordCodeRequest { RecordCode = recordCode });
+            }
+
             EnsureCanWriteRecords();
             if (string.IsNullOrWhiteSpace(recordCode))
             {
@@ -1036,6 +1145,11 @@ SELECT last_insert_rowid();";
 
         public ProcessingRecordDetail GetProcessingRecordDetail(string recordCode = null)
         {
+            if (AppPathSettings.Current.IsClientMode)
+            {
+                return _lanClient.Call<ProcessingRecordDetail>("processing/detail", new RecordCodeRequest { RecordCode = recordCode });
+            }
+
             using var connection = OpenConnection();
             using var command = connection.CreateCommand();
             var conditions = new List<string>
@@ -1085,6 +1199,20 @@ LIMIT 1;";
 
         public void UpdateProcessingRecord(string recordCode, string status, DateTime processedAt, string processorName, string content, string note)
         {
+            if (AppPathSettings.Current.IsClientMode)
+            {
+                _lanClient.Call<bool>("processing/update", new UpdateProcessingRequest
+                {
+                    RecordCode = recordCode,
+                    Status = status,
+                    ProcessedAt = processedAt,
+                    ProcessorName = processorName,
+                    Content = content,
+                    Note = note
+                });
+                return;
+            }
+
             EnsureCanWriteRecords();
             if (string.IsNullOrWhiteSpace(recordCode))
             {
@@ -1176,6 +1304,11 @@ WHERE Id = $recordId;";
 
         public IReadOnlyList<DashboardMetric> GetProcessingQueueMetrics()
         {
+            if (AppPathSettings.Current.IsClientMode)
+            {
+                return _lanClient.Call<IReadOnlyList<DashboardMetric>>("processing/metrics", new { });
+            }
+
             using var connection = OpenConnection();
             return BuildProcessingQueueMetrics(connection);
         }
@@ -1189,6 +1322,20 @@ WHERE Id = $recordId;";
             int skip = 0,
             int take = 20)
         {
+            if (AppPathSettings.Current.IsClientMode)
+            {
+                return _lanClient.Call<IReadOnlyList<ProcessingQueueRecord>>("processing/list", new ProcessingQueueRequest
+                {
+                    SearchText = searchText,
+                    Status = status,
+                    AreaName = areaName,
+                    PriorityLevel = priorityLevel,
+                    CardFilterKey = cardFilterKey,
+                    Skip = skip,
+                    Take = take
+                });
+            }
+
             var stopwatch = Stopwatch.StartNew();
             using var connection = OpenConnection();
             var result = new List<ProcessingQueueRecord>();
@@ -1259,6 +1406,18 @@ LIMIT $take OFFSET $skip;";
             string priorityLevel = null,
             string cardFilterKey = null)
         {
+            if (AppPathSettings.Current.IsClientMode)
+            {
+                return _lanClient.Call<int>("processing/count", new ProcessingQueueRequest
+                {
+                    SearchText = searchText,
+                    Status = status,
+                    AreaName = areaName,
+                    PriorityLevel = priorityLevel,
+                    CardFilterKey = cardFilterKey
+                });
+            }
+
             using var connection = OpenConnection();
             using var command = connection.CreateCommand();
             var conditions = new List<string> { "Status <> 'Đã giải quyết'" };
@@ -1305,6 +1464,23 @@ LIMIT $take OFFSET $skip;";
             string sortOption = null,
             int take = 50)
         {
+            if (AppPathSettings.Current.IsClientMode)
+            {
+                return _lanClient.Call<IReadOnlyList<ExportRecordPreview>>("records/export-preview", new FilteredRecordsRequest
+                {
+                    FromDate = fromDate,
+                    ToDate = toDate,
+                    Status = status,
+                    CaseType = caseType,
+                    Field = field,
+                    AreaName = areaName,
+                    ProcessorName = processorName,
+                    SearchText = searchText,
+                    SortOption = sortOption,
+                    Take = take
+                });
+            }
+
             var stopwatch = Stopwatch.StartNew();
             using var connection = OpenConnection();
             var result = new List<ExportRecordPreview>();
@@ -1349,6 +1525,21 @@ LIMIT $take;";
             string processorName = null,
             string searchText = null)
         {
+            if (AppPathSettings.Current.IsClientMode)
+            {
+                return _lanClient.Call<int>("records/export-count", new FilteredRecordsRequest
+                {
+                    FromDate = fromDate,
+                    ToDate = toDate,
+                    Status = status,
+                    CaseType = caseType,
+                    Field = field,
+                    AreaName = areaName,
+                    ProcessorName = processorName,
+                    SearchText = searchText
+                });
+            }
+
             var stopwatch = Stopwatch.StartNew();
             using var connection = OpenConnection();
             using var command = connection.CreateCommand();
@@ -1369,6 +1560,21 @@ LIMIT $take;";
             string processorName = null,
             string searchText = null)
         {
+            if (AppPathSettings.Current.IsClientMode)
+            {
+                return _lanClient.Call<int>("records/count", new FilteredRecordsRequest
+                {
+                    FromDate = fromDate,
+                    ToDate = toDate,
+                    Status = status,
+                    CaseType = caseType,
+                    Field = field,
+                    AreaName = areaName,
+                    ProcessorName = processorName,
+                    SearchText = searchText
+                });
+            }
+
             using var connection = OpenConnection();
             using var command = connection.CreateCommand();
             var whereClause = BuildExportWhere(command, fromDate, toDate, status, caseType, field, areaName, processorName, searchText, applyUserScope: true);
@@ -1378,6 +1584,11 @@ LIMIT $take;";
 
         public int CountRecords(DateTime? fromDate = null, DateTime? toDate = null)
         {
+            if (AppPathSettings.Current.IsClientMode)
+            {
+                return _lanClient.Call<int>("records/total", new DateRangeRequest { FromDate = fromDate, ToDate = toDate });
+            }
+
             using var connection = OpenConnection();
             return CountRecords(connection, fromDate, toDate);
         }
@@ -2711,15 +2922,28 @@ WHERE Status <> 'Đã giải quyết'
 
         private static void TryAddColumn(SqliteConnection connection, string tableName, string columnName, string definition)
         {
-            try
+            if (ColumnExists(connection, tableName, columnName))
             {
-                ExecuteNonQuery(connection, $"ALTER TABLE {tableName} ADD COLUMN {columnName} {definition};");
+                return;
             }
-            catch (SqliteException ex)
+
+            ExecuteNonQuery(connection, $"ALTER TABLE {tableName} ADD COLUMN {columnName} {definition};");
+        }
+
+        private static bool ColumnExists(SqliteConnection connection, string tableName, string columnName)
+        {
+            using var command = connection.CreateCommand();
+            command.CommandText = $"PRAGMA table_info({tableName});";
+            using var reader = command.ExecuteReader();
+            while (reader.Read())
             {
-                AppLogger.Warning("Database", "TryAddColumn", $"Could not add column {tableName}.{columnName}. It may already exist.", ex);
-                // Existing local databases already have the column after the first migration run.
+                if (string.Equals(reader.GetString(1), columnName, StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
             }
+
+            return false;
         }
 
         private static void LogElapsed(string module, string action, Stopwatch stopwatch, int? rowCount = null)

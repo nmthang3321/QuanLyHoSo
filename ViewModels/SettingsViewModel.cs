@@ -54,6 +54,9 @@ namespace QuanLyHoSo.ViewModels
         private string _databasePathText;
         private string _logFolderText;
         private string _generalSettingsStatus;
+        private string _selectedDataAccessMode;
+        private string _adminMachineNameText;
+        private string _adminServerUrlText;
         private AppUser _selectedUser;
         private string _userNameText;
         private string _userDisplayNameText;
@@ -90,6 +93,7 @@ namespace QuanLyHoSo.ViewModels
             SoftwareInfos = new ObservableCollection<SoftwareInfo>();
             Users = new ObservableCollection<AppUser>();
             UserRoles = new ObservableCollection<string> { Models.UserRoles.Admin, Models.UserRoles.Officer, Models.UserRoles.Leader };
+            DataAccessModes = new ObservableCollection<string> { "AdminHost", "Client" };
 
             SelectCatalogGroupCommand = new RelayCommand(SelectCatalogGroup);
             OpenCatalogDialogCommand = new RelayCommand(OpenCatalogDialog);
@@ -107,9 +111,10 @@ namespace QuanLyHoSo.ViewModels
             CloseGuideDialogCommand = new RelayCommand(() => IsGuideDialogOpen = false);
             OpenUserManagementDialogCommand = new RelayCommand(OpenUserManagementDialog, () => AuthContext.CanManageUsers);
             CloseUserManagementDialogCommand = new RelayCommand(() => IsUserManagementDialogOpen = false);
+            EditUserCommand = new RelayCommand(EditUser, value => value is AppUser);
             SaveUserCommand = new RelayCommand(SaveUser);
             NewUserCommand = new RelayCommand(ClearUserForm);
-            DeleteUserCommand = new RelayCommand(DeleteSelectedUser, () => SelectedUser != null && SelectedUser.Id != AuthContext.CurrentUser?.Id);
+            DeleteUserCommand = new RelayCommand(DeleteUser, value => value is AppUser user && user.Id != AuthContext.CurrentUser?.Id);
             ChooseDatabasePathCommand = new RelayCommand(ChooseDatabasePath);
             ChooseLogFolderCommand = new RelayCommand(ChooseLogFolder);
             SaveGeneralSettingsCommand = new RelayCommand(SaveGeneralSettings);
@@ -134,6 +139,9 @@ namespace QuanLyHoSo.ViewModels
             CatalogCurrentPage = 1;
             DatabasePathText = _dataService.DatabasePath;
             LogFolderText = AppLogger.LogFolder;
+            SelectedDataAccessMode = AppPathSettings.Current.DataAccessMode;
+            AdminMachineNameText = AppPathSettings.Current.AdminMachineName;
+            AdminServerUrlText = AppPathSettings.Current.AdminServerUrl;
             GeneralSettingsStatus = "Thay đổi đường dẫn DB cần khởi động lại ứng dụng để áp dụng.";
             LastBackupText = "Chưa có bản sao lưu trong phiên này";
             BackupStatus = "Sẵn sàng sao lưu dữ liệu";
@@ -152,6 +160,7 @@ namespace QuanLyHoSo.ViewModels
         public ObservableCollection<SoftwareInfo> SoftwareInfos { get; }
         public ObservableCollection<AppUser> Users { get; }
         public ObservableCollection<string> UserRoles { get; }
+        public ObservableCollection<string> DataAccessModes { get; }
 
         public ICommand SelectCatalogGroupCommand { get; }
         public ICommand OpenCatalogDialogCommand { get; }
@@ -169,6 +178,7 @@ namespace QuanLyHoSo.ViewModels
         public ICommand CloseGuideDialogCommand { get; }
         public ICommand OpenUserManagementDialogCommand { get; }
         public ICommand CloseUserManagementDialogCommand { get; }
+        public ICommand EditUserCommand { get; }
         public ICommand SaveUserCommand { get; }
         public ICommand NewUserCommand { get; }
         public ICommand DeleteUserCommand { get; }
@@ -344,6 +354,34 @@ namespace QuanLyHoSo.ViewModels
             set => SetProperty(ref _generalSettingsStatus, value);
         }
 
+        public string SelectedDataAccessMode
+        {
+            get => _selectedDataAccessMode;
+            set
+            {
+                if (SetProperty(ref _selectedDataAccessMode, value))
+                {
+                    OnPropertyChanged(nameof(DataAccessModeText));
+                }
+            }
+        }
+
+        public string DataAccessModeText => SelectedDataAccessMode == "Client"
+            ? "Máy trạm"
+            : "Máy admin giữ DB";
+
+        public string AdminMachineNameText
+        {
+            get => _adminMachineNameText;
+            set => SetProperty(ref _adminMachineNameText, value);
+        }
+
+        public string AdminServerUrlText
+        {
+            get => _adminServerUrlText;
+            set => SetProperty(ref _adminServerUrlText, value);
+        }
+
         public int CatalogCurrentPage
         {
             get => _catalogCurrentPage;
@@ -487,7 +525,14 @@ namespace QuanLyHoSo.ViewModels
             IsUserActive = true;
             OnPropertyChanged(nameof(IsEditingUser));
             OnPropertyChanged(nameof(UserSubmitButtonText));
-            (DeleteUserCommand as RelayCommand)?.RaiseCanExecuteChanged();
+        }
+
+        private void EditUser(object parameter)
+        {
+            if (parameter is AppUser user)
+            {
+                SelectedUser = user;
+            }
         }
 
         private void SaveUser()
@@ -534,15 +579,15 @@ namespace QuanLyHoSo.ViewModels
             }
         }
 
-        private void DeleteSelectedUser()
+        private void DeleteUser(object parameter)
         {
-            if (SelectedUser == null)
+            if (parameter is not AppUser user)
             {
                 return;
             }
 
             var confirm = MessageBox.Show(
-                $"Khóa tài khoản {SelectedUser.UserName}?",
+                $"Khóa tài khoản {user.UserName}?",
                 "Quản lý người dùng",
                 MessageBoxButton.YesNo,
                 MessageBoxImage.Warning);
@@ -551,7 +596,7 @@ namespace QuanLyHoSo.ViewModels
                 return;
             }
 
-            if (_dataService.DeleteUser(SelectedUser.Id))
+            if (_dataService.DeleteUser(user.Id))
             {
                 RefreshUsers();
                 ClearUserForm();
@@ -670,7 +715,10 @@ namespace QuanLyHoSo.ViewModels
         {
             DatabasePathText = AppPathSettings.Current.DatabasePath;
             LogFolderText = AppPathSettings.Current.LogFolder;
-            GeneralSettingsStatus = "Thay đổi đường dẫn DB cần khởi động lại ứng dụng để áp dụng.";
+            SelectedDataAccessMode = AppPathSettings.Current.DataAccessMode;
+            AdminMachineNameText = AppPathSettings.Current.AdminMachineName;
+            AdminServerUrlText = AppPathSettings.Current.AdminServerUrl;
+            GeneralSettingsStatus = "Máy admin giữ DB local và mở API LAN. Máy trạm chỉ nhập URL máy admin, không dùng DB local.";
             IsGeneralSettingsDialogOpen = true;
         }
 
@@ -716,18 +764,35 @@ namespace QuanLyHoSo.ViewModels
             {
                 var databasePath = AppPathSettings.NormalizeDatabasePath(DatabasePathText);
                 var logFolder = AppPathSettings.NormalizeLogFolder(LogFolderText);
+                var dataAccessMode = AppPathSettings.NormalizeDataAccessMode(SelectedDataAccessMode);
+                var adminServerUrl = AppPathSettings.NormalizeAdminServerUrl(AdminServerUrlText);
                 var databaseFolder = Path.GetDirectoryName(databasePath);
 
-                if (string.IsNullOrWhiteSpace(databaseFolder))
+                if (dataAccessMode == "Client" && !Uri.TryCreate(adminServerUrl, UriKind.Absolute, out _))
+                {
+                    MessageBox.Show(
+                        "Máy trạm phải nhập URL máy admin hợp lệ, ví dụ http://localhost:5055 khi test local hoặc http://192.168.1.10:5055 khi chạy LAN.",
+                        "Cài đặt dữ liệu trung tâm",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning);
+                    return;
+                }
+
+                if (dataAccessMode != "Client" && string.IsNullOrWhiteSpace(databaseFolder))
                 {
                     MessageBox.Show("Đường dẫn cơ sở dữ liệu không hợp lệ.", "Cài đặt chung", MessageBoxButton.OK, MessageBoxImage.Warning);
                     return;
                 }
 
-                Directory.CreateDirectory(databaseFolder);
+                if (dataAccessMode != "Client")
+                {
+                    Directory.CreateDirectory(databaseFolder);
+                }
+
                 Directory.CreateDirectory(logFolder);
 
-                if (!databasePath.Equals(_dataService.DatabasePath, StringComparison.OrdinalIgnoreCase) &&
+                if (dataAccessMode != "Client" &&
+                    !databasePath.Equals(_dataService.DatabasePath, StringComparison.OrdinalIgnoreCase) &&
                     File.Exists(_dataService.DatabasePath) &&
                     !File.Exists(databasePath))
                 {
@@ -737,11 +802,16 @@ namespace QuanLyHoSo.ViewModels
                 AppPathSettings.Save(new AppPathSettings
                 {
                     DatabasePath = databasePath,
-                    LogFolder = logFolder
+                    LogFolder = logFolder,
+                    DataAccessMode = dataAccessMode,
+                    AdminMachineName = AdminMachineNameText,
+                    AdminServerUrl = adminServerUrl
                 });
 
                 DatabasePathText = databasePath;
                 LogFolderText = logFolder;
+                SelectedDataAccessMode = dataAccessMode;
+                AdminServerUrlText = adminServerUrl;
                 RefreshSoftwareInfos();
                 GeneralSettingsStatus = databasePath.Equals(_dataService.DatabasePath, StringComparison.OrdinalIgnoreCase)
                     ? "Đã lưu cài đặt. Đường dẫn log mới có hiệu lực ngay."
@@ -761,7 +831,10 @@ namespace QuanLyHoSo.ViewModels
         {
             DatabasePathText = AppPathSettings.DefaultDatabasePath;
             LogFolderText = AppPathSettings.DefaultLogFolder;
-            GeneralSettingsStatus = "Đã đưa về đường dẫn mặc định. Bấm Lưu cài đặt để áp dụng.";
+            SelectedDataAccessMode = "AdminHost";
+            AdminMachineNameText = Environment.MachineName;
+            AdminServerUrlText = "http://localhost:5055";
+            GeneralSettingsStatus = "Đã đưa về chế độ máy admin giữ DB. Bấm Lưu cài đặt để áp dụng.";
         }
 
         private void OpenSystemLogDialog()

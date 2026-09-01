@@ -8,6 +8,7 @@ using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Shapes;
 using System.Windows.Threading;
+using QuanLyHoSo.Infrastructure.Security;
 using QuanLyHoSo.ViewModels;
 
 namespace QuanLyHoSo.Views.Dashboard
@@ -260,7 +261,7 @@ namespace QuanLyHoSo.Views.Dashboard
 
         private void QueueDashboardAnimation()
         {
-            if (!IsLoaded || _isAnimationQueued)
+            if (!IsLoaded || _isAnimationQueued || AuthContext.IsOfficer)
             {
                 return;
             }

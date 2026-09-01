@@ -3,10 +3,12 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
 using QuanLyHoSo.Infrastructure.Data;
+using QuanLyHoSo.Infrastructure.Logging;
 using QuanLyHoSo.Models;
 
 namespace QuanLyHoSo.ViewModels
@@ -32,6 +34,7 @@ namespace QuanLyHoSo.ViewModels
         private int _totalRecentPages = 1;
         private string _recentRecordsPageSizeText = DefaultRecentRecordsPageSize.ToString(CultureInfo.InvariantCulture);
         private string _selectedDateFilter;
+        private bool _isReloading;
         private double _trendChartWidth = 600;
         private PointCollection _trendLinePoints = new PointCollection();
         private string _totalRecordsText;
@@ -213,24 +216,80 @@ namespace QuanLyHoSo.ViewModels
         }
 
         public int RecentTableHeight => 38 + _recentRecordsPageSize * 34;
-        public void Reload()
+        public async void Reload()
         {
-            var previousRange = GetPreviousDateRange();
-            ReplaceItems(Metrics, _dataService.GetDashboardMetrics(FromDate, ToDate, previousRange.FromDate, previousRange.ToDate));
-            ReplaceItems(StatusStats, _dataService.GetStatusStats(FromDate, ToDate));
-            ReplaceItems(AreaStats, _dataService.GetTopAreas(fromDate: FromDate, toDate: ToDate));
-            ReplaceItems(TrendStats, _dataService.GetReceivedTrendStats(FromDate, ToDate));
-            RefreshTrendChartLayout();
-            var totalRecords = _dataService.CountRecords(FromDate, ToDate);
-            TotalRecordsText = totalRecords.ToString("N0", CultureInfo.GetCultureInfo("vi-VN"));
-            TotalRecentPages = Math.Max(1, (int)Math.Ceiling(totalRecords / (double)_recentRecordsPageSize));
-            if (CurrentRecentPage > TotalRecentPages)
+            if (_isReloading)
             {
-                CurrentRecentPage = TotalRecentPages;
+                return;
             }
 
-            LoadRecentRecordsPage();
-            IsCustomCalendarOpen = false;
+            _isReloading = true;
+            var startedAt = DateTime.Now;
+            AppLogger.Info("Dashboard", "Reload", "Dashboard reload started.");
+
+            try
+            {
+                var fromDate = FromDate;
+                var toDate = ToDate;
+                var previousRange = GetPreviousDateRange();
+                var recentPageSize = _recentRecordsPageSize;
+                var currentRecentPage = CurrentRecentPage;
+
+                var snapshot = await Task.Run(() =>
+                {
+                    AppLogger.Info("Dashboard", "Reload", "Loading metrics.");
+                    var metrics = _dataService.GetDashboardMetrics(fromDate, toDate, previousRange.FromDate, previousRange.ToDate);
+                    AppLogger.Info("Dashboard", "Reload", "Loading status stats.");
+                    var statusStats = _dataService.GetStatusStats(fromDate, toDate);
+                    AppLogger.Info("Dashboard", "Reload", "Loading area stats.");
+                    var areaStats = _dataService.GetTopAreas(fromDate: fromDate, toDate: toDate);
+                    AppLogger.Info("Dashboard", "Reload", "Loading trend stats.");
+                    var trendStats = _dataService.GetReceivedTrendStats(fromDate, toDate);
+                    AppLogger.Info("Dashboard", "Reload", "Counting records.");
+                    var totalRecords = _dataService.CountRecords(fromDate, toDate);
+                    var totalRecentPages = Math.Max(1, (int)Math.Ceiling(totalRecords / (double)recentPageSize));
+                    var page = Math.Min(currentRecentPage, totalRecentPages);
+                    var skip = (page - 1) * recentPageSize;
+                    AppLogger.Info("Dashboard", "Reload", "Loading recent records.");
+                    var recentRecords = _dataService.GetRecentRecords(recentPageSize, fromDate, toDate, skip);
+
+                    return new DashboardSnapshot
+                    {
+                        Metrics = metrics,
+                        StatusStats = statusStats,
+                        AreaStats = areaStats,
+                        TrendStats = trendStats,
+                        TotalRecords = totalRecords,
+                        TotalRecentPages = totalRecentPages,
+                        CurrentRecentPage = page,
+                        RecentRecords = recentRecords
+                    };
+                });
+
+                ReplaceItems(Metrics, snapshot.Metrics);
+                ReplaceItems(StatusStats, snapshot.StatusStats);
+                ReplaceItems(AreaStats, snapshot.AreaStats);
+                ReplaceItems(TrendStats, snapshot.TrendStats);
+                CurrentRecentPage = snapshot.CurrentRecentPage;
+                TotalRecordsText = snapshot.TotalRecords.ToString("N0", CultureInfo.GetCultureInfo("vi-VN"));
+                TotalRecentPages = snapshot.TotalRecentPages;
+                ApplyRecentRecordIndexes(snapshot.RecentRecords);
+                ReplaceItems(RecentRecords, snapshot.RecentRecords);
+                AppLogger.Info("Dashboard", "Reload", "Refreshing trend layout.");
+                RefreshTrendChartLayout();
+
+                IsCustomCalendarOpen = false;
+                AppLogger.Info("Dashboard", "Reload", $"Dashboard reload completed in {(DateTime.Now - startedAt).TotalMilliseconds:0} ms.");
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Error("Dashboard", "Reload", ex, "Dashboard reload failed.");
+                MessageBox.Show($"Không thể tải trang Tổng quan.\n\nChi tiết: {ex.Message}", "Tổng quan", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            finally
+            {
+                _isReloading = false;
+            }
         }
 
         private (DateTime? FromDate, DateTime? ToDate) GetPreviousDateRange()
@@ -321,7 +380,7 @@ namespace QuanLyHoSo.ViewModels
                 niceNormalized = 10;
             }
 
-            return (int)(niceNormalized * magnitude);
+            return Math.Max(1, (int)Math.Ceiling(niceNormalized * magnitude));
         }
 
         private void ApplyPresetDateRange(string filter)
@@ -385,14 +444,18 @@ namespace QuanLyHoSo.ViewModels
         {
             var skip = (CurrentRecentPage - 1) * _recentRecordsPageSize;
             var records = _dataService.GetRecentRecords(_recentRecordsPageSize, FromDate, ToDate, skip);
-            var index = skip + 1;
+            ApplyRecentRecordIndexes(records);
+            ReplaceItems(RecentRecords, records);
+            RaiseRecentPageCommandStates();
+        }
+
+        private void ApplyRecentRecordIndexes(IEnumerable<RecentRecord> records)
+        {
+            var index = (CurrentRecentPage - 1) * _recentRecordsPageSize + 1;
             foreach (var record in records)
             {
                 record.Index = index++;
             }
-
-            ReplaceItems(RecentRecords, records);
-            RaiseRecentPageCommandStates();
         }
 
         private void RaiseRecentPageCommandStates()
@@ -408,6 +471,18 @@ namespace QuanLyHoSo.ViewModels
             {
                 target.Add(item);
             }
+        }
+
+        private sealed class DashboardSnapshot
+        {
+            public IReadOnlyList<DashboardMetric> Metrics { get; set; }
+            public IReadOnlyList<StatusStat> StatusStats { get; set; }
+            public IReadOnlyList<AreaStat> AreaStats { get; set; }
+            public IReadOnlyList<TrendStat> TrendStats { get; set; }
+            public int TotalRecords { get; set; }
+            public int TotalRecentPages { get; set; }
+            public int CurrentRecentPage { get; set; }
+            public IReadOnlyList<RecentRecord> RecentRecords { get; set; }
         }
     }
 }

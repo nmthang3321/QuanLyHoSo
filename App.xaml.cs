@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Threading;
 using QuanLyHoSo.Infrastructure.Logging;
+using QuanLyHoSo.Infrastructure.Network;
 
 namespace QuanLyHoSo
 {
@@ -29,6 +30,17 @@ namespace QuanLyHoSo
         private static void OnDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
         {
             AppLogger.Error("Application", "DispatcherUnhandledException", e.Exception, "Unhandled UI exception.");
+            if (e.Exception is LanServerUnavailableException)
+            {
+                MessageBox.Show(
+                    e.Exception.Message,
+                    "Không kết nối được máy server",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                e.Handled = true;
+                return;
+            }
+
             MessageBox.Show(
                 "Ứng dụng gặp lỗi chưa xử lý. Vui lòng gửi file log cho bộ phận hỗ trợ.",
                 "Lỗi ứng dụng",

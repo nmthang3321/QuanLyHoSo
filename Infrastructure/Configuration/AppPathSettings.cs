@@ -12,6 +12,12 @@ namespace QuanLyHoSo.Infrastructure.Configuration
 
         public string DatabasePath { get; set; }
         public string LogFolder { get; set; }
+        public string DataAccessMode { get; set; }
+        public string AdminMachineName { get; set; }
+        public string AdminServerUrl { get; set; }
+
+        public bool IsClientMode => string.Equals(DataAccessMode, "Client", StringComparison.OrdinalIgnoreCase);
+        public bool IsAdminHostMode => !IsClientMode;
 
         public static AppPathSettings Current
         {
@@ -49,6 +55,9 @@ namespace QuanLyHoSo.Infrastructure.Configuration
 
             settings.DatabasePath = NormalizeDatabasePath(settings.DatabasePath);
             settings.LogFolder = NormalizeLogFolder(settings.LogFolder);
+            settings.DataAccessMode = NormalizeDataAccessMode(settings.DataAccessMode);
+            settings.AdminMachineName = settings.AdminMachineName?.Trim() ?? string.Empty;
+            settings.AdminServerUrl = NormalizeAdminServerUrl(settings.AdminServerUrl);
 
             Directory.CreateDirectory(SettingsFolder);
             var json = JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true });
@@ -91,7 +100,10 @@ namespace QuanLyHoSo.Infrastructure.Configuration
             var defaults = new AppPathSettings
             {
                 DatabasePath = DefaultDatabasePath,
-                LogFolder = DefaultLogFolder
+                LogFolder = DefaultLogFolder,
+                DataAccessMode = "AdminHost",
+                AdminMachineName = Environment.MachineName,
+                AdminServerUrl = "http://localhost:5055"
             };
 
             var settingsPath = Path.Combine(SettingsFolder, SettingsFileName);
@@ -106,12 +118,38 @@ namespace QuanLyHoSo.Infrastructure.Configuration
                 var settings = JsonSerializer.Deserialize<AppPathSettings>(json) ?? defaults;
                 settings.DatabasePath = NormalizeDatabasePath(settings.DatabasePath);
                 settings.LogFolder = NormalizeLogFolder(settings.LogFolder);
+                settings.DataAccessMode = NormalizeDataAccessMode(settings.DataAccessMode);
+                settings.AdminMachineName = string.IsNullOrWhiteSpace(settings.AdminMachineName)
+                    ? Environment.MachineName
+                    : settings.AdminMachineName.Trim();
+                settings.AdminServerUrl = NormalizeAdminServerUrl(settings.AdminServerUrl);
                 return settings;
             }
             catch
             {
                 return defaults;
             }
+        }
+
+        public static string NormalizeDataAccessMode(string value)
+        {
+            return string.Equals(value, "Client", StringComparison.OrdinalIgnoreCase)
+                ? "Client"
+                : "AdminHost";
+        }
+
+        public static bool IsNetworkDatabasePath(string databasePath)
+        {
+            return !string.IsNullOrWhiteSpace(databasePath) && databasePath.Trim().StartsWith(@"\\", StringComparison.Ordinal);
+        }
+
+        public static string NormalizeAdminServerUrl(string value)
+        {
+            var url = string.IsNullOrWhiteSpace(value)
+                ? "http://localhost:5055"
+                : value.Trim().TrimEnd('/');
+
+            return url;
         }
     }
 }
