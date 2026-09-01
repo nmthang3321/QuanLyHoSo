@@ -3,6 +3,7 @@ bin/
 obj/
 .verify-build/
 .verify-build-*/
+.verify-builds/
 .lan-test-build/
 artifacts/
 

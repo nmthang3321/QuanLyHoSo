@@ -1,0 +1,37 @@
+# Common - QuanLyHoSo
+
+## Tong quan
+
+- App: WPF desktop, C#, MVVM tu viet, `.NET 5.0-windows`.
+- DB: SQLite.
+- Local DB mac dinh: `%LocalAppData%\QuanLyHoSo\Data\quanlyhoso.db`.
+- Log: `%LocalAppData%\QuanLyHoSo\Logs\quanlyhoso-yyyyMMdd.log`.
+- Settings path: `%LocalAppData%\QuanLyHoSo\Settings\path-settings.json`.
+- Data service chinh: `Infrastructure\Data\AppDataService.cs`.
+- Shell/navigation: `ViewModels\ShellViewModel.cs`, `MainWindow.xaml`.
+- Logger: `Infrastructure\Logging\AppLogger.cs`.
+
+## Role va phan quyen
+
+File chinh:
+- `Models\AuthModels.cs`
+- `Infrastructure\Security\AuthContext.cs`
+- `ViewModels\LoginViewModel.cs`
+- `Views\Auth\LoginView.xaml`
+
+Role:
+- `Admin`: toan quyen.
+- `Leader`: chi xem, khong sua.
+- `Officer`: chi toan quyen tren ho so co `Records.ProcessorName == AuthContext.CurrentDisplayName`.
+
+Dang co login, logout, quan ly user trong Settings. User mac dinh seed: `admin/admin123`.
+
+## Verify
+
+Lenh nen dung:
+
+```powershell
+dotnet build QuanLyHoSo.csproj -o .verify-builds/current
+```
+
+Warning `NETSDK1138` ve `.NET 5.0-windows` het support la warning cu.
