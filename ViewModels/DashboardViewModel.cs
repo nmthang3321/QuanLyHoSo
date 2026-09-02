@@ -44,8 +44,8 @@ namespace QuanLyHoSo.ViewModels
             _dataService = AppDataService.Instance;
             var today = DateTime.Today;
 
-            _fromDate = new DateTime(today.Year, today.Month, 1);
-            _toDate = today;
+            _fromDate = new DateTime(today.Year, 1, 1);
+            _toDate = new DateTime(today.Year, 12, 31);
 
             Metrics = new ObservableCollection<DashboardMetric>();
             StatusStats = new ObservableCollection<StatusStat>();
@@ -63,7 +63,7 @@ namespace QuanLyHoSo.ViewModels
             ApplyFilterCommand = new RelayCommand(Reload);
             _previousRecentPageCommand = new RelayCommand(PreviousRecentPage, () => CurrentRecentPage > 1);
             _nextRecentPageCommand = new RelayCommand(NextRecentPage, () => CurrentRecentPage < TotalRecentPages);
-            _selectedDateFilter = ThisMonthFilter;
+            _selectedDateFilter = ThisYearFilter;
 
             Reload();
         }
