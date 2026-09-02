@@ -26,6 +26,7 @@ namespace QuanLyHoSo.Models
         public string Field { get; set; }
         public string RelatedPerson { get; set; }
         public string ExpectedHandlingMethod { get; set; }
+        public string SenderExpectedHandlingMethod { get; set; }
         public string SeverityLevel { get; set; }
         public string ExpectedResultDate { get; set; }
         public string PriorityLevel { get; set; }
@@ -101,6 +102,7 @@ namespace QuanLyHoSo.Models
         public string AreaName { get; set; }
         public string CaseType { get; set; }
         public string PriorityLevel { get; set; }
+        public string SeverityLevel { get; set; }
         public string Status { get; set; }
         public string UpdatedAt { get; set; }
     }

@@ -55,15 +55,6 @@
                     <TextBlock Text="NHẬP DỮ LIỆU" Style="{StaticResource PageTitleText}" />
                     <TextBlock Text="Tiếp nhận và nhập thông tin hồ sơ" Style="{StaticResource MutedText}" Margin="0,4,0,0" />
                 </StackPanel>
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                    <Button Style="{StaticResource PrimaryButton}"
-                            Command="{Binding NewCommand}">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="&#xE710;" FontFamily="Segoe MDL2 Assets" Margin="0,0,8,0" />
-                            <TextBlock Text="Thêm mới" />
-                        </StackPanel>
-                    </Button>
-                </StackPanel>
             </Grid>
 
             <Border Style="{StaticResource CardBorder}" Margin="0,0,0,12" Padding="18">
@@ -96,11 +87,17 @@
                         </StackPanel>
                         <StackPanel Grid.Column="2" Margin="0,0,14,14">
                             <TextBlock Style="{StaticResource InputLabelText}"><Run Text="Nguồn tiếp nhận" /><Run Text=" *" Foreground="#E11414" /></TextBlock>
-                            <ComboBox ItemsSource="{Binding ReceiveSources}" SelectedItem="{Binding ReceiveSource, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <ComboBox ItemsSource="{Binding ReceiveSources}"
+                                      SelectedItem="{Binding ReceiveSource, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                      IsEditable="False"
+                                      IsTextSearchEnabled="True" />
                         </StackPanel>
                         <StackPanel Grid.Column="3" Margin="0,0,0,14">
                             <TextBlock Style="{StaticResource InputLabelText}"><Run Text="Người tiếp nhận" /><Run Text=" *" Foreground="#E11414" /></TextBlock>
-                            <TextBox Text="{Binding ReceiverName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <ComboBox ItemsSource="{Binding ReceiverNames}"
+                                      SelectedItem="{Binding ReceiverName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                      IsEditable="False"
+                                      IsTextSearchEnabled="True" />
                         </StackPanel>
 
                         <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,14,14">
@@ -196,20 +193,22 @@
                         <TextBlock Text="3. THÔNG TIN BỔ SUNG" Style="{StaticResource SectionTitleText}" Foreground="{StaticResource PrimaryBrush}" Margin="0,0,0,14" />
                         <UniformGrid Columns="2">
                             <StackPanel Margin="0,0,12,12">
-                                <TextBlock Text="Hình thức xử lý mong muốn" Style="{StaticResource InputLabelText}" />
+                                <TextBlock Text="Đề xuất của cán bộ tiếp nhận" Style="{StaticResource InputLabelText}" />
                                 <ComboBox ItemsSource="{Binding HandlingMethods}" SelectedItem="{Binding ExpectedHandlingMethod, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                             </StackPanel>
                             <StackPanel Margin="0,0,0,12">
+                                <TextBlock Text="Đề xuất của người gửi đơn" Style="{StaticResource InputLabelText}" />
+                                <ComboBox ItemsSource="{Binding HandlingMethods}" SelectedItem="{Binding SenderExpectedHandlingMethod, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            </StackPanel>
+                            <StackPanel Margin="0,0,12,12">
                                 <TextBlock Text="Mức độ vụ việc" Style="{StaticResource InputLabelText}" />
                                 <ComboBox ItemsSource="{Binding Priorities}" SelectedItem="{Binding SeverityLevel, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                             </StackPanel>
-                            <StackPanel Margin="0,0,12,12">
-                                <TextBlock Text="Ngày hẹn trả kết quả" Style="{StaticResource InputLabelText}" />
-                                <TextBox Text="{Binding ExpectedResultDate, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                            </StackPanel>
                             <StackPanel Margin="0,0,0,12">
-                                <TextBlock Text="Ưu tiên" Style="{StaticResource InputLabelText}" />
-                                <ComboBox ItemsSource="{Binding Priorities}" SelectedItem="{Binding PriorityLevel, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                <TextBlock Text="Ngày hẹn trả kết quả" Style="{StaticResource InputLabelText}" />
+                                <DatePicker Style="{StaticResource ReceivedDatePickerStyle}"
+                                            SelectedDate="{Binding SelectedExpectedResultDate, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                            Language="vi-VN" />
                             </StackPanel>
                         </UniformGrid>
                         <TextBlock Text="Ghi chú bổ sung" Style="{StaticResource InputLabelText}" />
@@ -339,10 +338,19 @@
             </Border>
 
             <Grid Margin="0,12,0,0">
-                <Button Style="{StaticResource DangerButton}"
-                        MinWidth="118"
+                <Button MinWidth="118"
                         HorizontalAlignment="Left"
                         Command="{Binding DeleteCommand}">
+                    <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource DangerButton}">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsEditingExistingRecord}" Value="True">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="&#xE74D;" FontFamily="Segoe MDL2 Assets" Margin="0,0,8,0" />
                         <TextBlock Text="Xóa" />
@@ -352,10 +360,11 @@
                     <Button Style="{StaticResource PrimaryButton}"
                             MinWidth="138"
                             Margin="0,0,12,0"
-                            Command="{Binding SaveCommand}">
+                            Command="{Binding SaveCommand}"
+                            Foreground="White">
                         <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="&#xE74E;" FontFamily="Segoe MDL2 Assets" Margin="0,0,8,0" />
-                            <TextBlock Text="Lưu" />
+                            <TextBlock Text="&#xE74E;" FontFamily="Segoe MDL2 Assets" Margin="0,0,8,0" Foreground="White" />
+                            <TextBlock Text="Lưu" Foreground="White" />
                         </StackPanel>
                     </Button>
                     <Button Style="{StaticResource SecondaryButton}"

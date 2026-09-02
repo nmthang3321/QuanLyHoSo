@@ -605,9 +605,9 @@
                                 <Border Background="#F8FAFD" BorderBrush="{StaticResource LineBrush}" BorderThickness="1" CornerRadius="6" Padding="12" Margin="0,0,6,0">
                                     <StackPanel>
                                         <TextBlock Text="Thông tin xử lý" Style="{StaticResource SubsectionTitleText}" />
-                                        <TextBlock Text="{Binding SelectedRecordDetail.ExpectedHandlingMethod, StringFormat=Hình thức: {0}}" TextWrapping="Wrap" />
+                                        <TextBlock Text="{Binding SelectedRecordDetail.ExpectedHandlingMethod, StringFormat=Đề xuất cán bộ: {0}}" TextWrapping="Wrap" />
+                                        <TextBlock Text="{Binding SelectedRecordDetail.SenderExpectedHandlingMethod, StringFormat=Đề xuất người gửi: {0}}" TextWrapping="Wrap" Margin="0,6,0,0" />
                                         <TextBlock Text="{Binding SelectedRecordDetail.SeverityLevel, StringFormat=Mức độ: {0}}" Margin="0,6,0,0" />
-                                        <TextBlock Text="{Binding SelectedRecordDetail.PriorityLevel, StringFormat=Ưu tiên: {0}}" Margin="0,6,0,0" />
                                         <TextBlock Text="{Binding SelectedRecordDetail.ExpectedResultDate, StringFormat=Ngày hẹn trả: {0}}" Margin="0,6,0,0" />
                                     </StackPanel>
                                 </Border>

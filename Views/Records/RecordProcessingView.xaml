@@ -164,11 +164,11 @@
                                 <DataGridTextColumn Header="Người gửi" Binding="{Binding SenderName}" Width="1.25*" MinWidth="160" />
                                 <DataGridTextColumn Header="Địa bàn" Binding="{Binding AreaName}" Width="1.05*" MinWidth="140" />
                                 <DataGridTextColumn Header="Loại vụ việc" Binding="{Binding CaseType}" Width="0.95*" MinWidth="120" />
-                                <DataGridTemplateColumn Header="Mức độ" Width="0.8*" MinWidth="105" ClipboardContentBinding="{Binding PriorityLevel}">
+                                <DataGridTemplateColumn Header="Mức độ" Width="0.8*" MinWidth="105" ClipboardContentBinding="{Binding SeverityLevel}">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
                                             <Border Background="#FFF7E8" BorderBrush="#FFE0A8" BorderThickness="1" CornerRadius="4" Height="22" Padding="7,1" HorizontalAlignment="Left">
-                                                <TextBlock Text="{Binding PriorityLevel}" FontSize="12" FontWeight="SemiBold" Foreground="#8A5200" />
+                                                <TextBlock Text="{Binding SeverityLevel}" FontSize="12" FontWeight="SemiBold" Foreground="#8A5200" />
                                             </Border>
                                         </DataTemplate>
                                     </DataGridTemplateColumn.CellTemplate>
@@ -734,9 +734,9 @@
                                 <Border Background="#F8FAFD" BorderBrush="{StaticResource LineBrush}" BorderThickness="1" CornerRadius="6" Padding="12" Margin="0,0,6,0">
                                     <StackPanel>
                                         <TextBlock Text="Thông tin xử lý" Style="{StaticResource SubsectionTitleText}" />
-                                        <TextBlock Text="{Binding SelectedRecordDetail.ExpectedHandlingMethod, StringFormat=Hình thức: {0}}" TextWrapping="Wrap" />
+                                        <TextBlock Text="{Binding SelectedRecordDetail.ExpectedHandlingMethod, StringFormat=Đề xuất cán bộ: {0}}" TextWrapping="Wrap" />
+                                        <TextBlock Text="{Binding SelectedRecordDetail.SenderExpectedHandlingMethod, StringFormat=Đề xuất người gửi: {0}}" TextWrapping="Wrap" Margin="0,6,0,0" />
                                         <TextBlock Text="{Binding SelectedRecordDetail.SeverityLevel, StringFormat=Mức độ: {0}}" Margin="0,6,0,0" />
-                                        <TextBlock Text="{Binding SelectedRecordDetail.PriorityLevel, StringFormat=Ưu tiên: {0}}" Margin="0,6,0,0" />
                                         <TextBlock Text="{Binding SelectedRecordDetail.ExpectedResultDate, StringFormat=Ngày hẹn trả: {0}}" Margin="0,6,0,0" />
                                     </StackPanel>
                                 </Border>

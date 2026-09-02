@@ -27,6 +27,7 @@ namespace QuanLyHoSo.ViewModels
             _dataService = AppDataService.Instance;
 
             ReceiveSources = new ObservableCollection<string>(_dataService.GetCatalogValues("ReceiveSource"));
+            ReceiverNames = new ObservableCollection<string>(_dataService.GetProcessorNames());
             Areas = AreaSelectionOptions.Build(_dataService.GetAreaNames(), includeGroupRows: true, groupRowsSelectable: false);
             FilteredAreas = AreaSelectionOptions.Filter(Areas, null);
             CaseTypes = new ObservableCollection<string>(_dataService.GetCatalogValues("CaseType"));
@@ -39,7 +40,7 @@ namespace QuanLyHoSo.ViewModels
             Attachments.CollectionChanged += Attachments_CollectionChanged;
             NewCommand = new RelayCommand(ClearForm);
             SaveCommand = new RelayCommand(Save, () => CanWrite);
-            CancelCommand = new RelayCommand(ClearForm);
+            CancelCommand = new RelayCommand(CancelForm);
             DeleteCommand = new RelayCommand(DeleteCurrentRecord, () => CanWrite);
             RemoveAttachmentCommand = new RelayCommand(RemoveAttachment);
             OpenAttachmentCommand = new RelayCommand(OpenAttachment);
@@ -48,6 +49,7 @@ namespace QuanLyHoSo.ViewModels
         }
 
         public ObservableCollection<string> ReceiveSources { get; }
+        public ObservableCollection<string> ReceiverNames { get; }
         public ObservableCollection<AreaSelectionOption> Areas { get; }
         public ObservableCollection<AreaSelectionOption> FilteredAreas { get; }
         public ObservableCollection<string> CaseTypes { get; }
@@ -64,6 +66,7 @@ namespace QuanLyHoSo.ViewModels
         public ICommand RemoveAttachmentCommand { get; }
         public ICommand OpenAttachmentCommand { get; }
         public bool CanWrite => AuthContext.CanWrite && !AppPathSettings.Current.IsClientMode;
+        public bool IsEditingExistingRecord => !string.IsNullOrWhiteSpace(_editingRecordCode);
 
         public string RecordCode { get; set; }
         public string ReceiveSource { get; set; }
@@ -78,6 +81,7 @@ namespace QuanLyHoSo.ViewModels
         public string Field { get; set; }
         public string RelatedPerson { get; set; }
         public string ExpectedHandlingMethod { get; set; }
+        public string SenderExpectedHandlingMethod { get; set; }
         public string SeverityLevel { get; set; }
         public string ExpectedResultDate { get; set; }
         public string PriorityLevel { get; set; }
@@ -109,8 +113,10 @@ namespace QuanLyHoSo.ViewModels
             Field = record.Field;
             RelatedPerson = record.RelatedPerson;
             ExpectedHandlingMethod = record.ExpectedHandlingMethod;
+            SenderExpectedHandlingMethod = record.SenderExpectedHandlingMethod;
             SeverityLevel = record.SeverityLevel;
             ExpectedResultDate = record.ExpectedResultDate;
+            SelectedExpectedResultDate = ParseDisplayDate(record.ExpectedResultDate);
             PriorityLevel = record.PriorityLevel;
             Note = record.Note;
             AdditionalNote = record.AdditionalNote;
@@ -121,6 +127,7 @@ namespace QuanLyHoSo.ViewModels
                 Attachments.Add(attachment);
             }
 
+            OnPropertyChanged(nameof(IsEditingExistingRecord));
             RaiseFormPropertyChanges();
         }
 
@@ -144,12 +151,15 @@ namespace QuanLyHoSo.ViewModels
             Field = null;
             RelatedPerson = string.Empty;
             ExpectedHandlingMethod = null;
+            SenderExpectedHandlingMethod = null;
             SeverityLevel = null;
             ExpectedResultDate = string.Empty;
-            PriorityLevel = null;
+            SelectedExpectedResultDate = null;
+            PriorityLevel = string.Empty;
             Note = string.Empty;
             AdditionalNote = string.Empty;
             Attachments.Clear();
+            OnPropertyChanged(nameof(IsEditingExistingRecord));
             RaiseFormPropertyChanges();
         }
 
@@ -198,6 +208,26 @@ namespace QuanLyHoSo.ViewModels
             }
         }
 
+        private void CancelForm()
+        {
+            if (!HasUnsavedDraft())
+            {
+                ClearForm();
+                return;
+            }
+
+            var result = MessageBox.Show(
+                "Bạn có chắc muốn hủy bỏ dữ liệu chưa lưu? Tất cả thông tin đang nhập sẽ bị xóa.",
+                "Xác nhận hủy bỏ",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning);
+
+            if (result == MessageBoxResult.Yes)
+            {
+                ClearForm();
+            }
+        }
+
         private void Save()
         {
             if (!CanWrite)
@@ -225,6 +255,7 @@ namespace QuanLyHoSo.ViewModels
                 RecordCode = savedRecordCode;
                 _editingRecordCode = savedRecordCode;
                 OnPropertyChanged(nameof(RecordCode));
+                OnPropertyChanged(nameof(IsEditingExistingRecord));
                 MessageBox.Show("Đã lưu hồ sơ vào cơ sở dữ liệu.", "Lưu hồ sơ", MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception ex)
@@ -338,13 +369,39 @@ namespace QuanLyHoSo.ViewModels
                 Field = Field,
                 RelatedPerson = RelatedPerson,
                 ExpectedHandlingMethod = ExpectedHandlingMethod,
+                SenderExpectedHandlingMethod = SenderExpectedHandlingMethod,
                 SeverityLevel = SeverityLevel,
                 ExpectedResultDate = ExpectedResultDate,
-                PriorityLevel = PriorityLevel,
+                PriorityLevel = string.Empty,
                 Note = Note,
                 AdditionalNote = AdditionalNote,
                 Attachments = Attachments.ToList()
             };
+        }
+
+        private bool HasUnsavedDraft()
+        {
+            return SelectedReceivedDate.HasValue
+                || SelectedExpectedResultDate.HasValue
+                || !string.IsNullOrWhiteSpace(ReceiveSource)
+                || !string.IsNullOrWhiteSpace(ReceiverName)
+                || !string.IsNullOrWhiteSpace(SenderName)
+                || !string.IsNullOrWhiteSpace(SenderPhone)
+                || !string.IsNullOrWhiteSpace(ContactAddress)
+                || !string.IsNullOrWhiteSpace(AreaName)
+                || !string.IsNullOrWhiteSpace(IncidentAddress)
+                || !string.IsNullOrWhiteSpace(Content)
+                || !string.IsNullOrWhiteSpace(CaseType)
+                || !string.IsNullOrWhiteSpace(ContentGroup)
+                || !string.IsNullOrWhiteSpace(Field)
+                || !string.IsNullOrWhiteSpace(RelatedPerson)
+                || !string.IsNullOrWhiteSpace(ExpectedHandlingMethod)
+                || !string.IsNullOrWhiteSpace(SenderExpectedHandlingMethod)
+                || !string.IsNullOrWhiteSpace(SeverityLevel)
+                || !string.IsNullOrWhiteSpace(ExpectedResultDate)
+                || !string.IsNullOrWhiteSpace(Note)
+                || !string.IsNullOrWhiteSpace(AdditionalNote)
+                || Attachments.Count > 0;
         }
 
         private void RemoveAttachment(object parameter)
@@ -422,8 +479,10 @@ namespace QuanLyHoSo.ViewModels
             OnPropertyChanged(nameof(Field));
             OnPropertyChanged(nameof(RelatedPerson));
             OnPropertyChanged(nameof(ExpectedHandlingMethod));
+            OnPropertyChanged(nameof(SenderExpectedHandlingMethod));
             OnPropertyChanged(nameof(SeverityLevel));
             OnPropertyChanged(nameof(ExpectedResultDate));
+            OnPropertyChanged(nameof(SelectedExpectedResultDate));
             OnPropertyChanged(nameof(PriorityLevel));
             OnPropertyChanged(nameof(Note));
             OnPropertyChanged(nameof(AdditionalNote));
@@ -446,6 +505,21 @@ namespace QuanLyHoSo.ViewModels
                 if (SetProperty(ref _selectedReceivedDate, value))
                 {
                     ReceivedDate = value.HasValue
+                        ? value.Value.ToString("dd/MM/yyyy", CultureInfo.GetCultureInfo("vi-VN"))
+                        : string.Empty;
+                }
+            }
+        }
+
+        private DateTime? _selectedExpectedResultDate;
+        public DateTime? SelectedExpectedResultDate
+        {
+            get => _selectedExpectedResultDate;
+            set
+            {
+                if (SetProperty(ref _selectedExpectedResultDate, value))
+                {
+                    ExpectedResultDate = value.HasValue
                         ? value.Value.ToString("dd/MM/yyyy", CultureInfo.GetCultureInfo("vi-VN"))
                         : string.Empty;
                 }
@@ -515,6 +589,9 @@ namespace QuanLyHoSo.ViewModels
                 case "ReceiveSource":
                     RefreshCatalogValues(ReceiveSources, catalogType, ReceiveSource, value => ReceiveSource = value, nameof(ReceiveSource));
                     break;
+                case "ProcessorName":
+                    RefreshListValues(ReceiverNames, _dataService.GetProcessorNames(), ReceiverName, value => ReceiverName = value, nameof(ReceiverName));
+                    break;
                 case "CaseType":
                     RefreshCatalogValues(CaseTypes, catalogType, CaseType, value => CaseType = value, nameof(CaseType));
                     break;
@@ -534,6 +611,11 @@ namespace QuanLyHoSo.ViewModels
                     break;
                 case "ExpectedHandlingMethod":
                     RefreshCatalogValues(HandlingMethods, catalogType, ExpectedHandlingMethod, value => ExpectedHandlingMethod = value, nameof(ExpectedHandlingMethod));
+                    if (!string.IsNullOrWhiteSpace(SenderExpectedHandlingMethod) && !HandlingMethods.Contains(SenderExpectedHandlingMethod))
+                    {
+                        SenderExpectedHandlingMethod = null;
+                        OnPropertyChanged(nameof(SenderExpectedHandlingMethod));
+                    }
                     break;
             }
         }
@@ -542,6 +624,21 @@ namespace QuanLyHoSo.ViewModels
         {
             target.Clear();
             foreach (var item in _dataService.GetCatalogValues(catalogType))
+            {
+                target.Add(item);
+            }
+
+            if (!string.IsNullOrWhiteSpace(selectedValue) && !target.Contains(selectedValue))
+            {
+                setSelectedValue(null);
+                OnPropertyChanged(selectedPropertyName);
+            }
+        }
+
+        private void RefreshListValues(ObservableCollection<string> target, System.Collections.Generic.IEnumerable<string> values, string selectedValue, Action<string> setSelectedValue, string selectedPropertyName)
+        {
+            target.Clear();
+            foreach (var item in values)
             {
                 target.Add(item);
             }

@@ -864,7 +864,7 @@ LIMIT $take OFFSET $skip;";
             command.CommandText = @"
 SELECT Id, RecordCode, ReceivedDate, ReceiveSource, ReceiverName, SenderName, SenderPhone, ContactAddress,
        AreaName, IncidentAddress, Content, CaseType, ContentGroup, Field, RelatedPerson,
-       ExpectedHandlingMethod, SeverityLevel, ExpectedResultDate, PriorityLevel, Note, AdditionalNote
+       ExpectedHandlingMethod, SenderExpectedHandlingMethod, SeverityLevel, ExpectedResultDate, PriorityLevel, Note, AdditionalNote
 FROM Records
 ORDER BY UpdatedAt DESC, Id DESC
 LIMIT 1;";
@@ -888,7 +888,7 @@ LIMIT 1;";
             command.CommandText = @"
 SELECT Id, RecordCode, ReceivedDate, ReceiveSource, ReceiverName, SenderName, SenderPhone, ContactAddress,
        AreaName, IncidentAddress, Content, CaseType, ContentGroup, Field, RelatedPerson,
-       ExpectedHandlingMethod, SeverityLevel, ExpectedResultDate, PriorityLevel, Note, AdditionalNote
+       ExpectedHandlingMethod, SenderExpectedHandlingMethod, SeverityLevel, ExpectedResultDate, PriorityLevel, Note, AdditionalNote
 FROM Records
 WHERE RecordCode = $recordCode
 LIMIT 1;";
@@ -945,6 +945,7 @@ SET RecordCode = $recordCode,
     Field = $field,
     RelatedPerson = $relatedPerson,
     ExpectedHandlingMethod = $method,
+    SenderExpectedHandlingMethod = $senderMethod,
     SeverityLevel = $severity,
     ExpectedResultDate = $expectedDate,
     PriorityLevel = $priority,
@@ -968,12 +969,12 @@ WHERE Id = $recordId;";
 INSERT INTO Records (
     RecordCode, ReceivedDate, ReceiveSource, ReceiverName, SenderName, SenderPhone, ContactAddress,
     AreaName, IncidentAddress, Content, CaseType, ContentGroup, Field, RelatedPerson,
-    ExpectedHandlingMethod, SeverityLevel, ExpectedResultDate, PriorityLevel, Status, ProcessorName,
+    ExpectedHandlingMethod, SenderExpectedHandlingMethod, SeverityLevel, ExpectedResultDate, PriorityLevel, Status, ProcessorName,
     Note, AdditionalNote, CreatedAt, UpdatedAt)
 VALUES (
     $recordCode, $receivedDate, $receiveSource, $receiverName, $senderName, $senderPhone, $contactAddress,
     $areaName, $incidentAddress, $content, $caseType, $contentGroup, $field, $relatedPerson,
-    $method, $severity, $expectedDate, $priority, $status, $processor,
+    $method, $senderMethod, $severity, $expectedDate, $priority, $status, $processor,
     $note, $additionalNote, $createdAt, $updatedAt);
 SELECT last_insert_rowid();";
                 AddRecordFormParameters(insertCommand, record, now);
@@ -1073,6 +1074,7 @@ SELECT last_insert_rowid();";
             command.Parameters.AddWithValue("$field", NormalizeDbText(record.Field));
             command.Parameters.AddWithValue("$relatedPerson", NormalizeDbText(record.RelatedPerson));
             command.Parameters.AddWithValue("$method", NormalizeDbText(record.ExpectedHandlingMethod));
+            command.Parameters.AddWithValue("$senderMethod", NormalizeDbText(record.SenderExpectedHandlingMethod));
             command.Parameters.AddWithValue("$severity", NormalizeDbText(record.SeverityLevel));
             command.Parameters.AddWithValue("$expectedDate", string.IsNullOrWhiteSpace(record.ExpectedResultDate)
                 ? string.Empty
@@ -1141,11 +1143,12 @@ SELECT last_insert_rowid();";
                 Field = reader.GetString(13),
                 RelatedPerson = reader.GetString(14),
                 ExpectedHandlingMethod = reader.GetString(15),
-                SeverityLevel = reader.GetString(16),
-                ExpectedResultDate = FormatDate(reader.GetString(17)),
-                PriorityLevel = reader.GetString(18),
-                Note = reader.GetString(19),
-                AdditionalNote = reader.GetString(20),
+                SenderExpectedHandlingMethod = reader.GetString(16),
+                SeverityLevel = reader.GetString(17),
+                ExpectedResultDate = FormatDate(reader.GetString(18)),
+                PriorityLevel = reader.GetString(19),
+                Note = reader.GetString(20),
+                AdditionalNote = reader.GetString(21),
                 Attachments = GetAttachments(connection, recordId)
             };
         }
@@ -1306,7 +1309,7 @@ WHERE Id = $recordId;";
                 new DashboardMetric { Title = "CHỜ BỔ SUNG", Value = waiting.ToString("N0", culture), Delta = "Đang chờ tài liệu/kết quả", IconGlyph = "\uE916", AccentColor = "#7147D8", FilterKey = "Waiting" },
                 new DashboardMetric { Title = "SẮP ĐẾN HẠN", Value = dueSoon.ToString("N0", culture), Delta = "Còn hạn trong 7 ngày", IconGlyph = "\uE8A7", AccentColor = "#008A8A", FilterKey = "DueSoon" },
                 new DashboardMetric { Title = "QUÁ HẠN", Value = overdue.ToString("N0", culture), Delta = "Chưa hoàn tất theo hạn", IconGlyph = "\uE7BA", AccentColor = "#D13438", FilterKey = "Overdue" },
-                new DashboardMetric { Title = "ƯU TIÊN CAO", Value = highPriority.ToString("N0", culture), Delta = "Ưu tiên/khẩn cần theo dõi", IconGlyph = "\uE7BF", AccentColor = "#B146C2", FilterKey = "HighPriority" }
+                new DashboardMetric { Title = "MỨC ĐỘ CAO", Value = highPriority.ToString("N0", culture), Delta = "Ưu tiên/khẩn cần theo dõi", IconGlyph = "\uE7BF", AccentColor = "#B146C2", FilterKey = "HighPriority" }
             };
         }
 
@@ -1368,12 +1371,12 @@ WHERE Id = $recordId;";
 
             if (!string.IsNullOrWhiteSpace(priorityLevel) && priorityLevel != "Tất cả")
             {
-                conditions.Add("PriorityLevel = $priorityLevel");
+                conditions.Add("SeverityLevel = $priorityLevel");
                 command.Parameters.AddWithValue("$priorityLevel", priorityLevel);
             }
 
             command.CommandText = $@"
-SELECT RecordCode, ReceivedDate, SenderName, AreaName, CaseType, PriorityLevel, Status, UpdatedAt
+SELECT RecordCode, ReceivedDate, SenderName, AreaName, CaseType, PriorityLevel, SeverityLevel, Status, UpdatedAt
 FROM Records
 WHERE {string.Join(" AND ", conditions)}
 ORDER BY UpdatedAt DESC, Id DESC
@@ -1394,8 +1397,9 @@ LIMIT $take OFFSET $skip;";
                     AreaName = reader.GetString(3),
                     CaseType = reader.GetString(4),
                     PriorityLevel = reader.GetString(5),
-                    Status = reader.GetString(6),
-                    UpdatedAt = FormatDateTime(reader.GetString(7))
+                    SeverityLevel = reader.GetString(6),
+                    Status = reader.GetString(7),
+                    UpdatedAt = FormatDateTime(reader.GetString(8))
                 });
             }
 
@@ -1444,7 +1448,7 @@ LIMIT $take OFFSET $skip;";
 
             if (!string.IsNullOrWhiteSpace(priorityLevel) && priorityLevel != "Tất cả")
             {
-                conditions.Add("PriorityLevel = $priorityLevel");
+                conditions.Add("SeverityLevel = $priorityLevel");
                 command.Parameters.AddWithValue("$priorityLevel", priorityLevel);
             }
 
@@ -1702,6 +1706,7 @@ CREATE TABLE IF NOT EXISTS Records (
     Field TEXT NOT NULL,
     RelatedPerson TEXT NOT NULL,
     ExpectedHandlingMethod TEXT NOT NULL,
+    SenderExpectedHandlingMethod TEXT NOT NULL DEFAULT '',
     SeverityLevel TEXT NOT NULL,
     ExpectedResultDate TEXT NOT NULL,
     PriorityLevel TEXT NOT NULL,
@@ -1753,6 +1758,7 @@ CREATE TABLE IF NOT EXISTS Users (
     CreatedAt TEXT NOT NULL,
     UpdatedAt TEXT NOT NULL
 );");
+            TryAddColumn(connection, "Records", "SenderExpectedHandlingMethod", "TEXT NOT NULL DEFAULT ''");
             TryAddColumn(connection, "RecordAttachments", "FilePath", "TEXT NOT NULL DEFAULT ''");
             CreateIndexes(connection);
         }
@@ -1767,6 +1773,7 @@ CREATE TABLE IF NOT EXISTS Users (
             ExecuteNonQuery(connection, "CREATE INDEX IF NOT EXISTS IX_Records_Field_ReceivedDate_Id ON Records (Field, ReceivedDate, Id);");
             ExecuteNonQuery(connection, "CREATE INDEX IF NOT EXISTS IX_Records_ProcessorName_UpdatedAt_Id ON Records (ProcessorName, UpdatedAt, Id);");
             ExecuteNonQuery(connection, "CREATE INDEX IF NOT EXISTS IX_Records_PriorityLevel_UpdatedAt_Id ON Records (PriorityLevel, UpdatedAt, Id);");
+            ExecuteNonQuery(connection, "CREATE INDEX IF NOT EXISTS IX_Records_SeverityLevel_UpdatedAt_Id ON Records (SeverityLevel, UpdatedAt, Id);");
             ExecuteNonQuery(connection, "CREATE INDEX IF NOT EXISTS IX_RecordAttachments_RecordId ON RecordAttachments (RecordId);");
             ExecuteNonQuery(connection, "CREATE INDEX IF NOT EXISTS IX_ProcessHistories_RecordId_ProcessedAt ON ProcessHistories (RecordId, ProcessedAt);");
             ExecuteNonQuery(connection, "CREATE INDEX IF NOT EXISTS IX_CatalogItems_Type_Active_Order ON CatalogItems (CatalogType, IsActive, DisplayOrder);");
@@ -1985,12 +1992,12 @@ VALUES (
 INSERT INTO Records (
     RecordCode, ReceivedDate, ReceiveSource, ReceiverName, SenderName, SenderPhone, ContactAddress,
     AreaName, IncidentAddress, Content, CaseType, ContentGroup, Field, RelatedPerson,
-    ExpectedHandlingMethod, SeverityLevel, ExpectedResultDate, PriorityLevel, Status, ProcessorName,
+    ExpectedHandlingMethod, SenderExpectedHandlingMethod, SeverityLevel, ExpectedResultDate, PriorityLevel, Status, ProcessorName,
     Note, AdditionalNote, CreatedAt, UpdatedAt)
 VALUES (
     $recordCode, $receivedDate, $receiveSource, $receiverName, $senderName, $senderPhone, $contactAddress,
     $areaName, $incidentAddress, $content, $caseType, $contentGroup, $field, $relatedPerson,
-    $method, $severity, $expectedDate, $priority, $status, $processor,
+    $method, $senderMethod, $severity, $expectedDate, $priority, $status, $processor,
     $note, $additionalNote, $createdAt, $updatedAt);
 SELECT last_insert_rowid();";
                 command.Parameters.AddWithValue("$recordCode", recordCode);
@@ -2008,6 +2015,7 @@ SELECT last_insert_rowid();";
                 command.Parameters.AddWithValue("$field", field);
                 command.Parameters.AddWithValue("$relatedPerson", relatedPersons[random.Next(relatedPersons.Length)]);
                 command.Parameters.AddWithValue("$method", methods[random.Next(methods.Count)]);
+                command.Parameters.AddWithValue("$senderMethod", methods[random.Next(methods.Count)]);
                 command.Parameters.AddWithValue("$severity", priorities[random.Next(priorities.Count)]);
                 command.Parameters.AddWithValue("$expectedDate", expectedDate.ToString("O", CultureInfo.InvariantCulture));
                 command.Parameters.AddWithValue("$priority", priorities[random.Next(priorities.Count)]);
@@ -2819,7 +2827,7 @@ AreaName IN (
                     command.Parameters.AddWithValue("$today", DateTime.Today.ToString("O", CultureInfo.InvariantCulture));
                     break;
                 case "HighPriority":
-                    conditions.Add("PriorityLevel IN ('Ưu tiên', 'Khẩn')");
+                    conditions.Add("SeverityLevel IN ('Ưu tiên', 'Khẩn')");
                     break;
             }
         }
@@ -2853,7 +2861,7 @@ WHERE Status <> 'Đã giải quyết'
 SELECT COUNT(*)
 FROM Records
 WHERE Status <> 'Đã giải quyết'
-  AND PriorityLevel IN ('Ưu tiên', 'Khẩn')" + BuildUserRecordCondition(command) + ";";
+  AND SeverityLevel IN ('Ưu tiên', 'Khẩn')" + BuildUserRecordCondition(command) + ";";
             return Convert.ToInt32(command.ExecuteScalar(), CultureInfo.InvariantCulture);
         }
 
