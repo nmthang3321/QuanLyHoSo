@@ -20,11 +20,14 @@ namespace QuanLyHoSo.ViewModels
     public sealed class RecordInputViewModel : ViewModelBase
     {
         private readonly AppDataService _dataService;
+        private readonly Action _goBack;
         private string _editingRecordCode;
+        private RecordFormDraft _originalDraft;
 
-        public RecordInputViewModel()
+        public RecordInputViewModel(Action goBack = null)
         {
             _dataService = AppDataService.Instance;
+            _goBack = goBack ?? (() => { });
 
             ReceiveSources = new ObservableCollection<string>(_dataService.GetCatalogValues("ReceiveSource"));
             ReceiverNames = new ObservableCollection<string>(_dataService.GetProcessorNames());
@@ -40,6 +43,7 @@ namespace QuanLyHoSo.ViewModels
             Attachments.CollectionChanged += Attachments_CollectionChanged;
             NewCommand = new RelayCommand(ClearForm);
             SaveCommand = new RelayCommand(Save, () => CanWrite);
+            BackCommand = new RelayCommand(_goBack);
             CancelCommand = new RelayCommand(CancelForm);
             DeleteCommand = new RelayCommand(DeleteCurrentRecord, () => CanWrite);
             RemoveAttachmentCommand = new RelayCommand(RemoveAttachment);
@@ -61,12 +65,14 @@ namespace QuanLyHoSo.ViewModels
         public bool HasAttachments => Attachments.Count > 0;
         public ICommand NewCommand { get; }
         public ICommand SaveCommand { get; }
+        public ICommand BackCommand { get; }
         public ICommand CancelCommand { get; }
         public ICommand DeleteCommand { get; }
         public ICommand RemoveAttachmentCommand { get; }
         public ICommand OpenAttachmentCommand { get; }
         public bool CanWrite => AuthContext.CanWrite && !AppPathSettings.Current.IsClientMode;
         public bool IsEditingExistingRecord => !string.IsNullOrWhiteSpace(_editingRecordCode);
+        public string SaveButtonText => IsEditingExistingRecord ? "Cập nhật" : "Lưu";
 
         public string RecordCode { get; set; }
         public string ReceiveSource { get; set; }
@@ -91,6 +97,11 @@ namespace QuanLyHoSo.ViewModels
         public void LoadRecord(string recordCode)
         {
             LoadRecord(_dataService.GetRecordForm(recordCode));
+        }
+
+        public void PrepareNewRecord()
+        {
+            ClearForm();
         }
 
         private void LoadRecord(RecordFormDraft record)
@@ -127,13 +138,17 @@ namespace QuanLyHoSo.ViewModels
                 Attachments.Add(attachment);
             }
 
+            _originalDraft = BuildDraft();
+
             OnPropertyChanged(nameof(IsEditingExistingRecord));
+            OnPropertyChanged(nameof(SaveButtonText));
             RaiseFormPropertyChanges();
         }
 
         private void ClearForm()
         {
             _editingRecordCode = null;
+            _originalDraft = null;
             RecordCode = _dataService.GetNextRecordCode();
             ReceivedDate = string.Empty;
             SelectedReceivedDate = null;
@@ -160,6 +175,7 @@ namespace QuanLyHoSo.ViewModels
             AdditionalNote = string.Empty;
             Attachments.Clear();
             OnPropertyChanged(nameof(IsEditingExistingRecord));
+            OnPropertyChanged(nameof(SaveButtonText));
             RaiseFormPropertyChanges();
         }
 
@@ -246,7 +262,8 @@ namespace QuanLyHoSo.ViewModels
             try
             {
                 var draft = BuildDraft();
-                if (string.IsNullOrWhiteSpace(_editingRecordCode) && !ConfirmSaveWhenSimilarRecordExists(draft))
+                var isEditing = IsEditingExistingRecord;
+                if (!isEditing && !ConfirmSaveWhenSimilarRecordExists(draft))
                 {
                     return;
                 }
@@ -254,9 +271,12 @@ namespace QuanLyHoSo.ViewModels
                 var savedRecordCode = _dataService.SaveRecordForm(draft, _editingRecordCode);
                 RecordCode = savedRecordCode;
                 _editingRecordCode = savedRecordCode;
+                _originalDraft = BuildDraft();
                 OnPropertyChanged(nameof(RecordCode));
                 OnPropertyChanged(nameof(IsEditingExistingRecord));
-                MessageBox.Show("Đã lưu hồ sơ vào cơ sở dữ liệu.", "Lưu hồ sơ", MessageBoxButton.OK, MessageBoxImage.Information);
+                OnPropertyChanged(nameof(SaveButtonText));
+                var actionText = isEditing ? "cập nhật" : "lưu";
+                MessageBox.Show($"Đã {actionText} hồ sơ vào cơ sở dữ liệu.", "Hồ sơ", MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception ex)
             {
@@ -402,6 +422,81 @@ namespace QuanLyHoSo.ViewModels
                 || !string.IsNullOrWhiteSpace(Note)
                 || !string.IsNullOrWhiteSpace(AdditionalNote)
                 || Attachments.Count > 0;
+        }
+
+        public bool ConfirmLeaveWithoutSaving()
+        {
+            var hasUnsavedChanges = IsEditingExistingRecord
+                ? !AreDraftsEqual(_originalDraft, BuildDraft())
+                : HasUnsavedDraft();
+
+            if (!hasUnsavedChanges)
+            {
+                return true;
+            }
+
+            var result = MessageBox.Show(
+                IsEditingExistingRecord
+                    ? "Hồ sơ đang chỉnh sửa chưa được cập nhật. Nếu rời trang, dữ liệu thay đổi sẽ bị mất."
+                    : "Dữ liệu hồ sơ chưa được lưu. Nếu rời trang, dữ liệu đã nhập sẽ bị mất.",
+                "Xác nhận rời trang",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning);
+
+            return result == MessageBoxResult.Yes;
+        }
+
+        private static bool AreDraftsEqual(RecordFormDraft left, RecordFormDraft right)
+        {
+            if (left == null || right == null)
+            {
+                return left == right;
+            }
+
+            return string.Equals(left.RecordCode, right.RecordCode, StringComparison.Ordinal)
+                && string.Equals(left.ReceivedDate, right.ReceivedDate, StringComparison.Ordinal)
+                && string.Equals(left.ReceiveSource, right.ReceiveSource, StringComparison.Ordinal)
+                && string.Equals(left.ReceiverName, right.ReceiverName, StringComparison.Ordinal)
+                && string.Equals(left.SenderName, right.SenderName, StringComparison.Ordinal)
+                && string.Equals(left.SenderPhone, right.SenderPhone, StringComparison.Ordinal)
+                && string.Equals(left.ContactAddress, right.ContactAddress, StringComparison.Ordinal)
+                && string.Equals(left.AreaName, right.AreaName, StringComparison.Ordinal)
+                && string.Equals(left.IncidentAddress, right.IncidentAddress, StringComparison.Ordinal)
+                && string.Equals(left.Content, right.Content, StringComparison.Ordinal)
+                && string.Equals(left.CaseType, right.CaseType, StringComparison.Ordinal)
+                && string.Equals(left.ContentGroup, right.ContentGroup, StringComparison.Ordinal)
+                && string.Equals(left.Field, right.Field, StringComparison.Ordinal)
+                && string.Equals(left.RelatedPerson, right.RelatedPerson, StringComparison.Ordinal)
+                && string.Equals(left.ExpectedHandlingMethod, right.ExpectedHandlingMethod, StringComparison.Ordinal)
+                && string.Equals(left.SenderExpectedHandlingMethod, right.SenderExpectedHandlingMethod, StringComparison.Ordinal)
+                && string.Equals(left.SeverityLevel, right.SeverityLevel, StringComparison.Ordinal)
+                && string.Equals(left.ExpectedResultDate, right.ExpectedResultDate, StringComparison.Ordinal)
+                && string.Equals(left.PriorityLevel, right.PriorityLevel, StringComparison.Ordinal)
+                && string.Equals(left.Note, right.Note, StringComparison.Ordinal)
+                && string.Equals(left.AdditionalNote, right.AdditionalNote, StringComparison.Ordinal)
+                && AreAttachmentsEqual(left.Attachments, right.Attachments);
+        }
+
+        private static bool AreAttachmentsEqual(
+            System.Collections.Generic.IReadOnlyList<AttachmentDraft> left,
+            System.Collections.Generic.IReadOnlyList<AttachmentDraft> right)
+        {
+            if (left == null || right == null || left.Count != right.Count)
+            {
+                return left == right;
+            }
+
+            for (var index = 0; index < left.Count; index++)
+            {
+                if (!string.Equals(left[index].FileName, right[index].FileName, StringComparison.Ordinal)
+                    || !string.Equals(left[index].FileSize, right[index].FileSize, StringComparison.Ordinal)
+                    || !string.Equals(left[index].FilePath, right[index].FilePath, StringComparison.Ordinal))
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
 
         private void RemoveAttachment(object parameter)

@@ -117,5 +117,7 @@ namespace QuanLyHoSo.Models
         public string CaseType { get; set; }
         public string Field { get; set; }
         public string Status { get; set; }
+        public string UpdatedAt { get; set; }
+        public string ProcessorName { get; set; }
     }
 }

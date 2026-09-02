@@ -88,6 +88,16 @@ namespace QuanLyHoSo.ViewModels
                 return;
             }
 
+            if (CurrentPageKey == "Input" && !RecordInputViewModel.ConfirmLeaveWithoutSaving())
+            {
+                return;
+            }
+
+            if (key == "Input" && selectedNavigationKey == null)
+            {
+                RecordInputViewModel.PrepareNewRecord();
+            }
+
             CurrentPageKey = key;
             CurrentViewModel = key switch
             {
@@ -136,7 +146,7 @@ namespace QuanLyHoSo.ViewModels
             }
 
             RecordInputViewModel.LoadRecord(recordCode);
-            NavigateTo("Input");
+            NavigateTo("Input", selectedNavigationKey: "RecordList");
         }
 
         private void ClassifyRecordFromList(string recordCode)
@@ -147,7 +157,7 @@ namespace QuanLyHoSo.ViewModels
 
         private DashboardViewModel DashboardViewModel => _dashboardViewModel ??= new DashboardViewModel();
 
-        private RecordInputViewModel RecordInputViewModel => _recordInputViewModel ??= new RecordInputViewModel();
+        private RecordInputViewModel RecordInputViewModel => _recordInputViewModel ??= new RecordInputViewModel(() => NavigateTo("RecordList"));
 
         private RecordListViewModel RecordListViewModel => _recordListViewModel ??= new RecordListViewModel(
             () => NavigateTo(AppPathSettings.Current.IsClientMode ? "Dashboard" : "Input"),

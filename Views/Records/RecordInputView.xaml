@@ -55,6 +55,17 @@
                     <TextBlock Text="NHẬP DỮ LIỆU" Style="{StaticResource PageTitleText}" />
                     <TextBlock Text="Tiếp nhận và nhập thông tin hồ sơ" Style="{StaticResource MutedText}" Margin="0,4,0,0" />
                 </StackPanel>
+                <Button HorizontalAlignment="Right"
+                        VerticalAlignment="Center"
+                        Style="{StaticResource SecondaryButton}"
+                        Command="{Binding BackCommand}"
+                        Visibility="{Binding IsEditingExistingRecord, Converter={StaticResource BooleanToVisibilityConverter}}"
+                        MinWidth="150">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#xE72B;" FontFamily="Segoe MDL2 Assets" Margin="0,0,8,0" />
+                        <TextBlock Text="Quay lại danh sách" />
+                    </StackPanel>
+                </Button>
             </Grid>
 
             <Border Style="{StaticResource CardBorder}" Margin="0,0,0,12" Padding="18">
@@ -364,7 +375,7 @@
                             Foreground="White">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="&#xE74E;" FontFamily="Segoe MDL2 Assets" Margin="0,0,8,0" Foreground="White" />
-                            <TextBlock Text="Lưu" Foreground="White" />
+                            <TextBlock Text="{Binding SaveButtonText}" Foreground="White" />
                         </StackPanel>
                     </Button>
                     <Button Style="{StaticResource SecondaryButton}"

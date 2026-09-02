@@ -7,10 +7,12 @@ using System.IO;
 using System.IO.Compression;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Data;
 using System.Windows.Input;
+using System.Windows.Threading;
 using System.Xml;
 using Microsoft.Win32;
 using QuanLyHoSo.Infrastructure.Data;
@@ -32,6 +34,8 @@ namespace QuanLyHoSo.ViewModels
         private readonly RelayCommand _nextPageCommand;
         private readonly RelayCommand _previousPageCommand;
         private readonly RelayCommand _refreshCommand;
+        private readonly DispatcherTimer _searchDebounceTimer;
+        private readonly Dictionary<string, RecordListColumnOption> _columnOptionsByKey = new();
         private string _areaSearchText;
         private DateTime? _fromDate;
         private string _searchText;
@@ -44,6 +48,7 @@ namespace QuanLyHoSo.ViewModels
         private bool _isFilterPanelOpen;
         private bool _isExporting;
         private int _currentPage = 1;
+        private bool _isResettingFilters;
         private int _pageSize = DefaultPageSize;
         private string _pageSizeText = DefaultPageSize.ToString(CultureInfo.InvariantCulture);
         private RecordFormDraft _selectedRecordDetail;
@@ -76,12 +81,39 @@ namespace QuanLyHoSo.ViewModels
             Areas = AreaSelectionOptions.Build(_dataService.GetAreaNames(includeAll: true), includeGroupRows: true, groupRowsSelectable: true);
             FilteredAreas = AreaSelectionOptions.Filter(Areas, null);
             Processors = new ObservableCollection<string>(_dataService.GetProcessorNames(includeAll: true));
+            ColumnOptions = new ObservableCollection<RecordListColumnOption>
+            {
+                new("AreaName", "Địa bàn"),
+                new("CaseType", "Loại vụ việc"),
+                new("Field", "Lĩnh vực"),
+                new("ReceivedDate", "Ngày tiếp nhận"),
+                new("Status", "Trạng thái"),
+                new("UpdatedAt", "Cập nhật cuối"),
+                new("ProcessorName", "Người xử lý")
+            };
+            foreach (var column in ColumnOptions)
+            {
+                column.IsVisible = true;
+                column.PropertyChanged += ColumnOption_PropertyChanged;
+                _columnOptionsByKey[column.Key] = column;
+            }
+
+            foreach (var column in ColumnOptions)
+            {
+                _columnOptionsByKey[column.Key] = column;
+            }
+
             _dataService.CatalogChanged += DataService_CatalogChanged;
             SortOptions = new ObservableCollection<string> { "Ngày tiếp nhận mới nhất trước", "Ngày tiếp nhận cũ nhất trước", "Trạng thái", "Địa bàn" };
 
             _previousPageCommand = new RelayCommand(PreviousPage, () => CurrentPage > 1);
             _nextPageCommand = new RelayCommand(NextPage, () => CurrentPage < TotalPages);
             _refreshCommand = new RelayCommand(ReloadFromFirstPage);
+            _searchDebounceTimer = new DispatcherTimer
+            {
+                Interval = TimeSpan.FromMilliseconds(300)
+            };
+            _searchDebounceTimer.Tick += SearchDebounceTimer_Tick;
             ApplyFilterCommand = new RelayCommand(ReloadFromFirstPage);
             ResetFilterCommand = new RelayCommand(ResetFilters);
             ExportCommand = new RelayCommand(async () => await ExportExcelAsync(), () => !_isExporting);
@@ -98,6 +130,7 @@ namespace QuanLyHoSo.ViewModels
         public ObservableCollection<AreaSelectionOption> FilteredAreas { get; }
         public ObservableCollection<string> Processors { get; }
         public ObservableCollection<string> SortOptions { get; }
+        public ObservableCollection<RecordListColumnOption> ColumnOptions { get; }
         public ObservableCollection<RecordListRowViewModel> Records { get; }
         public ICommand PreviousPageCommand => _previousPageCommand;
         public ICommand NextPageCommand => _nextPageCommand;
@@ -114,34 +147,106 @@ namespace QuanLyHoSo.ViewModels
             set => SetProperty(ref _isFilterPanelOpen, value);
         }
 
+        public bool IsAreaColumnVisible
+        {
+            get => GetColumnVisibility("AreaName");
+            set => SetColumnVisibility("AreaName", value);
+        }
+
+        public bool IsCaseTypeColumnVisible
+        {
+            get => GetColumnVisibility("CaseType");
+            set => SetColumnVisibility("CaseType", value);
+        }
+
+        public bool IsFieldColumnVisible
+        {
+            get => GetColumnVisibility("Field");
+            set => SetColumnVisibility("Field", value);
+        }
+
+        public bool IsReceivedDateColumnVisible
+        {
+            get => GetColumnVisibility("ReceivedDate");
+            set => SetColumnVisibility("ReceivedDate", value);
+        }
+
+        public bool IsStatusColumnVisible
+        {
+            get => GetColumnVisibility("Status");
+            set => SetColumnVisibility("Status", value);
+        }
+
+        public bool IsUpdatedAtColumnVisible
+        {
+            get => GetColumnVisibility("UpdatedAt");
+            set => SetColumnVisibility("UpdatedAt", value);
+        }
+
+        public bool IsProcessorNameColumnVisible
+        {
+            get => GetColumnVisibility("ProcessorName");
+            set => SetColumnVisibility("ProcessorName", value);
+        }
+
         public DateTime? FromDate
         {
             get => _fromDate;
-            set => SetProperty(ref _fromDate, value);
+            set
+            {
+                if (SetProperty(ref _fromDate, value))
+                {
+                    RequestReloadFromFirstPage();
+                }
+            }
         }
 
         public DateTime? ToDate
         {
             get => _toDate;
-            set => SetProperty(ref _toDate, value);
+            set
+            {
+                if (SetProperty(ref _toDate, value))
+                {
+                    RequestReloadFromFirstPage();
+                }
+            }
         }
 
         public string SelectedStatus
         {
             get => _selectedStatus;
-            set => SetProperty(ref _selectedStatus, value);
+            set
+            {
+                if (SetProperty(ref _selectedStatus, value))
+                {
+                    RequestReloadFromFirstPage();
+                }
+            }
         }
 
         public string SelectedCaseType
         {
             get => _selectedCaseType;
-            set => SetProperty(ref _selectedCaseType, value);
+            set
+            {
+                if (SetProperty(ref _selectedCaseType, value))
+                {
+                    RequestReloadFromFirstPage();
+                }
+            }
         }
 
         public string SelectedField
         {
             get => _selectedField;
-            set => SetProperty(ref _selectedField, value);
+            set
+            {
+                if (SetProperty(ref _selectedField, value))
+                {
+                    RequestReloadFromFirstPage();
+                }
+            }
         }
 
         public string SelectedArea
@@ -160,6 +265,7 @@ namespace QuanLyHoSo.ViewModels
                     }
 
                     OnPropertyChanged(nameof(SelectedAreaDisplayName));
+                    RequestReloadFromFirstPage();
                 }
             }
         }
@@ -191,19 +297,44 @@ namespace QuanLyHoSo.ViewModels
         public string SelectedProcessor
         {
             get => _selectedProcessor;
-            set => SetProperty(ref _selectedProcessor, value);
+            set
+            {
+                if (SetProperty(ref _selectedProcessor, value))
+                {
+                    RequestReloadFromFirstPage();
+                }
+            }
         }
 
         public string SearchText
         {
             get => _searchText;
-            set => SetProperty(ref _searchText, value);
+            set
+            {
+                if (SetProperty(ref _searchText, value))
+                {
+                    _searchDebounceTimer.Stop();
+                    _searchDebounceTimer.Start();
+                }
+            }
+        }
+
+        private void SearchDebounceTimer_Tick(object sender, EventArgs e)
+        {
+            _searchDebounceTimer.Stop();
+            RequestReloadFromFirstPage();
         }
 
         public string SelectedSortOption
         {
             get => _selectedSortOption;
-            set => SetProperty(ref _selectedSortOption, value);
+            set
+            {
+                if (SetProperty(ref _selectedSortOption, value))
+                {
+                    RequestReloadFromFirstPage();
+                }
+            }
         }
 
         public int CurrentPage
@@ -264,7 +395,7 @@ namespace QuanLyHoSo.ViewModels
 
                 _pageSize = pageSize;
                 OnPropertyChanged(nameof(TableHeight));
-                ReloadFromFirstPage();
+                RequestReloadFromFirstPage();
             }
         }
 
@@ -313,8 +444,19 @@ namespace QuanLyHoSo.ViewModels
 
         private void ReloadFromFirstPage()
         {
+            _searchDebounceTimer.Stop();
             CurrentPage = 1;
             Reload();
+        }
+
+        private void RequestReloadFromFirstPage()
+        {
+            if (_isResettingFilters)
+            {
+                return;
+            }
+
+            ReloadFromFirstPage();
         }
 
         private void NextPage()
@@ -376,19 +518,65 @@ namespace QuanLyHoSo.ViewModels
             RaisePageCommandStates();
         }
 
+        private bool GetColumnVisibility(string key)
+        {
+            return _columnOptionsByKey.TryGetValue(key, out var option) && option.IsVisible;
+        }
+
+        private void SetColumnVisibility(string key, bool visible)
+        {
+            if (!_columnOptionsByKey.TryGetValue(key, out var option))
+            {
+                return;
+            }
+
+            option.IsVisible = visible;
+            RaiseColumnVisibilityProperties();
+        }
+
+        private void ColumnOption_PropertyChanged(object sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName != nameof(RecordListColumnOption.IsVisible))
+            {
+                return;
+            }
+
+            RaiseColumnVisibilityProperties();
+        }
+
+        private void RaiseColumnVisibilityProperties()
+        {
+            OnPropertyChanged(nameof(IsAreaColumnVisible));
+            OnPropertyChanged(nameof(IsCaseTypeColumnVisible));
+            OnPropertyChanged(nameof(IsFieldColumnVisible));
+            OnPropertyChanged(nameof(IsReceivedDateColumnVisible));
+            OnPropertyChanged(nameof(IsStatusColumnVisible));
+            OnPropertyChanged(nameof(IsUpdatedAtColumnVisible));
+            OnPropertyChanged(nameof(IsProcessorNameColumnVisible));
+        }
+
         private void ResetFilters()
         {
             var today = DateTime.Today;
-            FromDate = new DateTime(today.Year, today.Month, 1);
-            ToDate = today;
-            SelectedStatus = GetFirstOrDefault(Statuses);
-            SelectedCaseType = GetFirstOrDefault(CaseTypes);
-            SelectedField = GetFirstOrDefault(Fields);
-            SelectedArea = GetFirstOrDefault(Areas);
-            AreaSearchText = SelectedAreaDisplayName;
-            SelectedProcessor = GetFirstOrDefault(Processors);
-            SearchText = string.Empty;
-            SelectedSortOption = GetFirstOrDefault(SortOptions);
+            _isResettingFilters = true;
+            try
+            {
+                FromDate = new DateTime(today.Year, 1, 1);
+                ToDate = today;
+                SelectedStatus = GetFirstOrDefault(Statuses);
+                SelectedCaseType = GetFirstOrDefault(CaseTypes);
+                SelectedField = GetFirstOrDefault(Fields);
+                SelectedArea = GetFirstOrDefault(Areas);
+                AreaSearchText = SelectedAreaDisplayName;
+                SelectedProcessor = GetFirstOrDefault(Processors);
+                SearchText = string.Empty;
+                SelectedSortOption = GetFirstOrDefault(SortOptions);
+            }
+            finally
+            {
+                _isResettingFilters = false;
+            }
+
             ReloadFromFirstPage();
         }
 
@@ -412,6 +600,38 @@ namespace QuanLyHoSo.ViewModels
             {
                 ReloadFromFirstPage();
             }
+        }
+
+        public sealed class RecordListColumnOption : INotifyPropertyChanged
+        {
+            public RecordListColumnOption(string key, string title, bool isVisible = true, bool isRequired = false)
+            {
+                Key = key;
+                Title = title;
+                IsVisible = isVisible;
+                IsRequired = isRequired;
+            }
+
+            public event PropertyChangedEventHandler PropertyChanged;
+
+            public string Key { get; }
+            public string Title { get; }
+            private bool _isVisible;
+            public bool IsVisible
+            {
+                get => _isVisible;
+                set
+                {
+                    if (_isVisible == value)
+                    {
+                        return;
+                    }
+
+                    _isVisible = value;
+                    PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsVisible)));
+                }
+            }
+            public bool IsRequired { get; }
         }
 
         private static bool RefreshFilterCatalog(ObservableCollection<string> target, IReadOnlyList<string> source, string selectedValue, Action<string> setSelectedValue)
@@ -518,16 +738,46 @@ namespace QuanLyHoSo.ViewModels
             _isExporting = value;
             (ExportCommand as RelayCommand)?.RaiseCanExecuteChanged();
         }
-        private static IEnumerable<ExportColumn> GetExportColumns()
+        private IEnumerable<ExportColumn> GetExportColumns()
         {
             yield return new ExportColumn("STT", record => record.Index.ToString(CultureInfo.InvariantCulture), ExportColumnType.Number);
             yield return new ExportColumn("Mã hồ sơ", record => record.RecordCode);
-            yield return new ExportColumn("Ngày tiếp nhận", record => record.ReceivedDate);
             yield return new ExportColumn("Người gửi đơn", record => record.SenderName);
-            yield return new ExportColumn("Địa bàn", record => record.AreaName);
-            yield return new ExportColumn("Loại vụ việc", record => record.CaseType);
-            yield return new ExportColumn("Lĩnh vực", record => record.Field);
-            yield return new ExportColumn("Trạng thái", record => record.Status);
+
+            if (IsAreaColumnVisible)
+            {
+                yield return new ExportColumn("Địa bàn", record => record.AreaName);
+            }
+
+            if (IsCaseTypeColumnVisible)
+            {
+                yield return new ExportColumn("Loại vụ việc", record => record.CaseType);
+            }
+
+            if (IsFieldColumnVisible)
+            {
+                yield return new ExportColumn("Lĩnh vực", record => record.Field);
+            }
+
+            if (IsReceivedDateColumnVisible)
+            {
+                yield return new ExportColumn("Ngày tiếp nhận", record => record.ReceivedDate);
+            }
+
+            if (IsStatusColumnVisible)
+            {
+                yield return new ExportColumn("Trạng thái", record => record.Status);
+            }
+
+            if (IsUpdatedAtColumnVisible)
+            {
+                yield return new ExportColumn("Cập nhật cuối", record => record.UpdatedAt);
+            }
+
+            if (IsProcessorNameColumnVisible)
+            {
+                yield return new ExportColumn("Người xử lý", record => record.ProcessorName);
+            }
         }
 
         private static void WriteXlsx(string filePath, IReadOnlyList<ExportRecordPreview> records, IReadOnlyList<ExportColumn> columns)

@@ -13,6 +13,9 @@ namespace QuanLyHoSo.ViewModels
             RecordCode = record.RecordCode;
             SenderName = record.SenderName;
             AreaName = record.AreaName;
+            CaseType = record.CaseType;
+            Field = record.Field;
+            ReceivedDate = record.ReceivedDate;
             Status = record.Status;
             UpdatedAt = record.UpdatedAt;
             ProcessorName = record.ProcessorName;
@@ -29,6 +32,9 @@ namespace QuanLyHoSo.ViewModels
         public string RecordCode { get; }
         public string SenderName { get; }
         public string AreaName { get; }
+        public string CaseType { get; }
+        public string Field { get; }
+        public string ReceivedDate { get; }
         public string Status { get; }
         public string UpdatedAt { get; }
         public string ProcessorName { get; }

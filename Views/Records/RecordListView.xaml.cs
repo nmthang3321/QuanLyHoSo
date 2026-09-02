@@ -36,6 +36,18 @@ namespace QuanLyHoSo.Views.Records
             e.Handled = true;
         }
 
+        private void ColumnSelectorButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (ColumnSelectorButton.ContextMenu != null)
+            {
+                ColumnSelectorButton.ContextMenu.PlacementTarget = ColumnSelectorButton;
+                ColumnSelectorButton.ContextMenu.Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom;
+                ColumnSelectorButton.ContextMenu.IsOpen = true;
+            }
+
+            e.Handled = true;
+        }
+
         private void AreaFilterDropDownButton_Click(object sender, RoutedEventArgs e)
         {
             if (AreaFilterPanel.Visibility == Visibility.Visible)

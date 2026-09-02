@@ -57,6 +57,9 @@ namespace QuanLyHoSo.Models
         public string RecordCode { get; set; }
         public string SenderName { get; set; }
         public string AreaName { get; set; }
+        public string CaseType { get; set; }
+        public string Field { get; set; }
+        public string ReceivedDate { get; set; }
         public string Status { get; set; }
         public string UpdatedAt { get; set; }
         public string ProcessorName { get; set; }

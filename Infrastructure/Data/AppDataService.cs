@@ -832,7 +832,7 @@ LIMIT $take OFFSET $skip;";
             using var command = connection.CreateCommand();
             var whereClause = BuildExportWhere(command, fromDate, toDate, status, caseType, field, areaName, processorName, searchText, applyUserScope: true);
             command.CommandText = $@"
-SELECT RecordCode, SenderName, AreaName, Status, UpdatedAt, ProcessorName
+SELECT RecordCode, SenderName, AreaName, CaseType, Field, ReceivedDate, Status, UpdatedAt, ProcessorName
 FROM Records
 {whereClause}
 ORDER BY {BuildExportOrderBy(sortOption)}
@@ -848,9 +848,12 @@ LIMIT $take OFFSET $skip;";
                     RecordCode = reader.GetString(0),
                     SenderName = reader.GetString(1),
                     AreaName = reader.GetString(2),
-                    Status = reader.GetString(3),
-                    UpdatedAt = FormatDateTime(reader.GetString(4)),
-                    ProcessorName = reader.GetString(5)
+                    CaseType = reader.GetString(3),
+                    Field = reader.GetString(4),
+                    ReceivedDate = FormatDate(reader.GetString(5)),
+                    Status = reader.GetString(6),
+                    UpdatedAt = FormatDateTime(reader.GetString(7)),
+                    ProcessorName = reader.GetString(8)
                 });
             }
 
@@ -1491,7 +1494,7 @@ LIMIT $take OFFSET $skip;";
             using var command = connection.CreateCommand();
             var whereClause = BuildExportWhere(command, fromDate, toDate, status, caseType, field, areaName, processorName, searchText, applyUserScope: true);
             command.CommandText = $@"
-SELECT RecordCode, ReceivedDate, SenderName, AreaName, CaseType, Field, Status
+SELECT RecordCode, ReceivedDate, SenderName, AreaName, CaseType, Field, Status, UpdatedAt, ProcessorName
 FROM Records
 {whereClause}
 ORDER BY {BuildExportOrderBy(sortOption)}
@@ -1511,7 +1514,9 @@ LIMIT $take;";
                     AreaName = reader.GetString(3),
                     CaseType = reader.GetString(4),
                     Field = reader.GetString(5),
-                    Status = reader.GetString(6)
+                    Status = reader.GetString(6),
+                    UpdatedAt = FormatDateTime(reader.GetString(7)),
+                    ProcessorName = reader.GetString(8)
                 });
             }
 
