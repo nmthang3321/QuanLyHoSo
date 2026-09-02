@@ -18,8 +18,12 @@
   <ItemGroup>
     <None Remove="Assets\AppIcon.ico" />
     <None Remove="Assets\AppIcon.png" />
+    <None Remove="Assets\icons8-id-card-80.png" />
+    <None Remove="Assets\LoginBackground.png" />
     <Resource Include="Assets\AppIcon.ico" />
     <Resource Include="Assets\AppIcon.png" />
+    <Resource Include="Assets\icons8-id-card-80.png" />
+    <Resource Include="Assets\LoginBackground.png" />
   </ItemGroup>
 
 </Project>
