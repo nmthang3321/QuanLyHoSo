@@ -34,6 +34,7 @@ namespace QuanLyHoSo.ViewModels
             ContentGroups = new ObservableCollection<string>(_dataService.GetCatalogValues("ContentGroup"));
             Priorities = new ObservableCollection<string>(_dataService.GetCatalogValues("Priority"));
             HandlingMethods = new ObservableCollection<string>(_dataService.GetCatalogValues("ExpectedHandlingMethod"));
+            _dataService.CatalogChanged += DataService_CatalogChanged;
             Attachments = new ObservableCollection<AttachmentDraft>();
             Attachments.CollectionChanged += Attachments_CollectionChanged;
             NewCommand = new RelayCommand(ClearForm);
@@ -504,6 +505,51 @@ namespace QuanLyHoSo.ViewModels
             foreach (var item in source)
             {
                 target.Add(item);
+            }
+        }
+
+        private void DataService_CatalogChanged(string catalogType)
+        {
+            switch (catalogType)
+            {
+                case "ReceiveSource":
+                    RefreshCatalogValues(ReceiveSources, catalogType, ReceiveSource, value => ReceiveSource = value, nameof(ReceiveSource));
+                    break;
+                case "CaseType":
+                    RefreshCatalogValues(CaseTypes, catalogType, CaseType, value => CaseType = value, nameof(CaseType));
+                    break;
+                case "Field":
+                    RefreshCatalogValues(Fields, catalogType, Field, value => Field = value, nameof(Field));
+                    break;
+                case "ContentGroup":
+                    RefreshCatalogValues(ContentGroups, catalogType, ContentGroup, value => ContentGroup = value, nameof(ContentGroup));
+                    break;
+                case "Priority":
+                    RefreshCatalogValues(Priorities, catalogType, PriorityLevel, value => PriorityLevel = value, nameof(PriorityLevel));
+                    if (!string.IsNullOrWhiteSpace(SeverityLevel) && !Priorities.Contains(SeverityLevel))
+                    {
+                        SeverityLevel = null;
+                        OnPropertyChanged(nameof(SeverityLevel));
+                    }
+                    break;
+                case "ExpectedHandlingMethod":
+                    RefreshCatalogValues(HandlingMethods, catalogType, ExpectedHandlingMethod, value => ExpectedHandlingMethod = value, nameof(ExpectedHandlingMethod));
+                    break;
+            }
+        }
+
+        private void RefreshCatalogValues(ObservableCollection<string> target, string catalogType, string selectedValue, Action<string> setSelectedValue, string selectedPropertyName)
+        {
+            target.Clear();
+            foreach (var item in _dataService.GetCatalogValues(catalogType))
+            {
+                target.Add(item);
+            }
+
+            if (!string.IsNullOrWhiteSpace(selectedValue) && !target.Contains(selectedValue))
+            {
+                setSelectedValue(null);
+                OnPropertyChanged(selectedPropertyName);
             }
         }
 

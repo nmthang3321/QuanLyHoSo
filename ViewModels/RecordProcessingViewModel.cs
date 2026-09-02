@@ -73,6 +73,7 @@ namespace QuanLyHoSo.ViewModels
             };
             AreaFilters = AreaSelectionOptions.Build(_dataService.GetAreaNames(includeAll: true), includeGroupRows: true, groupRowsSelectable: true);
             PriorityFilters = new ObservableCollection<string>(_dataService.GetCatalogValues("Priority", includeAll: true));
+            _dataService.CatalogChanged += DataService_CatalogChanged;
             ApplyFilterCommand = new RelayCommand(Reload);
             ViewRecordCommand = new RelayCommand(ViewRecord);
             ViewProcessingDetailCommand = new RelayCommand(ViewProcessingDetail);
@@ -426,6 +427,28 @@ namespace QuanLyHoSo.ViewModels
             ProcessingProcessorName = SelectedProcessingDetail.ProcessorName;
             ProcessingContent = SelectedProcessingDetail.ProcessContent;
             ProcessingNote = SelectedProcessingDetail.ProcessNote;
+        }
+
+        private void DataService_CatalogChanged(string catalogType)
+        {
+            switch (catalogType)
+            {
+                case "Priority":
+                    ReplaceItems(PriorityFilters, _dataService.GetCatalogValues(catalogType, includeAll: true));
+                    if (!string.IsNullOrWhiteSpace(SelectedPriority) && !PriorityFilters.Contains(SelectedPriority))
+                    {
+                        SelectedPriority = PriorityFilters.Count > 0 ? PriorityFilters[0] : null;
+                        Reload();
+                    }
+                    break;
+                case "ProcessorName":
+                    ReplaceItems(ProcessorNames, _dataService.GetProcessorNames());
+                    if (!string.IsNullOrWhiteSpace(ProcessingProcessorName) && !ProcessorNames.Contains(ProcessingProcessorName))
+                    {
+                        ProcessingProcessorName = null;
+                    }
+                    break;
+            }
         }
 
         private void CloseDetail()

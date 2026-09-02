@@ -76,6 +76,7 @@ namespace QuanLyHoSo.ViewModels
             Areas = AreaSelectionOptions.Build(_dataService.GetAreaNames(includeAll: true), includeGroupRows: true, groupRowsSelectable: true);
             FilteredAreas = AreaSelectionOptions.Filter(Areas, null);
             Processors = new ObservableCollection<string>(_dataService.GetProcessorNames(includeAll: true));
+            _dataService.CatalogChanged += DataService_CatalogChanged;
             SortOptions = new ObservableCollection<string> { "Ngày tiếp nhận mới nhất trước", "Ngày tiếp nhận cũ nhất trước", "Trạng thái", "Địa bàn" };
 
             _previousPageCommand = new RelayCommand(PreviousPage, () => CurrentPage > 1);
@@ -389,6 +390,45 @@ namespace QuanLyHoSo.ViewModels
             SearchText = string.Empty;
             SelectedSortOption = GetFirstOrDefault(SortOptions);
             ReloadFromFirstPage();
+        }
+
+        private void DataService_CatalogChanged(string catalogType)
+        {
+            var shouldReload = false;
+            switch (catalogType)
+            {
+                case "CaseType":
+                    shouldReload = RefreshFilterCatalog(CaseTypes, _dataService.GetCatalogValues(catalogType, includeAll: true), SelectedCaseType, value => SelectedCaseType = value);
+                    break;
+                case "Field":
+                    shouldReload = RefreshFilterCatalog(Fields, _dataService.GetCatalogValues(catalogType, includeAll: true), SelectedField, value => SelectedField = value);
+                    break;
+                case "ProcessorName":
+                    shouldReload = RefreshFilterCatalog(Processors, _dataService.GetProcessorNames(includeAll: true), SelectedProcessor, value => SelectedProcessor = value);
+                    break;
+            }
+
+            if (shouldReload)
+            {
+                ReloadFromFirstPage();
+            }
+        }
+
+        private static bool RefreshFilterCatalog(ObservableCollection<string> target, IReadOnlyList<string> source, string selectedValue, Action<string> setSelectedValue)
+        {
+            target.Clear();
+            foreach (var item in source)
+            {
+                target.Add(item);
+            }
+
+            if (string.IsNullOrWhiteSpace(selectedValue) || target.Contains(selectedValue))
+            {
+                return false;
+            }
+
+            setSelectedValue(GetFirstOrDefault(target));
+            return true;
         }
 
         private async Task ExportExcelAsync()

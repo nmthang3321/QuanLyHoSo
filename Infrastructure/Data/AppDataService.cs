@@ -38,6 +38,8 @@ namespace QuanLyHoSo.Infrastructure.Data
 
         public static AppDataService Instance => LazyInstance.Value;
 
+        public event Action<string> CatalogChanged;
+
         public string DatabasePath { get; }
 
         public void Initialize()
@@ -384,6 +386,7 @@ SELECT last_insert_rowid();";
             command.Parameters.AddWithValue("$name", trimmedName);
             var newId = Convert.ToInt32(command.ExecuteScalar(), CultureInfo.InvariantCulture);
             WriteDatabaseLog(connection, null, "Danh mục", "Thêm", $"{catalogType}:{newId}", $"Thêm danh mục \"{trimmedName}\".");
+            NotifyCatalogChanged(catalogType);
             return newId;
         }
 
@@ -410,6 +413,7 @@ SELECT last_insert_rowid();";
             if (affectedRows > 0)
             {
                 WriteDatabaseLog(connection, null, "Danh mục", "Sửa", $"{catalogType}:{id}", $"Cập nhật danh mục thành \"{trimmedName}\".");
+                NotifyCatalogChanged(catalogType);
             }
 
             return affectedRows > 0;
@@ -432,6 +436,7 @@ SELECT last_insert_rowid();";
             if (affectedRows > 0)
             {
                 WriteDatabaseLog(connection, null, "Danh mục", "Xóa", $"{catalogType}:{id}", $"Ngưng sử dụng danh mục \"{catalogName}\".");
+                NotifyCatalogChanged(catalogType);
             }
 
             return affectedRows > 0;
@@ -458,6 +463,7 @@ SELECT last_insert_rowid();";
 
             transaction.Commit();
             WriteDatabaseLog(connection, null, "Danh mục", "Sắp xếp", "CatalogItems", $"Cập nhật thứ tự {items.Count} danh mục.");
+            NotifyCatalogChanged(items[0].CatalogType);
         }
 
         public IReadOnlyList<string> GetProcessorNames(bool includeAll = false)
@@ -1278,6 +1284,7 @@ WHERE Id = $recordId;";
             WriteDatabaseLog(connection, transaction, "Xử lý hồ sơ", "Sửa", recordCode, $"Cập nhật trạng thái hồ sơ thành \"{NormalizeDbText(status)}\".");
 
             transaction.Commit();
+            NotifyCatalogChanged("ProcessorName");
         }
 
         private static IReadOnlyList<DashboardMetric> BuildProcessingQueueMetrics(SqliteConnection connection)
@@ -2373,6 +2380,14 @@ ORDER BY ProcessorName;";
             }
 
             transaction.Commit();
+        }
+
+        private void NotifyCatalogChanged(string catalogType)
+        {
+            if (!string.IsNullOrWhiteSpace(catalogType))
+            {
+                CatalogChanged?.Invoke(catalogType);
+            }
         }
 
         private static void EnsureCatalogItem(SqliteConnection connection, SqliteTransaction transaction, string catalogType, string name)
