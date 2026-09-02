@@ -71,8 +71,8 @@
 
                 <StackPanel HorizontalAlignment="Center" Margin="0,0,0,30">
                     <Border Width="64" Height="64" Background="#145DCC" CornerRadius="32" Margin="0,0,0,14">
-                        <TextBlock Text="&#xE8A5;"
-                                   FontFamily="Segoe MDL2 Assets"
+                        <TextBlock Text="&#xF368;"
+                                   FontFamily="pack://application:,,,/Assets/Fonts/#Material Symbols Outlined"
                                    FontSize="30"
                                    Foreground="White"
                                    HorizontalAlignment="Center"
@@ -98,7 +98,7 @@
                                         <ColumnDefinition Width="*" />
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Text="{Binding IconGlyph}"
-                                               FontFamily="Segoe MDL2 Assets"
+                                               FontFamily="{Binding IconFontFamily}"
                                                FontSize="20"
                                                Foreground="White"
                                                VerticalAlignment="Center" />

@@ -40,9 +40,9 @@ namespace QuanLyHoSo.ViewModels
             NavigationItems = new ObservableCollection<NavigationItem>
             {
                 CreateNavigationItem("Dashboard", "Tổng quan", "\uE80F"),
-                CreateNavigationItem("Input", "Nhập dữ liệu", "\uE8A5"),
+                CreateNavigationItem("Input", "Nhập dữ liệu", "\uF7DD", "pack://application:,,,/Assets/Fonts/#Material Symbols Outlined"),
                 CreateNavigationItem("RecordList", "Danh sách hồ sơ", "\uE8FD"),
-                CreateNavigationItem("Processing", "Phân loại & Xử lý", "\uE8F9")
+                CreateNavigationItem("Processing", "Phân loại & Xử lý", "\uE72C", "pack://application:,,,/Assets/Fonts/#Material Symbols Outlined")
             };
             SettingsNavigationItem = CreateNavigationItem("Settings", "Cài đặt", "\uE713");
 
@@ -69,13 +69,14 @@ namespace QuanLyHoSo.ViewModels
             private set => SetProperty(ref _currentPageKey, value);
         }
 
-        private NavigationItem CreateNavigationItem(string key, string title, string iconGlyph)
+        private NavigationItem CreateNavigationItem(string key, string title, string iconGlyph, string iconFontFamily = "Segoe MDL2 Assets")
         {
             return new NavigationItem
             {
                 Key = key,
                 Title = title,
                 IconGlyph = iconGlyph,
+                IconFontFamily = iconFontFamily,
                 Command = new RelayCommand(() => NavigateTo(key), () => CanNavigateTo(key))
             };
         }

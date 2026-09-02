@@ -308,7 +308,13 @@
                             <ColumnDefinition Width="176" />
                         </Grid.ColumnDefinitions>
                         <Border Width="50" Height="50" CornerRadius="25" Background="#EAF2FF">
-                            <TextBlock Text="&#xE8B7;" FontFamily="Segoe MDL2 Assets" FontSize="24" Foreground="{StaticResource TextBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            <TextBlock Text="&#xF368;"
+                                       FontFamily="pack://application:,,,/Assets/Fonts/#Material Symbols Outlined"
+                                       FontSize="24"
+                                       FontWeight="ExtraLight"
+                                       Foreground="{StaticResource TextBrush}"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center" />
                         </Border>
                         <StackPanel Grid.Column="1">
                             <StackPanel Orientation="Horizontal">

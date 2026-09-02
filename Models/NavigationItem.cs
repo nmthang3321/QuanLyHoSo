@@ -9,6 +9,7 @@ namespace QuanLyHoSo.Models
         public string Key { get; set; }
         public string Title { get; set; }
         public string IconGlyph { get; set; }
+        public string IconFontFamily { get; set; }
         public ICommand Command { get; set; }
 
         public bool IsSelected
