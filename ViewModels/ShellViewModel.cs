@@ -208,11 +208,6 @@ namespace QuanLyHoSo.ViewModels
 
         private static bool CanNavigateTo(string key)
         {
-            if (key == "Settings")
-            {
-                return AuthContext.IsAdmin;
-            }
-
             return key != "Input" || AuthContext.CanWrite;
         }
 

@@ -96,6 +96,12 @@ namespace QuanLyHoSo.Infrastructure.Network
 
                 var route = context.Request.Url.AbsolutePath.Trim('/').Replace("api/", string.Empty);
                 var result = Dispatch(route, await ReadBodyAsync(context.Request));
+                if (string.Equals(route, "settings/update/download", StringComparison.OrdinalIgnoreCase))
+                {
+                    await WriteFileAsync(context, result as string);
+                    return;
+                }
+
                 await WriteJsonAsync(context, result);
             }
             catch (Exception ex)
@@ -162,8 +168,15 @@ namespace QuanLyHoSo.Infrastructure.Network
                         return _dataService.SaveUser(saveUser.User, saveUser.Password);
                     case "settings/users/delete":
                         return _dataService.DeleteUser(ReadData<UserIdRequest>(body).UserId);
+                    case "settings/users/change-password":
+                        var changePassword = ReadData<ChangePasswordRequest>(body);
+                        return _dataService.ChangeCurrentUserPassword(changePassword?.CurrentPassword, changePassword?.NewPassword);
                     case "settings/backup/create":
                         return _dataService.CreateBackupFile(ReadData<CreateBackupRequest>(body).FileName);
+                    case "settings/update/latest":
+                        return _dataService.GetInternalUpdatePackageInfo();
+                    case "settings/update/download":
+                        return _dataService.GetInternalUpdatePackagePath(ReadData<InternalUpdateDownloadRequest>(body).FileName);
                     case "dashboard/metrics":
                         var metrics = ReadData<DashboardMetricsRequest>(body);
                         return _dataService.GetDashboardMetrics(metrics.FromDate, metrics.ToDate, metrics.PreviousFromDate, metrics.PreviousToDate);
@@ -277,6 +290,24 @@ namespace QuanLyHoSo.Infrastructure.Network
             context.Response.ContentType = "application/json; charset=utf-8";
             context.Response.ContentLength64 = bytes.Length;
             await context.Response.OutputStream.WriteAsync(bytes, 0, bytes.Length);
+            context.Response.OutputStream.Close();
+        }
+
+        private static async Task WriteFileAsync(HttpListenerContext context, string filePath)
+        {
+            if (string.IsNullOrWhiteSpace(filePath) || !File.Exists(filePath))
+            {
+                await WriteErrorAsync(context, 404, "Update package was not found.");
+                return;
+            }
+
+            var fileInfo = new FileInfo(filePath);
+            context.Response.StatusCode = 200;
+            context.Response.ContentType = "application/zip";
+            context.Response.ContentLength64 = fileInfo.Length;
+            context.Response.AddHeader("Content-Disposition", $"attachment; filename=\"{fileInfo.Name}\"");
+            using var fileStream = File.OpenRead(filePath);
+            await fileStream.CopyToAsync(context.Response.OutputStream);
             context.Response.OutputStream.Close();
         }
 

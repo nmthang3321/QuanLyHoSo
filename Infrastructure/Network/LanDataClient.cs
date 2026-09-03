@@ -68,5 +68,39 @@ namespace QuanLyHoSo.Infrastructure.Network
                 throw new LanServerUnavailableException(AppPathSettings.Current.AdminServerUrl, ex);
             }
         }
+
+        public void DownloadFile(string route, object data, string destinationPath)
+        {
+            try
+            {
+                var envelope = new LanApiEnvelope<object>
+                {
+                    User = AuthContext.CurrentUser,
+                    Data = data
+                };
+                var json = JsonSerializer.Serialize(envelope, _jsonOptions);
+                using var content = new StringContent(json, Encoding.UTF8, "application/json");
+                using var response = _httpClient.PostAsync($"api/{route}", content).GetAwaiter().GetResult();
+                if (!response.IsSuccessStatusCode)
+                {
+                    var responseBody = response.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+                    throw new InvalidOperationException(string.IsNullOrWhiteSpace(responseBody)
+                        ? $"MÃ¡y admin tráº£ vá» lá»—i HTTP {(int)response.StatusCode}."
+                        : responseBody);
+                }
+
+                using var remoteStream = response.Content.ReadAsStreamAsync().GetAwaiter().GetResult();
+                using var fileStream = System.IO.File.Create(destinationPath);
+                remoteStream.CopyTo(fileStream);
+            }
+            catch (HttpRequestException ex)
+            {
+                throw new LanServerUnavailableException(AppPathSettings.Current.AdminServerUrl, ex);
+            }
+            catch (TaskCanceledException ex)
+            {
+                throw new LanServerUnavailableException(AppPathSettings.Current.AdminServerUrl, ex);
+            }
+        }
     }
 }

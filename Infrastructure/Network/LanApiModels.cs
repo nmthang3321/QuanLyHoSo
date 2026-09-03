@@ -60,12 +60,23 @@ namespace QuanLyHoSo.Infrastructure.Network
         public string Password { get; set; }
     }
 
+    public sealed class ChangePasswordRequest
+    {
+        public string CurrentPassword { get; set; }
+        public string NewPassword { get; set; }
+    }
+
     public sealed class UserIdRequest
     {
         public int UserId { get; set; }
     }
 
     public sealed class CreateBackupRequest
+    {
+        public string FileName { get; set; }
+    }
+
+    public sealed class InternalUpdateDownloadRequest
     {
         public string FileName { get; set; }
     }

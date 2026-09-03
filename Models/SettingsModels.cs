@@ -101,4 +101,13 @@ namespace QuanLyHoSo.Models
         public string Target { get; set; }
         public string Detail { get; set; }
     }
+
+    public sealed class InternalUpdatePackageInfo
+    {
+        public bool HasPackage { get; set; }
+        public string Version { get; set; }
+        public string FileName { get; set; }
+        public long SizeBytes { get; set; }
+        public string PublishedAt { get; set; }
+    }
 }

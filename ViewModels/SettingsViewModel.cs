@@ -44,6 +44,7 @@ namespace QuanLyHoSo.ViewModels
         private string _latestReleaseUrl;
         private string _latestReleaseDownloadUrl;
         private string _latestReleaseVersion;
+        private bool _latestUpdateIsInternalPackage;
         private bool _isCheckingUpdate;
         private bool _hasAvailableUpdate;
         private bool _isCatalogDialogOpen;
@@ -51,6 +52,7 @@ namespace QuanLyHoSo.ViewModels
         private bool _isGeneralSettingsDialogOpen;
         private bool _isGuideDialogOpen;
         private bool _isUserManagementDialogOpen;
+        private bool _isChangePasswordDialogOpen;
         private string _databasePathText;
         private string _logFolderText;
         private string _generalSettingsStatus;
@@ -62,6 +64,10 @@ namespace QuanLyHoSo.ViewModels
         private string _userDisplayNameText;
         private string _selectedUserRole;
         private string _userPasswordText;
+        private string _currentPasswordText;
+        private string _newPasswordText;
+        private string _confirmNewPasswordText;
+        private string _changePasswordStatus;
         private bool _isUserActive = true;
         private int _catalogCurrentPage = 1;
         private int _catalogFilteredCount;
@@ -96,10 +102,10 @@ namespace QuanLyHoSo.ViewModels
             DataAccessModes = new ObservableCollection<string> { "AdminHost", "Client" };
 
             SelectCatalogGroupCommand = new RelayCommand(SelectCatalogGroup);
-            OpenCatalogDialogCommand = new RelayCommand(OpenCatalogDialog);
+            OpenCatalogDialogCommand = new RelayCommand(OpenCatalogDialog, _ => CanEditSettings);
             CloseCatalogDialogCommand = new RelayCommand(() => IsCatalogDialogOpen = false);
             SelectCatalogValueCommand = new RelayCommand(SelectCatalogValue, value => value is CatalogValueSetting);
-            DeleteCatalogValueForRowCommand = new RelayCommand(DeleteCatalogValueForRow, value => value is CatalogValueSetting);
+            DeleteCatalogValueForRowCommand = new RelayCommand(DeleteCatalogValueForRow, value => CanEditSettings && value is CatalogValueSetting);
             PreviousCatalogPageCommand = new RelayCommand(PreviousCatalogPage, () => CatalogCurrentPage > 1);
             NextCatalogPageCommand = new RelayCommand(NextCatalogPage, () => CatalogCurrentPage < CatalogTotalPages);
             OpenSystemLogDialogCommand = new RelayCommand(OpenSystemLogDialog);
@@ -111,21 +117,24 @@ namespace QuanLyHoSo.ViewModels
             CloseGuideDialogCommand = new RelayCommand(() => IsGuideDialogOpen = false);
             OpenUserManagementDialogCommand = new RelayCommand(OpenUserManagementDialog, () => AuthContext.CanManageUsers);
             CloseUserManagementDialogCommand = new RelayCommand(() => IsUserManagementDialogOpen = false);
-            EditUserCommand = new RelayCommand(EditUser, value => value is AppUser);
-            SaveUserCommand = new RelayCommand(SaveUser);
-            NewUserCommand = new RelayCommand(ClearUserForm);
-            DeleteUserCommand = new RelayCommand(DeleteUser, value => value is AppUser user && user.Id != AuthContext.CurrentUser?.Id);
+            OpenChangePasswordDialogCommand = new RelayCommand(OpenChangePasswordDialog);
+            CloseChangePasswordDialogCommand = new RelayCommand(() => IsChangePasswordDialogOpen = false);
+            ChangePasswordCommand = new RelayCommand(ChangePassword);
+            EditUserCommand = new RelayCommand(EditUser, value => CanEditSettings && value is AppUser);
+            SaveUserCommand = new RelayCommand(SaveUser, () => CanEditSettings);
+            NewUserCommand = new RelayCommand(ClearUserForm, () => CanEditSettings);
+            DeleteUserCommand = new RelayCommand(DeleteUser, value => CanEditSettings && value is AppUser user && user.Id != AuthContext.CurrentUser?.Id);
             ChooseDatabasePathCommand = new RelayCommand(ChooseDatabasePath);
             ChooseLogFolderCommand = new RelayCommand(ChooseLogFolder);
             SaveGeneralSettingsCommand = new RelayCommand(SaveGeneralSettings);
             ResetGeneralSettingsCommand = new RelayCommand(ResetGeneralSettings);
-            SaveCatalogValueCommand = new RelayCommand(SaveCatalogValue);
+            SaveCatalogValueCommand = new RelayCommand(SaveCatalogValue, () => CanEditSettings);
             CancelCatalogEditCommand = new RelayCommand(CancelCatalogEdit, () => IsEditingCatalogValue);
-            AddCatalogValueCommand = new RelayCommand(AddCatalogValue);
-            UpdateCatalogValueCommand = new RelayCommand(UpdateCatalogValue, () => SelectedCatalogValue != null);
-            DeleteCatalogValueCommand = new RelayCommand(DeleteCatalogValue, () => SelectedCatalogValue != null);
+            AddCatalogValueCommand = new RelayCommand(AddCatalogValue, () => CanEditSettings);
+            UpdateCatalogValueCommand = new RelayCommand(UpdateCatalogValue, () => CanEditSettings && SelectedCatalogValue != null);
+            DeleteCatalogValueCommand = new RelayCommand(DeleteCatalogValue, () => CanEditSettings && SelectedCatalogValue != null);
             ChooseBackupFolderCommand = new RelayCommand(ChooseBackupFolder);
-            BackupNowCommand = new RelayCommand(async () => await BackupNowAsync());
+            BackupNowCommand = new RelayCommand(async () => await BackupNowAsync(), () => CanEditSettings);
             RestoreDataCommand = new RelayCommand(async () => await RestoreDataAsync());
             CheckUpdateCommand = new RelayCommand(async () => await CheckUpdateAsync(), () => !IsCheckingUpdate);
             UpdateSoftwareCommand = new RelayCommand(async () => await UpdateSoftwareAsync(), () => HasAvailableUpdate && !IsCheckingUpdate);
@@ -178,6 +187,9 @@ namespace QuanLyHoSo.ViewModels
         public ICommand CloseGuideDialogCommand { get; }
         public ICommand OpenUserManagementDialogCommand { get; }
         public ICommand CloseUserManagementDialogCommand { get; }
+        public ICommand OpenChangePasswordDialogCommand { get; }
+        public ICommand CloseChangePasswordDialogCommand { get; }
+        public ICommand ChangePasswordCommand { get; }
         public ICommand EditUserCommand { get; }
         public ICommand SaveUserCommand { get; }
         public ICommand NewUserCommand { get; }
@@ -286,7 +298,17 @@ namespace QuanLyHoSo.ViewModels
             set => SetProperty(ref _isUserManagementDialogOpen, value);
         }
 
+        public bool IsChangePasswordDialogOpen
+        {
+            get => _isChangePasswordDialogOpen;
+            set => SetProperty(ref _isChangePasswordDialogOpen, value);
+        }
+
         public bool CanManageUsers => AuthContext.CanManageUsers;
+        public bool CanEditSettings => AuthContext.IsAdmin;
+        public string SystemLogScopeText => AuthContext.IsAdmin
+            ? "Ghi nhận các thao tác thêm, sửa, xóa và cập nhật dữ liệu"
+            : "Chỉ hiển thị nhật ký hoạt động của tài khoản hiện tại";
 
         public AppUser SelectedUser
         {
@@ -328,6 +350,30 @@ namespace QuanLyHoSo.ViewModels
         {
             get => _userPasswordText;
             set => SetProperty(ref _userPasswordText, value);
+        }
+
+        public string CurrentPasswordText
+        {
+            get => _currentPasswordText;
+            set => SetProperty(ref _currentPasswordText, value);
+        }
+
+        public string NewPasswordText
+        {
+            get => _newPasswordText;
+            set => SetProperty(ref _newPasswordText, value);
+        }
+
+        public string ConfirmNewPasswordText
+        {
+            get => _confirmNewPasswordText;
+            set => SetProperty(ref _confirmNewPasswordText, value);
+        }
+
+        public string ChangePasswordStatus
+        {
+            get => _changePasswordStatus;
+            set => SetProperty(ref _changePasswordStatus, value);
         }
 
         public bool IsUserActive
@@ -479,6 +525,70 @@ namespace QuanLyHoSo.ViewModels
             }
         }
 
+        private void OpenChangePasswordDialog()
+        {
+            CurrentPasswordText = string.Empty;
+            NewPasswordText = string.Empty;
+            ConfirmNewPasswordText = string.Empty;
+            ChangePasswordStatus = string.Empty;
+            IsChangePasswordDialogOpen = true;
+        }
+
+        private void ChangePassword()
+        {
+            if (AuthContext.CurrentUser == null)
+            {
+                ChangePasswordStatus = "Phiên đăng nhập không còn hợp lệ.";
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(CurrentPasswordText) ||
+                string.IsNullOrWhiteSpace(NewPasswordText) ||
+                string.IsNullOrWhiteSpace(ConfirmNewPasswordText))
+            {
+                ChangePasswordStatus = "Vui lòng nhập đầy đủ mật khẩu hiện tại và mật khẩu mới.";
+                return;
+            }
+
+            if (NewPasswordText.Length < 6)
+            {
+                ChangePasswordStatus = "Mật khẩu mới cần tối thiểu 6 ký tự.";
+                return;
+            }
+
+            if (!string.Equals(NewPasswordText, ConfirmNewPasswordText, StringComparison.Ordinal))
+            {
+                ChangePasswordStatus = "Mật khẩu mới nhập lại chưa khớp.";
+                return;
+            }
+
+            if (string.Equals(CurrentPasswordText, NewPasswordText, StringComparison.Ordinal))
+            {
+                ChangePasswordStatus = "Mật khẩu mới cần khác mật khẩu hiện tại.";
+                return;
+            }
+
+            try
+            {
+                if (!_dataService.ChangeCurrentUserPassword(CurrentPasswordText, NewPasswordText))
+                {
+                    ChangePasswordStatus = "Không thể đổi mật khẩu. Vui lòng kiểm tra mật khẩu hiện tại.";
+                    return;
+                }
+
+                IsChangePasswordDialogOpen = false;
+                CurrentPasswordText = string.Empty;
+                NewPasswordText = string.Empty;
+                ConfirmNewPasswordText = string.Empty;
+                MessageBox.Show("Đã đổi mật khẩu. Từ lần đăng nhập sau hãy dùng mật khẩu mới.", "Đổi mật khẩu", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Error("Settings", "ChangePassword", ex, "Failed to change current user password.", AuthContext.CurrentUser.UserName);
+                ChangePasswordStatus = "Không thể đổi mật khẩu. Vui lòng thử lại.";
+            }
+        }
+
         private void OpenUserManagementDialog()
         {
             if (!AuthContext.CanManageUsers)
@@ -605,6 +715,11 @@ namespace QuanLyHoSo.ViewModels
 
         public void MoveCatalogValue(CatalogValueSetting source, CatalogValueSetting target)
         {
+            if (!CanEditSettings)
+            {
+                return;
+            }
+
             if (source == null || target == null || source == target)
             {
                 return;
@@ -661,6 +776,11 @@ namespace QuanLyHoSo.ViewModels
 
         private void OpenCatalogDialog(object parameter)
         {
+            if (!CanEditSettings)
+            {
+                return;
+            }
+
             CatalogSearchText = string.Empty;
             SelectedCatalogStatusFilter = CatalogStatusFilters.Skip(1).FirstOrDefault() ?? CatalogStatusFilters.FirstOrDefault();
             SelectCatalogGroup(parameter);
@@ -677,6 +797,11 @@ namespace QuanLyHoSo.ViewModels
 
         private void DeleteCatalogValueForRow(object parameter)
         {
+            if (!CanEditSettings)
+            {
+                return;
+            }
+
             if (parameter is CatalogValueSetting value)
             {
                 SelectedCatalogValue = value;
@@ -686,6 +811,11 @@ namespace QuanLyHoSo.ViewModels
 
         private void SaveCatalogValue()
         {
+            if (!CanEditSettings)
+            {
+                return;
+            }
+
             if (IsEditingCatalogValue)
             {
                 UpdateCatalogValue();
@@ -950,6 +1080,11 @@ namespace QuanLyHoSo.ViewModels
 
         private void AddCatalogValue()
         {
+            if (!CanEditSettings)
+            {
+                return;
+            }
+
             if (!ValidateCatalogInput())
             {
                 return;
@@ -969,6 +1104,11 @@ namespace QuanLyHoSo.ViewModels
 
         private void UpdateCatalogValue()
         {
+            if (!CanEditSettings)
+            {
+                return;
+            }
+
             if (SelectedCatalogValue == null || !ValidateCatalogInput())
             {
                 return;
@@ -987,6 +1127,11 @@ namespace QuanLyHoSo.ViewModels
 
         private void DeleteCatalogValue()
         {
+            if (!CanEditSettings)
+            {
+                return;
+            }
+
             if (SelectedCatalogValue == null)
             {
                 return;
@@ -1064,6 +1209,11 @@ namespace QuanLyHoSo.ViewModels
 
         private async Task BackupNowAsync()
         {
+            if (!CanEditSettings)
+            {
+                return;
+            }
+
             try
             {
                 var fileName = $"quanlyhoso_backup_{DateTime.Now:yyyyMMdd_HHmmss}.db";
@@ -1131,6 +1281,57 @@ namespace QuanLyHoSo.ViewModels
         {
             IsCheckingUpdate = true;
             HasAvailableUpdate = false;
+            _latestUpdateIsInternalPackage = false;
+            _latestReleaseDownloadUrl = null;
+            _latestReleaseVersion = null;
+            UpdateStatus = "Đang kiểm tra gói cập nhật nội bộ trên máy server...";
+
+            try
+            {
+                var internalUpdate = await Task.Run(() => _dataService.GetInternalUpdatePackageInfo());
+                var currentVersion = NormalizeVersionText(VersionText);
+                if (internalUpdate?.HasPackage != true)
+                {
+                    UpdateStatus = "Chưa có gói cập nhật nội bộ trên máy server.";
+                    return;
+                }
+
+                var latestVersion = NormalizeVersionText(internalUpdate.Version);
+                if (!Version.TryParse(latestVersion, out var latest) ||
+                    !Version.TryParse(currentVersion, out var current))
+                {
+                    UpdateStatus = "Không đọc được số phiên bản từ gói cập nhật nội bộ. Tên file nên có dạng QuanLyHoSo-1.0.1.zip.";
+                    return;
+                }
+
+                if (latest > current)
+                {
+                    _latestUpdateIsInternalPackage = true;
+                    _latestReleaseDownloadUrl = internalUpdate.FileName;
+                    _latestReleaseVersion = latestVersion;
+                    HasAvailableUpdate = true;
+                    UpdateStatus = $"Có gói cập nhật nội bộ {latestVersion}. Phiên bản hiện tại là {currentVersion}. Bấm Cập nhật để tải từ máy server.";
+                    return;
+                }
+
+                UpdateStatus = $"Phiên bản {currentVersion} đang là bản mới nhất theo gói cập nhật nội bộ.";
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Error("Settings", "CheckInternalUpdate", ex, "Failed to check internal update package.");
+                UpdateStatus = "Không thể kiểm tra gói cập nhật nội bộ trên máy server.";
+            }
+            finally
+            {
+                IsCheckingUpdate = false;
+            }
+        }
+
+        private async Task CheckGitHubUpdateAsync()
+        {
+            IsCheckingUpdate = true;
+            HasAvailableUpdate = false;
+            _latestUpdateIsInternalPackage = false;
             UpdateStatus = "Đang kiểm tra phiên bản mới trên GitHub...";
 
             try
@@ -1218,7 +1419,9 @@ namespace QuanLyHoSo.ViewModels
             }
 
             IsCheckingUpdate = true;
-            UpdateStatus = $"Đang tải bản cập nhật {_latestReleaseVersion}...";
+            UpdateStatus = _latestUpdateIsInternalPackage
+                ? $"Đang tải gói cập nhật {_latestReleaseVersion} từ máy server..."
+                : $"Đang tải bản cập nhật {_latestReleaseVersion}...";
 
             try
             {
@@ -1229,8 +1432,13 @@ namespace QuanLyHoSo.ViewModels
                 Directory.CreateDirectory(updateFolder);
 
                 var packagePath = Path.Combine(updateFolder, $"QuanLyHoSo-{_latestReleaseVersion}.zip");
-                using (var client = new HttpClient())
+                if (_latestUpdateIsInternalPackage)
                 {
+                    await Task.Run(() => _dataService.DownloadInternalUpdatePackage(_latestReleaseDownloadUrl, packagePath));
+                }
+                else
+                {
+                    using var client = new HttpClient();
                     client.DefaultRequestHeaders.UserAgent.ParseAdd("QuanLyHoSo-Updater/1.0");
                     using var response = await client.GetAsync(_latestReleaseDownloadUrl);
                     response.EnsureSuccessStatusCode();

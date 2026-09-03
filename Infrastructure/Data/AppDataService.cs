@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using Microsoft.Data.Sqlite;
 using QuanLyHoSo.Infrastructure.Configuration;
 using QuanLyHoSo.Infrastructure.Documents;
@@ -207,13 +208,19 @@ GROUP BY CatalogType;";
 
             using var connection = OpenConnection();
             var result = new List<SystemLogEntry>();
+            var currentUserName = AuthContext.CurrentUser?.UserName;
+            var userNameFilter = AuthContext.IsAdmin || string.IsNullOrWhiteSpace(currentUserName)
+                ? null
+                : currentUserName.Trim();
             using var command = connection.CreateCommand();
             command.CommandText = @"
 SELECT CreatedAt, UserName, Module, Action, Target, Detail
 FROM SystemLogs
+WHERE $userName IS NULL OR lower(UserName) = lower($userName)
 ORDER BY Id DESC
 LIMIT $take;";
             command.Parameters.AddWithValue("$take", Math.Max(1, take));
+            command.Parameters.AddWithValue("$userName", string.IsNullOrWhiteSpace(userNameFilter) ? DBNull.Value : userNameFilter);
 
             using var reader = command.ExecuteReader();
             var index = 1;
@@ -284,6 +291,7 @@ LIMIT 1;";
                 return _lanClient.Call<IReadOnlyList<AppUser>>("settings/users", null);
             }
 
+            EnsureAdmin();
             var result = new List<AppUser>();
             using var connection = OpenConnection();
             using var command = connection.CreateCommand();
@@ -397,6 +405,54 @@ VALUES ($userName, $displayName, $role, $passwordHash, $isActive, $now, $now);";
             return affectedRows > 0;
         }
 
+        public bool ChangeCurrentUserPassword(string currentPassword, string newPassword)
+        {
+            if (AppPathSettings.Current.IsClientMode)
+            {
+                return _lanClient.Call<bool>("settings/users/change-password", new ChangePasswordRequest
+                {
+                    CurrentPassword = currentPassword,
+                    NewPassword = newPassword
+                });
+            }
+
+            var currentUser = AuthContext.CurrentUser;
+            if (currentUser == null ||
+                currentUser.Id <= 0 ||
+                string.IsNullOrWhiteSpace(currentPassword) ||
+                string.IsNullOrWhiteSpace(newPassword))
+            {
+                return false;
+            }
+
+            using var connection = OpenConnection();
+            string passwordHash;
+            using (var readCommand = connection.CreateCommand())
+            {
+                readCommand.CommandText = "SELECT PasswordHash FROM Users WHERE Id = $id AND IsActive = 1 LIMIT 1;";
+                readCommand.Parameters.AddWithValue("$id", currentUser.Id);
+                passwordHash = readCommand.ExecuteScalar()?.ToString();
+            }
+
+            if (!PasswordHasher.VerifyPassword(currentPassword, passwordHash))
+            {
+                return false;
+            }
+
+            using var updateCommand = connection.CreateCommand();
+            updateCommand.CommandText = "UPDATE Users SET PasswordHash = $passwordHash, UpdatedAt = $now WHERE Id = $id AND IsActive = 1;";
+            updateCommand.Parameters.AddWithValue("$id", currentUser.Id);
+            updateCommand.Parameters.AddWithValue("$passwordHash", PasswordHasher.HashPassword(newPassword));
+            updateCommand.Parameters.AddWithValue("$now", DateTime.Now.ToString("O", CultureInfo.InvariantCulture));
+            var affectedRows = updateCommand.ExecuteNonQuery();
+            if (affectedRows > 0)
+            {
+                WriteDatabaseLog(connection, null, "Người dùng", "Đổi mật khẩu", currentUser.UserName, "Người dùng đổi mật khẩu tài khoản của mình.");
+            }
+
+            return affectedRows > 0;
+        }
+
         public int AddCatalogItem(string catalogType, string name)
         {
             if (AppPathSettings.Current.IsClientMode)
@@ -404,6 +460,7 @@ VALUES ($userName, $displayName, $role, $passwordHash, $isActive, $now, $now);";
                 return _lanClient.Call<int>("settings/catalog/add", new SaveCatalogItemRequest { CatalogType = catalogType, Name = name });
             }
 
+            EnsureAdmin();
             if (string.IsNullOrWhiteSpace(catalogType) || string.IsNullOrWhiteSpace(name))
             {
                 return 0;
@@ -440,6 +497,7 @@ SELECT last_insert_rowid();";
                 return _lanClient.Call<bool>("settings/catalog/update", new SaveCatalogItemRequest { Id = id, Name = name });
             }
 
+            EnsureAdmin();
             if (id <= 0 || string.IsNullOrWhiteSpace(name))
             {
                 return false;
@@ -474,6 +532,7 @@ SELECT last_insert_rowid();";
                 return _lanClient.Call<bool>("settings/catalog/delete", new CatalogItemIdRequest { Id = id });
             }
 
+            EnsureAdmin();
             if (id <= 0)
             {
                 return false;
@@ -503,6 +562,7 @@ SELECT last_insert_rowid();";
                 return;
             }
 
+            EnsureAdmin();
             if (items == null || items.Count == 0)
             {
                 return;
@@ -2182,6 +2242,62 @@ LIMIT $take;";
             return destinationPath;
         }
 
+        public InternalUpdatePackageInfo GetInternalUpdatePackageInfo()
+        {
+            if (AppPathSettings.Current.IsClientMode)
+            {
+                return _lanClient.Call<InternalUpdatePackageInfo>("settings/update/latest", null);
+            }
+
+            var package = FindLatestInternalUpdatePackage();
+            if (package == null)
+            {
+                return new InternalUpdatePackageInfo { HasPackage = false };
+            }
+
+            return new InternalUpdatePackageInfo
+            {
+                HasPackage = true,
+                Version = package.Version.ToString(),
+                FileName = package.FileInfo.Name,
+                SizeBytes = package.FileInfo.Length,
+                PublishedAt = package.FileInfo.LastWriteTime.ToString("dd/MM/yyyy HH:mm", CultureInfo.CurrentCulture)
+            };
+        }
+
+        public string GetInternalUpdatePackagePath(string fileName)
+        {
+            if (AppPathSettings.Current.IsClientMode)
+            {
+                throw new InvalidOperationException("Client must download update packages through the LAN API.");
+            }
+
+            var safeFileName = Path.GetFileName(fileName ?? string.Empty);
+            if (string.IsNullOrWhiteSpace(safeFileName))
+            {
+                throw new FileNotFoundException("Update package was not found.");
+            }
+
+            var packagePath = Path.Combine(GetInternalUpdatePackageFolder(), safeFileName);
+            if (!File.Exists(packagePath))
+            {
+                throw new FileNotFoundException("Update package was not found.", packagePath);
+            }
+
+            return packagePath;
+        }
+
+        public void DownloadInternalUpdatePackage(string fileName, string destinationPath)
+        {
+            if (AppPathSettings.Current.IsClientMode)
+            {
+                _lanClient.DownloadFile("settings/update/download", new InternalUpdateDownloadRequest { FileName = fileName }, destinationPath);
+                return;
+            }
+
+            File.Copy(GetInternalUpdatePackagePath(fileName), destinationPath, true);
+        }
+
         public void RestoreDatabaseFromFile(string sourcePath, string safetyBackupPath)
         {
             if (string.IsNullOrWhiteSpace(sourcePath) || !File.Exists(sourcePath))
@@ -2210,6 +2326,53 @@ LIMIT $take;";
             var connection = new SqliteConnection(_connectionString);
             connection.Open();
             return connection;
+        }
+
+        private static string GetInternalUpdatePackageFolder()
+        {
+            return Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "QuanLyHoSo",
+                "Updates",
+                "Packages");
+        }
+
+        private static InternalUpdatePackage FindLatestInternalUpdatePackage()
+        {
+            var packageFolder = GetInternalUpdatePackageFolder();
+            if (!Directory.Exists(packageFolder))
+            {
+                return null;
+            }
+
+            return Directory.EnumerateFiles(packageFolder, "*.zip")
+                .Select(path => new FileInfo(path))
+                .Select(file => new InternalUpdatePackage(file, TryParseVersionFromFileName(file.Name)))
+                .Where(package => package.Version != null)
+                .OrderByDescending(package => package.Version)
+                .ThenByDescending(package => package.FileInfo.LastWriteTime)
+                .FirstOrDefault();
+        }
+
+        private static Version TryParseVersionFromFileName(string fileName)
+        {
+            var name = Path.GetFileNameWithoutExtension(fileName ?? string.Empty);
+            var match = Regex.Match(name, @"(?<!\d)v?(?<version>\d+\.\d+\.\d+(?:\.\d+)?)(?!\d)", RegexOptions.IgnoreCase);
+            return match.Success && Version.TryParse(match.Groups["version"].Value, out var version)
+                ? version
+                : null;
+        }
+
+        private sealed class InternalUpdatePackage
+        {
+            public InternalUpdatePackage(FileInfo fileInfo, Version version)
+            {
+                FileInfo = fileInfo;
+                Version = version;
+            }
+
+            public FileInfo FileInfo { get; }
+            public Version Version { get; }
         }
 
         private static SqliteConnection OpenDatabaseFile(string databasePath)
@@ -3367,7 +3530,7 @@ VALUES (
 INSERT INTO SystemLogs (CreatedAt, UserName, Module, Action, Target, Detail)
 VALUES ($createdAt, $userName, $module, $action, $target, $detail);";
                 command.Parameters.AddWithValue("$createdAt", DateTime.Now.ToString("O", CultureInfo.InvariantCulture));
-                command.Parameters.AddWithValue("$userName", Environment.UserName);
+                command.Parameters.AddWithValue("$userName", AuthContext.CurrentUser?.UserName ?? Environment.UserName);
                 command.Parameters.AddWithValue("$module", NormalizeDbText(module));
                 command.Parameters.AddWithValue("$action", NormalizeDbText(action));
                 command.Parameters.AddWithValue("$target", NormalizeDbText(target));

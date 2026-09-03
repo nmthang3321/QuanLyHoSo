@@ -44,6 +44,21 @@
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Cursor" Value="Arrow" />
+                    <Setter Property="Opacity" Value="0.8" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="AdminOnlyCardBorder" TargetType="Border" BasedOn="{StaticResource CardBorder}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding CanEditSettings}" Value="False">
+                    <Setter Property="IsEnabled" Value="False" />
+                    <Setter Property="Opacity" Value="0.8" />
+                </DataTrigger>
+            </Style.Triggers>
         </Style>
 
         <Style x:Key="CatalogCardBorder" TargetType="Border">
@@ -83,7 +98,7 @@
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
-                        <Border Grid.Row="0" Grid.RowSpan="2" Grid.Column="0" Style="{StaticResource CardBorder}" Margin="0,0,10,12">
+                        <Border Grid.Row="0" Grid.RowSpan="2" Grid.Column="0" Style="{StaticResource AdminOnlyCardBorder}" Margin="0,0,10,12">
                             <StackPanel>
                                 <TextBlock Text="DANH MỤC HỆ THỐNG" Style="{StaticResource SectionTitleText}" Foreground="{StaticResource PrimaryBrush}" />
                                 <TextBlock Text="Quản lý các danh mục sử dụng trong hệ thống"
@@ -171,9 +186,25 @@
                                             </Grid>
                                         </Border>
                                     </Button>
+                                    <Button Command="{Binding OpenChangePasswordDialogCommand}" Style="{StaticResource CatalogCardButton}">
+                                        <Border BorderBrush="#E1E9F5" BorderThickness="1" CornerRadius="6" Padding="12" Margin="0,0,0,10">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="34" />
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Text="&#xE72E;" FontFamily="Segoe MDL2 Assets" Foreground="{StaticResource PrimaryBrush}" FontSize="18" VerticalAlignment="Center" />
+                                                <StackPanel Grid.Column="1">
+                                                    <TextBlock Text="Đổi mật khẩu" Foreground="{StaticResource PrimaryBrush}" FontWeight="SemiBold" />
+                                                    <TextBlock Text="Cập nhật mật khẩu cho tài khoản hiện tại" Foreground="{StaticResource MutedTextBrush}" FontSize="11" Margin="0,3,0,0" />
+                                                </StackPanel>
+                                                <TextBlock Grid.Column="2" Text="&#xE76C;" FontFamily="Segoe MDL2 Assets" VerticalAlignment="Center" />
+                                            </Grid>
+                                        </Border>
+                                    </Button>
                                     <Button Command="{Binding OpenUserManagementDialogCommand}"
-                                            Style="{StaticResource CatalogCardButton}"
-                                            Visibility="{Binding CanManageUsers, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                            Style="{StaticResource CatalogCardButton}">
                                         <Border BorderBrush="#E1E9F5" BorderThickness="1" CornerRadius="6" Padding="12" Margin="0,0,0,10">
                                             <Grid>
                                                 <Grid.ColumnDefinitions>
@@ -270,7 +301,7 @@
                             </StackPanel>
                         </Border>
 
-                        <Border Grid.Row="2" Grid.Column="1" Style="{StaticResource CardBorder}">
+                        <Border Grid.Row="2" Grid.Column="1" Style="{StaticResource AdminOnlyCardBorder}">
                             <StackPanel>
                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
                                     <TextBlock Text="&#xE777;" FontFamily="Segoe MDL2 Assets" FontSize="18" Foreground="{StaticResource PrimaryBrush}" Margin="0,0,10,0" VerticalAlignment="Center" />
@@ -481,7 +512,7 @@
                     <Grid>
                         <StackPanel>
                             <TextBlock Text="NHẬT KÝ HỆ THỐNG" Style="{StaticResource SectionTitleText}" />
-                            <TextBlock Text="Ghi nhận các thao tác thêm, sửa, xóa và cập nhật dữ liệu"
+                            <TextBlock Text="{Binding SystemLogScopeText}"
                                        Foreground="{StaticResource MutedTextBrush}"
                                        FontSize="12"
                                        Margin="0,4,0,0" />
@@ -522,6 +553,55 @@
                             <DataGridTextColumn Header="Nội dung" Binding="{Binding Detail}" Width="*" MinWidth="220" />
                         </DataGrid.Columns>
                     </DataGrid>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <Grid Background="#6606164A" Visibility="{Binding IsChangePasswordDialogOpen, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <Border Background="White" BorderBrush="#CBD8EA" BorderThickness="1" CornerRadius="6" Width="430" Padding="16" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <Grid>
+                        <StackPanel>
+                            <TextBlock Text="ĐỔI MẬT KHẨU" Style="{StaticResource SectionTitleText}" />
+                            <TextBlock Text="Cập nhật mật khẩu cho tài khoản hiện tại"
+                                       Foreground="{StaticResource MutedTextBrush}"
+                                       FontSize="12"
+                                       Margin="0,4,0,0" />
+                        </StackPanel>
+                        <Button Style="{StaticResource PopupIconButton}"
+                                HorizontalAlignment="Right"
+                                Foreground="{StaticResource MutedTextBrush}"
+                                Command="{Binding CloseChangePasswordDialogCommand}"
+                                ToolTip="Đóng">
+                            <TextBlock Text="&#xE711;" FontFamily="Segoe MDL2 Assets" />
+                        </Button>
+                    </Grid>
+
+                    <StackPanel Grid.Row="1" Margin="0,18,0,0">
+                        <TextBlock Text="Mật khẩu hiện tại" Style="{StaticResource SettingsLabel}" Margin="0,0,0,6" />
+                        <TextBox Text="{Binding CurrentPasswordText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,12" />
+
+                        <TextBlock Text="Mật khẩu mới" Style="{StaticResource SettingsLabel}" Margin="0,0,0,6" />
+                        <TextBox Text="{Binding NewPasswordText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,12" />
+
+                        <TextBlock Text="Nhập lại mật khẩu mới" Style="{StaticResource SettingsLabel}" Margin="0,0,0,6" />
+                        <TextBox Text="{Binding ConfirmNewPasswordText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,12" />
+
+                        <TextBlock Text="{Binding ChangePasswordStatus}"
+                                   Foreground="#E11414"
+                                   TextWrapping="Wrap" />
+                    </StackPanel>
+
+                    <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,18,0,0">
+                        <Button Content="Hủy" Style="{StaticResource SecondaryButton}" Command="{Binding CloseChangePasswordDialogCommand}" Margin="0,0,10,0" />
+                        <Button Content="Đổi mật khẩu" Style="{StaticResource PrimaryButton}" Command="{Binding ChangePasswordCommand}" />
+                    </StackPanel>
                 </Grid>
             </Border>
         </Grid>
@@ -638,4 +718,3 @@
         </Grid>
     </Grid>
 </UserControl>
-
