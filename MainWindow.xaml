@@ -158,7 +158,11 @@
                                 <ColumnDefinition Width="34" />
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
-                            <TextBlock Text="&#xE8AC;" FontFamily="Segoe MDL2 Assets" FontSize="20" Foreground="White" VerticalAlignment="Center" />
+                            <TextBlock Text="&#xE9BA;"
+                                       FontFamily="pack://application:,,,/Assets/Fonts/#Material Symbols Outlined"
+                                       FontSize="20"
+                                       Foreground="White"
+                                       VerticalAlignment="Center" />
                             <TextBlock Grid.Column="1" Text="Đăng xuất" Foreground="White" FontSize="15" VerticalAlignment="Center" />
                         </Grid>
                     </Button>
