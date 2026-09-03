@@ -76,7 +76,7 @@ namespace QuanLyHoSo.ViewModels
                 CreateCatalogGroup("CaseType", "Loại vụ việc", "Phân loại bản chất hồ sơ", "\uE9F9", "#1FA24A", "#EAF8F0"),
                 CreateCatalogGroup("Field", "Lĩnh vực", "Lọc, thống kê và xuất dữ liệu", "\uE825", "#7147D8", "#F3EEFF"),
                 CreateCatalogGroup("ContentGroup", "Nhóm nội dung", "Nhóm hóa nội dung phản ánh", "\uECA5", "#E85D04", "#FFF2E7"),
-                CreateCatalogGroup("Priority", "Mức độ ưu tiên", "Dùng cho ưu tiên và mức độ xử lý", "\uE734", "#E43D5C", "#FFF0F3"),
+                CreateCatalogGroup("Priority", "Mức độ vụ việc", "Dùng cho mức độ nghiêm trọng của vụ việc", "\uE734", "#E43D5C", "#FFF0F3"),
                 CreateCatalogGroup("ProcessorName", "Tên cán bộ xử lý", "Dùng khi cập nhật xử lý hồ sơ", "\uE77B", "#0B5CFF", "#EEF4FF"),
                 CreateCatalogGroup("ExpectedHandlingMethod", "Hướng xử lý", "Định hướng xử lý dự kiến", "\uE774", "#00A6B2", "#E9FAFC")
             };

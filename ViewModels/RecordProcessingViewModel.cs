@@ -2,8 +2,11 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System;
 using System.Globalization;
+using System.Diagnostics;
 using System.Windows;
 using System.Windows.Input;
+using System.IO;
+using System.Linq;
 using QuanLyHoSo.Infrastructure.Data;
 using QuanLyHoSo.Infrastructure.Logging;
 using QuanLyHoSo.Infrastructure.Security;
@@ -32,9 +35,11 @@ namespace QuanLyHoSo.ViewModels
         private string _processingNote;
         private string _processingProcessorName;
         private string _processingStatus;
+        private string _transferAreaName;
+        private string _transferAreaSearchText;
         private string _selectedArea;
         private string _selectedMetricKey = "All";
-        private string _selectedPriority;
+        private string _selectedSeverity;
         private string _selectedStatus;
         private bool _shouldReturnToPreviousPage;
         private int _totalPages = 1;
@@ -49,6 +54,10 @@ namespace QuanLyHoSo.ViewModels
             ProcessSteps = new ObservableCollection<ProcessStep>();
             History = new ObservableCollection<ProcessHistoryItem>();
             ProcessorNames = new ObservableCollection<string>(_dataService.GetProcessorNames());
+            TransferAreas = AreaSelectionOptions.Build(_dataService.GetAreaNames(), includeGroupRows: true, groupRowsSelectable: false);
+            FilteredTransferAreas = AreaSelectionOptions.Filter(TransferAreas, null);
+            TransferAreaChoices = new ObservableCollection<AreaSelectionOption>(AreaSelectionOptions.Flatten(TransferAreas).Where(item => !item.IsGroup && item.IsSelectable));
+            Attachments = new ObservableCollection<AttachmentDraft>();
             ProcessingStatuses = new ObservableCollection<string>
             {
                 "Mới tiếp nhận",
@@ -72,7 +81,7 @@ namespace QuanLyHoSo.ViewModels
                 "Chuyển cơ quan khác"
             };
             AreaFilters = AreaSelectionOptions.Build(_dataService.GetAreaNames(includeAll: true), includeGroupRows: true, groupRowsSelectable: true);
-            PriorityFilters = new ObservableCollection<string>(_dataService.GetCatalogValues("Priority", includeAll: true));
+            SeverityFilters = new ObservableCollection<string>(_dataService.GetCatalogValues("Priority", includeAll: true));
             _dataService.CatalogChanged += DataService_CatalogChanged;
             ApplyFilterCommand = new RelayCommand(Reload);
             ViewRecordCommand = new RelayCommand(ViewRecord);
@@ -84,10 +93,12 @@ namespace QuanLyHoSo.ViewModels
             CloseDetailCommand = new RelayCommand(CloseDetail);
             BackToQueueCommand = new RelayCommand(BackToQueue);
             SaveProcessingCommand = new RelayCommand(SaveProcessing, () => CanUpdateProcessing);
+            RemoveAttachmentCommand = new RelayCommand(RemoveAttachment);
+            OpenAttachmentCommand = new RelayCommand(OpenAttachment);
 
             _selectedStatus = StatusFilters[0];
             _selectedArea = AreaFilters.Count > 0 ? AreaFilters[0].FilterValue : "Tất cả";
-            _selectedPriority = PriorityFilters.Count > 0 ? PriorityFilters[0] : "Tất cả";
+            _selectedSeverity = SeverityFilters.Count > 0 ? SeverityFilters[0] : "Tất cả";
 
             Reload();
         }
@@ -97,10 +108,15 @@ namespace QuanLyHoSo.ViewModels
         public ObservableCollection<ProcessStep> ProcessSteps { get; }
         public ObservableCollection<ProcessHistoryItem> History { get; }
         public ObservableCollection<string> ProcessorNames { get; }
+        public ObservableCollection<AreaSelectionOption> TransferAreas { get; }
+        public ObservableCollection<AreaSelectionOption> FilteredTransferAreas { get; }
+        public ObservableCollection<AreaSelectionOption> TransferAreaChoices { get; }
+        public ObservableCollection<AttachmentDraft> Attachments { get; }
+        public bool HasAttachments => Attachments.Count > 0;
         public ObservableCollection<string> ProcessingStatuses { get; }
         public ObservableCollection<string> StatusFilters { get; }
         public ObservableCollection<AreaSelectionOption> AreaFilters { get; }
-        public ObservableCollection<string> PriorityFilters { get; }
+        public ObservableCollection<string> SeverityFilters { get; }
         public ICommand ApplyFilterCommand { get; }
         public ICommand ViewRecordCommand { get; }
         public ICommand ViewProcessingDetailCommand { get; }
@@ -111,6 +127,25 @@ namespace QuanLyHoSo.ViewModels
         public ICommand CloseDetailCommand { get; }
         public ICommand BackToQueueCommand { get; }
         public ICommand SaveProcessingCommand { get; }
+        public ICommand RemoveAttachmentCommand { get; }
+        public ICommand OpenAttachmentCommand { get; }
+        public string TransferAreaSearchText
+        {
+            get => _transferAreaSearchText;
+            set
+            {
+                if (SetProperty(ref _transferAreaSearchText, value))
+                {
+                    ReplaceItems(FilteredTransferAreas, AreaSelectionOptions.Filter(TransferAreas, value));
+                }
+            }
+        }
+
+        public string TransferAreaName
+        {
+            get => _transferAreaName;
+            set => SetProperty(ref _transferAreaName, value);
+        }
         public bool CanUpdateProcessing => SelectedProcessingDetail != null && AuthContext.CanEditRecord(SelectedProcessingDetail.ProcessorName);
 
         public int CurrentPage
@@ -216,12 +251,12 @@ namespace QuanLyHoSo.ViewModels
 
         public string SelectedAreaDisplayName => AreaSelectionOptions.GetDisplayName(AreaFilters, SelectedArea);
 
-        public string SelectedPriority
+        public string SelectedSeverity
         {
-            get => _selectedPriority;
+            get => _selectedSeverity;
             set
             {
-                if (SetProperty(ref _selectedPriority, value))
+                if (SetProperty(ref _selectedSeverity, value))
                 {
                     Reload();
                 }
@@ -298,7 +333,7 @@ namespace QuanLyHoSo.ViewModels
                 SearchText,
                 SelectedStatus,
                 SelectedArea,
-                SelectedPriority,
+                SelectedSeverity,
                 _selectedMetricKey);
             TotalRecordsText = $"{totalRecords:N0} hồ sơ phù hợp";
             TotalPages = Math.Max(1, (int)Math.Ceiling(totalRecords / (double)_pageSize));
@@ -323,7 +358,7 @@ namespace QuanLyHoSo.ViewModels
                 SearchText,
                 SelectedStatus,
                 SelectedArea,
-                SelectedPriority,
+                SelectedSeverity,
                 _selectedMetricKey,
                 skip,
                 _pageSize));
@@ -362,11 +397,11 @@ namespace QuanLyHoSo.ViewModels
             _selectedMetricKey = metric.FilterKey;
             _selectedStatus = StatusFilters.Count > 0 ? StatusFilters[0] : "Tất cả";
             _selectedArea = AreaFilters.Count > 0 ? AreaFilters[0].FilterValue : "Tất cả";
-            _selectedPriority = PriorityFilters.Count > 0 ? PriorityFilters[0] : "Tất cả";
+            _selectedSeverity = SeverityFilters.Count > 0 ? SeverityFilters[0] : "Tất cả";
             _searchText = string.Empty;
             OnPropertyChanged(nameof(SelectedStatus));
             OnPropertyChanged(nameof(SelectedArea));
-            OnPropertyChanged(nameof(SelectedPriority));
+            OnPropertyChanged(nameof(SelectedSeverity));
             OnPropertyChanged(nameof(SearchText));
             ReloadFromFirstPage();
         }
@@ -427,6 +462,13 @@ namespace QuanLyHoSo.ViewModels
             ProcessingProcessorName = SelectedProcessingDetail.ProcessorName;
             ProcessingContent = SelectedProcessingDetail.ProcessContent;
             ProcessingNote = SelectedProcessingDetail.ProcessNote;
+            TransferAreaName = SelectedProcessingDetail.AreaName;
+            TransferAreaSearchText = SelectedProcessingDetail.AreaName;
+            Attachments.Clear();
+            foreach (var attachment in SelectedProcessingDetail.Attachments)
+            {
+                Attachments.Add(attachment);
+            }
         }
 
         private void DataService_CatalogChanged(string catalogType)
@@ -434,10 +476,10 @@ namespace QuanLyHoSo.ViewModels
             switch (catalogType)
             {
                 case "Priority":
-                    ReplaceItems(PriorityFilters, _dataService.GetCatalogValues(catalogType, includeAll: true));
-                    if (!string.IsNullOrWhiteSpace(SelectedPriority) && !PriorityFilters.Contains(SelectedPriority))
+                    ReplaceItems(SeverityFilters, _dataService.GetCatalogValues(catalogType, includeAll: true));
+                    if (!string.IsNullOrWhiteSpace(SelectedSeverity) && !SeverityFilters.Contains(SelectedSeverity))
                     {
-                        SelectedPriority = PriorityFilters.Count > 0 ? PriorityFilters[0] : null;
+                        SelectedSeverity = SeverityFilters.Count > 0 ? SeverityFilters[0] : null;
                         Reload();
                     }
                     break;
@@ -505,6 +547,12 @@ namespace QuanLyHoSo.ViewModels
                 missingFields.Add("Nội dung xử lý");
             }
 
+            if (string.Equals(ProcessingStatus, "Chuyển cơ quan khác", StringComparison.Ordinal)
+                && string.IsNullOrWhiteSpace(TransferAreaName))
+            {
+                missingFields.Add("Cơ quan chuyển đến");
+            }
+
             if (missingFields.Count > 0)
             {
                 MessageBox.Show("Vui lòng nhập đầy đủ thông tin bắt buộc:\n\n- " + string.Join("\n- ", missingFields), "Thiếu thông tin xử lý", MessageBoxButton.OK, MessageBoxImage.Warning);
@@ -520,7 +568,9 @@ namespace QuanLyHoSo.ViewModels
                     SelectedProcessingDate.Value,
                     ProcessingProcessorName,
                     ProcessingContent,
-                    ProcessingNote);
+                    ProcessingNote,
+                    string.Equals(ProcessingStatus, "Chuyển cơ quan khác", StringComparison.Ordinal) ? TransferAreaName : null,
+                    Attachments);
 
                 AppLogger.Info("Processing", "UpdateProcessingRecord", "Processing record updated.", recordCode);
                 SelectedProcessingDetail = _dataService.GetProcessingRecordDetail(recordCode);
@@ -529,6 +579,13 @@ namespace QuanLyHoSo.ViewModels
                 ReplaceItems(ProcessorNames, _dataService.GetProcessorNames());
                 ProcessingStatus = SelectedProcessingDetail.Status;
                 ProcessingProcessorName = SelectedProcessingDetail.ProcessorName;
+                TransferAreaName = SelectedProcessingDetail.AreaName;
+                TransferAreaSearchText = SelectedProcessingDetail.AreaName;
+                Attachments.Clear();
+                foreach (var attachment in SelectedProcessingDetail.Attachments)
+                {
+                    Attachments.Add(attachment);
+                }
                 MessageBox.Show("Đã cập nhật xử lý hồ sơ.", "Cập nhật xử lý", MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception ex)
@@ -536,6 +593,69 @@ namespace QuanLyHoSo.ViewModels
                 AppLogger.Error("Processing", "UpdateProcessingRecord", ex, "Failed to update processing record.", recordCode);
                 MessageBox.Show($"Không thể cập nhật xử lý hồ sơ.\n\nChi tiết: {ex.Message}", "Lỗi cập nhật xử lý", MessageBoxButton.OK, MessageBoxImage.Error);
             }
+        }
+
+        public void AddAttachmentFiles(string[] filePaths)
+        {
+            foreach (var filePath in filePaths ?? Array.Empty<string>())
+            {
+                if (!File.Exists(filePath))
+                {
+                    continue;
+                }
+
+                var fileInfo = new FileInfo(filePath);
+                if (fileInfo.Length > 10 * 1024 * 1024 || !new[] { ".pdf", ".jpg", ".jpeg", ".png" }.Contains(fileInfo.Extension, StringComparer.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                if (Attachments.Any(item => string.Equals(item.FileName, fileInfo.Name, StringComparison.OrdinalIgnoreCase)))
+                {
+                    continue;
+                }
+
+                Attachments.Add(new AttachmentDraft { FileName = fileInfo.Name, FileSize = FormatFileSize(fileInfo.Length), FilePath = fileInfo.FullName });
+            }
+
+            OnPropertyChanged(nameof(HasAttachments));
+        }
+
+        private void RemoveAttachment(object parameter)
+        {
+            if (parameter is AttachmentDraft attachment)
+            {
+                Attachments.Remove(attachment);
+                OnPropertyChanged(nameof(HasAttachments));
+            }
+        }
+
+        private void OpenAttachment(object parameter)
+        {
+            if (parameter is not AttachmentDraft attachment || string.IsNullOrWhiteSpace(attachment.FilePath))
+            {
+                MessageBox.Show("Tài liệu này chưa có đường dẫn file để mở.", "Tải tài liệu", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            if (!File.Exists(attachment.FilePath))
+            {
+                MessageBox.Show("Không tìm thấy file trên máy. Vui lòng chọn lại tài liệu.", "Tải tài liệu", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = attachment.FilePath,
+                UseShellExecute = true
+            });
+        }
+
+        private static string FormatFileSize(long bytes)
+        {
+            return bytes < 1024 * 1024
+                ? $"{Math.Max(1, bytes / 1024)} KB"
+                : $"{bytes / (1024d * 1024d):0.0} MB";
         }
 
         private static DateTime? ParseProcessingDate(string value)

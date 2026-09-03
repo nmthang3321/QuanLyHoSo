@@ -197,7 +197,9 @@
                                                         CommandParameter="{Binding}"
                                                         Margin="0"
                                                         ToolTip="Phân loại / xử lý">
-                                                    <TextBlock Text="&#xE8F9;" FontFamily="Segoe MDL2 Assets" Foreground="#F28C18" />
+                                                    <TextBlock Text="&#xE72C;"
+                                                               FontFamily="pack://application:,,,/Assets/Fonts/#Material Symbols Outlined"
+                                                               Foreground="#159A72" />
                                                 </Button>
                                             </StackPanel>
                                         </DataTemplate>
@@ -423,7 +425,34 @@
                                                 <TextBlock.Style>
                                                     <Style TargetType="TextBlock">
                                                         <Setter Property="Foreground" Value="#151B2B" />
+                                                        <Setter Property="Visibility" Value="Visible" />
                                                         <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding Title}" Value="Kết quả xử lý ban đầu">
+                                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding IsDone}" Value="True">
+                                                                <Setter Property="Foreground" Value="White" />
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding IsCurrent}" Value="True">
+                                                                <Setter Property="Foreground" Value="White" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                            <TextBlock Text="&#xEF3E;"
+                                                       FontFamily="pack://application:,,,/Assets/Fonts/#Material Symbols Outlined"
+                                                       FontSize="22"
+                                                       HorizontalAlignment="Center"
+                                                       VerticalAlignment="Center">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Visibility" Value="Collapsed" />
+                                                        <Setter Property="Foreground" Value="#151B2B" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding Title}" Value="Kết quả xử lý ban đầu">
+                                                                <Setter Property="Visibility" Value="Visible" />
+                                                            </DataTrigger>
                                                             <DataTrigger Binding="{Binding IsDone}" Value="True">
                                                                 <Setter Property="Foreground" Value="White" />
                                                             </DataTrigger>
@@ -611,6 +640,23 @@
                                     <DatePicker SelectedDate="{Binding SelectedProcessingDate, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Language="vi-VN" />
                                 </StackPanel>
                             </Grid>
+                            <StackPanel Margin="0,0,0,12">
+                                <TextBlock Text="Cơ quan chuyển đến" Style="{StaticResource FieldLabelText}" />
+                                <ComboBox ItemsSource="{Binding TransferAreaChoices}"
+                                          DisplayMemberPath="DisplayName"
+                                          SelectedValuePath="FilterValue"
+                                          SelectedValue="{Binding TransferAreaName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                <StackPanel.Style>
+                                    <Style TargetType="StackPanel">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding ProcessingStatus}" Value="Chuyển cơ quan khác">
+                                                <Setter Property="Visibility" Value="Visible" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </StackPanel.Style>
+                            </StackPanel>
                             <TextBlock Style="{StaticResource FieldLabelText}"><Run Text="Người xử lý" /><Run Text=" *" Foreground="#E11414" /></TextBlock>
                             <ComboBox ItemsSource="{Binding ProcessorNames}"
                                       Text="{Binding ProcessingProcessorName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
@@ -621,9 +667,104 @@
                             <TextBox Height="96" TextWrapping="Wrap" AcceptsReturn="True" VerticalContentAlignment="Top" Text="{Binding ProcessingContent, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,12" />
                             <TextBlock Text="Ghi chú" Style="{StaticResource FieldLabelText}" />
                             <TextBox Height="80" TextWrapping="Wrap" AcceptsReturn="True" VerticalContentAlignment="Top" Text="{Binding ProcessingNote, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,18" />
+                            <TextBlock Text="Tài liệu liên quan" Style="{StaticResource FieldLabelText}" />
+                            <Grid Margin="0,0,0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="1.15*" />
+                                    <ColumnDefinition Width="0.85*" />
+                                </Grid.ColumnDefinitions>
+                                <Border Grid.Column="0" BorderBrush="#D8E7FF" BorderThickness="1" Background="#F7FAFF" Padding="8" Margin="0,0,6,0" MinHeight="82">
+                                    <Grid>
+                                        <TextBlock Text="Chưa có tài liệu đính kèm"
+                                                   Style="{StaticResource MutedText}"
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center"
+                                                   TextAlignment="Center"
+                                                   Visibility="{Binding HasAttachments, Converter={StaticResource InverseBooleanToVisibilityConverter}}" />
+                                        <ScrollViewer MaxHeight="116" VerticalScrollBarVisibility="Auto">
+                                            <ItemsControl ItemsSource="{Binding Attachments}">
+                                                <ItemsControl.Style>
+                                                    <Style TargetType="ItemsControl">
+                                                        <Setter Property="Visibility" Value="Visible" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding HasAttachments}" Value="False">
+                                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </ItemsControl.Style>
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <Grid Margin="0,2">
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="*" />
+                                                                <ColumnDefinition Width="Auto" />
+                                                                <ColumnDefinition Width="Auto" />
+                                                            </Grid.ColumnDefinitions>
+                                                            <StackPanel VerticalAlignment="Center">
+                                                                <TextBlock Text="{Binding FileName}" TextTrimming="CharacterEllipsis" />
+                                                                <TextBlock Text="{Binding FileSize}" Style="{StaticResource MutedText}" FontSize="11" />
+                                                            </StackPanel>
+                                                            <Button Grid.Column="1" Style="{StaticResource SecondaryButton}" Width="28" MinWidth="28" Height="28" Padding="0" Margin="4,0,3,0" Command="{Binding DataContext.OpenAttachmentCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" ToolTip="Mở tài liệu">
+                                                                <TextBlock Text="&#xE896;" FontFamily="Segoe MDL2 Assets" Foreground="{StaticResource PrimaryBrush}" />
+                                                            </Button>
+                                                            <Button Grid.Column="2" Style="{StaticResource SecondaryButton}" Width="28" MinWidth="28" Height="28" Padding="0" Command="{Binding DataContext.RemoveAttachmentCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" ToolTip="Xóa tài liệu">
+                                                                <TextBlock Text="&#xE74D;" FontFamily="Segoe MDL2 Assets" Foreground="#E11414" />
+                                                            </Button>
+                                                        </Grid>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </ScrollViewer>
+                                    </Grid>
+                                </Border>
+                                <Border Grid.Column="1" AllowDrop="True" Drop="ProcessingAttachmentDropZone_Drop" BorderBrush="#7FAEFF" BorderThickness="1" Background="White" Padding="8" MinHeight="82">
+                                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" AllowDrop="True" Drop="ProcessingAttachmentDropZone_Drop">
+                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                            <TextBlock Text="&#xE898;" FontFamily="Segoe MDL2 Assets" FontSize="22" Foreground="{StaticResource PrimaryBrush}" VerticalAlignment="Center" Margin="0,0,8,0" />
+                                            <TextBlock Text="Kéo thả file vào đây" Style="{StaticResource MutedText}" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                        <TextBlock Text="PDF, JPG, PNG - tối đa 10MB/file" Style="{StaticResource MutedText}" FontSize="11" HorizontalAlignment="Center" Margin="0,4,0,0" />
+                                        <Button Style="{StaticResource SecondaryButton}" Content="Chọn file" Click="ChooseProcessingAttachmentFilesButton_Click" HorizontalAlignment="Center" Margin="0,8,0,0" />
+                                    </StackPanel>
+                                </Border>
+                            </Grid>
                             <Grid>
                                 <Button Style="{StaticResource DangerButton}" Content="Hủy xử lý" HorizontalAlignment="Left" Command="{Binding BackToQueueCommand}" />
-                                <Button Style="{StaticResource PrimaryButton}" Content="Cập nhật" HorizontalAlignment="Right" Command="{Binding SaveProcessingCommand}" />
+                                <Button HorizontalAlignment="Right" Command="{Binding SaveProcessingCommand}">
+                                    <Button.Style>
+                                        <Style TargetType="Button" BasedOn="{StaticResource PrimaryButton}">
+                                            <Setter Property="Background" Value="{StaticResource PrimaryBrush}" />
+                                            <Setter Property="BorderBrush" Value="{StaticResource PrimaryBrush}" />
+                                            <Setter Property="Foreground" Value="White" />
+                                            <Setter Property="Template">
+                                                <Setter.Value>
+                                                    <ControlTemplate TargetType="Button">
+                                                        <Border x:Name="ButtonBorder"
+                                                                Background="{TemplateBinding Background}"
+                                                                BorderBrush="{TemplateBinding BorderBrush}"
+                                                                BorderThickness="{TemplateBinding BorderThickness}"
+                                                                CornerRadius="6">
+                                                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                                                              VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+                                                        </Border>
+                                                        <ControlTemplate.Triggers>
+                                                            <Trigger Property="IsMouseOver" Value="True">
+                                                                <Setter TargetName="ButtonBorder" Property="Background" Value="#0051E8" />
+                                                                <Setter TargetName="ButtonBorder" Property="BorderBrush" Value="#0051E8" />
+                                                            </Trigger>
+                                                            <Trigger Property="IsPressed" Value="True">
+                                                                <Setter TargetName="ButtonBorder" Property="Background" Value="#0045C7" />
+                                                                <Setter TargetName="ButtonBorder" Property="BorderBrush" Value="#0045C7" />
+                                                            </Trigger>
+                                                        </ControlTemplate.Triggers>
+                                                    </ControlTemplate>
+                                                </Setter.Value>
+                                            </Setter>
+                                        </Style>
+                                    </Button.Style>
+                                    <TextBlock Text="Cập nhật" Foreground="White" />
+                                </Button>
                             </Grid>
                         </StackPanel>
                     </Border>
@@ -776,7 +917,9 @@
                             </Border>
                         </StackPanel>
                     </ScrollViewer>
-                    <Button Grid.Row="2" Content="Đóng" Style="{StaticResource PrimaryButton}" HorizontalAlignment="Right" Margin="0,14,0,0" Command="{Binding CloseDetailCommand}" />
+                    <Button Grid.Row="2" Style="{StaticResource SecondaryButton}" Foreground="{StaticResource PrimaryBrush}" BorderBrush="{StaticResource PrimaryBrush}" HorizontalAlignment="Right" Margin="0,14,0,0" Command="{Binding CloseDetailCommand}">
+                        <TextBlock Text="Đóng" Foreground="{StaticResource PrimaryBrush}" />
+                    </Button>
                 </Grid>
             </Border>
         </Grid>

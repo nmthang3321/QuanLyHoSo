@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using QuanLyHoSo.Models;
 
 namespace QuanLyHoSo.Infrastructure.Network
@@ -73,7 +74,7 @@ namespace QuanLyHoSo.Infrastructure.Network
         public string SearchText { get; set; }
         public string Status { get; set; }
         public string AreaName { get; set; }
-        public string PriorityLevel { get; set; }
+        public string SeverityLevel { get; set; }
         public string CardFilterKey { get; set; }
         public int Skip { get; set; }
         public int Take { get; set; }
@@ -87,5 +88,7 @@ namespace QuanLyHoSo.Infrastructure.Network
         public string ProcessorName { get; set; }
         public string Content { get; set; }
         public string Note { get; set; }
+        public string TransferAreaName { get; set; }
+        public IReadOnlyList<AttachmentDraft> Attachments { get; set; }
     }
 }

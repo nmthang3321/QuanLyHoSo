@@ -165,15 +165,15 @@ namespace QuanLyHoSo.Infrastructure.Network
                         return _dataService.GetProcessingQueueMetrics();
                     case "processing/list":
                         var queue = ReadData<ProcessingQueueRequest>(body);
-                        return _dataService.GetProcessingQueueRecords(queue.SearchText, queue.Status, queue.AreaName, queue.PriorityLevel, queue.CardFilterKey, queue.Skip, queue.Take);
+                        return _dataService.GetProcessingQueueRecords(queue.SearchText, queue.Status, queue.AreaName, queue.SeverityLevel, queue.CardFilterKey, queue.Skip, queue.Take);
                     case "processing/count":
                         var queueCount = ReadData<ProcessingQueueRequest>(body);
-                        return _dataService.CountProcessingQueueRecords(queueCount.SearchText, queueCount.Status, queueCount.AreaName, queueCount.PriorityLevel, queueCount.CardFilterKey);
+                        return _dataService.CountProcessingQueueRecords(queueCount.SearchText, queueCount.Status, queueCount.AreaName, queueCount.SeverityLevel, queueCount.CardFilterKey);
                     case "processing/detail":
                         return _dataService.GetProcessingRecordDetail(ReadData<RecordCodeRequest>(body).RecordCode);
                     case "processing/update":
                         var update = ReadData<UpdateProcessingRequest>(body);
-                        _dataService.UpdateProcessingRecord(update.RecordCode, update.Status, update.ProcessedAt, update.ProcessorName, update.Content, update.Note);
+                        _dataService.UpdateProcessingRecord(update.RecordCode, update.Status, update.ProcessedAt, update.ProcessorName, update.Content, update.Note, update.TransferAreaName, update.Attachments);
                         return true;
                     default:
                         throw new InvalidOperationException($"Unknown LAN API route: {route}");

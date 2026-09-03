@@ -29,7 +29,6 @@ namespace QuanLyHoSo.Models
         public string SenderExpectedHandlingMethod { get; set; }
         public string SeverityLevel { get; set; }
         public string ExpectedResultDate { get; set; }
-        public string PriorityLevel { get; set; }
         public string Note { get; set; }
         public string AdditionalNote { get; set; }
         public IReadOnlyList<AttachmentDraft> Attachments { get; set; } = new List<AttachmentDraft>();
@@ -50,6 +49,7 @@ namespace QuanLyHoSo.Models
     {
         public int StepNumber { get; set; }
         public string IconGlyph { get; set; }
+        public string IconFontFamily { get; set; }
         public string Title { get; set; }
         public string DateText { get; set; }
         public string TimeText { get; set; }
@@ -89,6 +89,7 @@ namespace QuanLyHoSo.Models
         public string ProcessingDate { get; set; }
         public string ProcessContent { get; set; }
         public string ProcessNote { get; set; }
+        public IReadOnlyList<AttachmentDraft> Attachments { get; set; } = new List<AttachmentDraft>();
         public IReadOnlyList<ProcessStep> Steps { get; set; } = new List<ProcessStep>();
         public IReadOnlyList<ProcessHistoryItem> History { get; set; } = new List<ProcessHistoryItem>();
     }
@@ -101,7 +102,6 @@ namespace QuanLyHoSo.Models
         public string SenderName { get; set; }
         public string AreaName { get; set; }
         public string CaseType { get; set; }
-        public string PriorityLevel { get; set; }
         public string SeverityLevel { get; set; }
         public string Status { get; set; }
         public string UpdatedAt { get; set; }

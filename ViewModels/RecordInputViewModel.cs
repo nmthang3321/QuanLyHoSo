@@ -90,7 +90,6 @@ namespace QuanLyHoSo.ViewModels
         public string SenderExpectedHandlingMethod { get; set; }
         public string SeverityLevel { get; set; }
         public string ExpectedResultDate { get; set; }
-        public string PriorityLevel { get; set; }
         public string Note { get; set; }
         public string AdditionalNote { get; set; }
 
@@ -128,7 +127,6 @@ namespace QuanLyHoSo.ViewModels
             SeverityLevel = record.SeverityLevel;
             ExpectedResultDate = record.ExpectedResultDate;
             SelectedExpectedResultDate = ParseDisplayDate(record.ExpectedResultDate);
-            PriorityLevel = record.PriorityLevel;
             Note = record.Note;
             AdditionalNote = record.AdditionalNote;
 
@@ -170,7 +168,6 @@ namespace QuanLyHoSo.ViewModels
             SeverityLevel = null;
             ExpectedResultDate = string.Empty;
             SelectedExpectedResultDate = null;
-            PriorityLevel = string.Empty;
             Note = string.Empty;
             AdditionalNote = string.Empty;
             Attachments.Clear();
@@ -392,7 +389,6 @@ namespace QuanLyHoSo.ViewModels
                 SenderExpectedHandlingMethod = SenderExpectedHandlingMethod,
                 SeverityLevel = SeverityLevel,
                 ExpectedResultDate = ExpectedResultDate,
-                PriorityLevel = string.Empty,
                 Note = Note,
                 AdditionalNote = AdditionalNote,
                 Attachments = Attachments.ToList()
@@ -471,7 +467,6 @@ namespace QuanLyHoSo.ViewModels
                 && string.Equals(left.SenderExpectedHandlingMethod, right.SenderExpectedHandlingMethod, StringComparison.Ordinal)
                 && string.Equals(left.SeverityLevel, right.SeverityLevel, StringComparison.Ordinal)
                 && string.Equals(left.ExpectedResultDate, right.ExpectedResultDate, StringComparison.Ordinal)
-                && string.Equals(left.PriorityLevel, right.PriorityLevel, StringComparison.Ordinal)
                 && string.Equals(left.Note, right.Note, StringComparison.Ordinal)
                 && string.Equals(left.AdditionalNote, right.AdditionalNote, StringComparison.Ordinal)
                 && AreAttachmentsEqual(left.Attachments, right.Attachments);
@@ -578,7 +573,6 @@ namespace QuanLyHoSo.ViewModels
             OnPropertyChanged(nameof(SeverityLevel));
             OnPropertyChanged(nameof(ExpectedResultDate));
             OnPropertyChanged(nameof(SelectedExpectedResultDate));
-            OnPropertyChanged(nameof(PriorityLevel));
             OnPropertyChanged(nameof(Note));
             OnPropertyChanged(nameof(AdditionalNote));
             OnPropertyChanged(nameof(HasAttachments));
@@ -697,7 +691,7 @@ namespace QuanLyHoSo.ViewModels
                     RefreshCatalogValues(ContentGroups, catalogType, ContentGroup, value => ContentGroup = value, nameof(ContentGroup));
                     break;
                 case "Priority":
-                    RefreshCatalogValues(Priorities, catalogType, PriorityLevel, value => PriorityLevel = value, nameof(PriorityLevel));
+                    RefreshCatalogValues(Priorities, catalogType, SeverityLevel, value => SeverityLevel = value, nameof(SeverityLevel));
                     if (!string.IsNullOrWhiteSpace(SeverityLevel) && !Priorities.Contains(SeverityLevel))
                     {
                         SeverityLevel = null;

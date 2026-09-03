@@ -57,10 +57,15 @@ namespace QuanLyHoSo.Infrastructure.Data
 
             using var connection = OpenConnection();
             CreateSchema(connection);
+            MigrateLegacyPriorityColumnIfNeeded(connection);
+            RepairRecordForeignKeys(connection);
             SeedUsers(connection);
             SeedAreas(connection);
             EnsureStandardOrganizationAreas(connection);
             SeedCatalogs(connection);
+            NormalizeSeverityCatalog(connection);
+            NormalizeRecordSeverity(connection);
+            NormalizeProcessingHistoryTitles(connection);
             SeedRecords(connection);
             NormalizeFutureRecordDates(connection);
             SyncProcessorCatalogFromRecords(connection);
@@ -867,7 +872,7 @@ LIMIT $take OFFSET $skip;";
             command.CommandText = @"
 SELECT Id, RecordCode, ReceivedDate, ReceiveSource, ReceiverName, SenderName, SenderPhone, ContactAddress,
        AreaName, IncidentAddress, Content, CaseType, ContentGroup, Field, RelatedPerson,
-       ExpectedHandlingMethod, SenderExpectedHandlingMethod, SeverityLevel, ExpectedResultDate, PriorityLevel, Note, AdditionalNote
+       ExpectedHandlingMethod, SenderExpectedHandlingMethod, SeverityLevel, ExpectedResultDate, Note, AdditionalNote
 FROM Records
 ORDER BY UpdatedAt DESC, Id DESC
 LIMIT 1;";
@@ -891,7 +896,7 @@ LIMIT 1;";
             command.CommandText = @"
 SELECT Id, RecordCode, ReceivedDate, ReceiveSource, ReceiverName, SenderName, SenderPhone, ContactAddress,
        AreaName, IncidentAddress, Content, CaseType, ContentGroup, Field, RelatedPerson,
-       ExpectedHandlingMethod, SenderExpectedHandlingMethod, SeverityLevel, ExpectedResultDate, PriorityLevel, Note, AdditionalNote
+       ExpectedHandlingMethod, SenderExpectedHandlingMethod, SeverityLevel, ExpectedResultDate, Note, AdditionalNote
 FROM Records
 WHERE RecordCode = $recordCode
 LIMIT 1;";
@@ -951,7 +956,6 @@ SET RecordCode = $recordCode,
     SenderExpectedHandlingMethod = $senderMethod,
     SeverityLevel = $severity,
     ExpectedResultDate = $expectedDate,
-    PriorityLevel = $priority,
     Note = $note,
     AdditionalNote = $additionalNote,
     UpdatedAt = $updatedAt
@@ -972,12 +976,12 @@ WHERE Id = $recordId;";
 INSERT INTO Records (
     RecordCode, ReceivedDate, ReceiveSource, ReceiverName, SenderName, SenderPhone, ContactAddress,
     AreaName, IncidentAddress, Content, CaseType, ContentGroup, Field, RelatedPerson,
-    ExpectedHandlingMethod, SenderExpectedHandlingMethod, SeverityLevel, ExpectedResultDate, PriorityLevel, Status, ProcessorName,
+    ExpectedHandlingMethod, SenderExpectedHandlingMethod, SeverityLevel, ExpectedResultDate, Status, ProcessorName,
     Note, AdditionalNote, CreatedAt, UpdatedAt)
 VALUES (
     $recordCode, $receivedDate, $receiveSource, $receiverName, $senderName, $senderPhone, $contactAddress,
     $areaName, $incidentAddress, $content, $caseType, $contentGroup, $field, $relatedPerson,
-    $method, $senderMethod, $severity, $expectedDate, $priority, $status, $processor,
+    $method, $senderMethod, $severity, $expectedDate, $status, $processor,
     $note, $additionalNote, $createdAt, $updatedAt);
 SELECT last_insert_rowid();";
                 AddRecordFormParameters(insertCommand, record, now);
@@ -1082,7 +1086,6 @@ SELECT last_insert_rowid();";
             command.Parameters.AddWithValue("$expectedDate", string.IsNullOrWhiteSpace(record.ExpectedResultDate)
                 ? string.Empty
                 : ParseDisplayDate(record.ExpectedResultDate).ToString("O", CultureInfo.InvariantCulture));
-            command.Parameters.AddWithValue("$priority", NormalizeDbText(record.PriorityLevel));
             command.Parameters.AddWithValue("$note", NormalizeDbText(record.Note));
             command.Parameters.AddWithValue("$additionalNote", NormalizeDbText(record.AdditionalNote));
             command.Parameters.AddWithValue("$updatedAt", updatedAt);
@@ -1149,9 +1152,8 @@ SELECT last_insert_rowid();";
                 SenderExpectedHandlingMethod = reader.GetString(16),
                 SeverityLevel = reader.GetString(17),
                 ExpectedResultDate = FormatDate(reader.GetString(18)),
-                PriorityLevel = reader.GetString(19),
-                Note = reader.GetString(20),
-                AdditionalNote = reader.GetString(21),
+                Note = reader.GetString(19),
+                AdditionalNote = reader.GetString(20),
                 Attachments = GetAttachments(connection, recordId)
             };
         }
@@ -1205,12 +1207,13 @@ LIMIT 1;";
                 ProcessingDate = FormatDateTime(reader.GetString(11)),
                 ProcessContent = "Đang cập nhật tiến độ xử lý hồ sơ theo thông tin từ cơ sở dữ liệu.",
                 ProcessNote = "Dữ liệu mẫu được seed tự động cho giai đoạn thiết kế giao diện.",
+                Attachments = GetAttachments(connection, recordId),
                 Steps = BuildProcessSteps(status, history),
                 History = history
             };
         }
 
-        public void UpdateProcessingRecord(string recordCode, string status, DateTime processedAt, string processorName, string content, string note)
+        public void UpdateProcessingRecord(string recordCode, string status, DateTime processedAt, string processorName, string content, string note, string transferAreaName, IReadOnlyList<AttachmentDraft> attachments)
         {
             if (AppPathSettings.Current.IsClientMode)
             {
@@ -1221,7 +1224,9 @@ LIMIT 1;";
                     ProcessedAt = processedAt,
                     ProcessorName = processorName,
                     Content = content,
-                    Note = note
+                    Note = note,
+                    TransferAreaName = transferAreaName,
+                    Attachments = attachments
                 });
                 return;
             }
@@ -1248,6 +1253,7 @@ LIMIT 1;";
             updateCommand.CommandText = @"
 UPDATE Records
 SET Status = $status,
+    AreaName = CASE WHEN $transferAreaName = '' THEN AreaName ELSE $transferAreaName END,
     ProcessorName = $processor,
     Note = CASE WHEN $note = '' THEN Note ELSE $note END,
     UpdatedAt = $updatedAt
@@ -1255,9 +1261,11 @@ WHERE Id = $recordId;";
             updateCommand.Parameters.AddWithValue("$recordId", recordId.Value);
             updateCommand.Parameters.AddWithValue("$status", NormalizeDbText(status));
             updateCommand.Parameters.AddWithValue("$processor", NormalizeDbText(processorName));
+            updateCommand.Parameters.AddWithValue("$transferAreaName", NormalizeDbText(transferAreaName));
             updateCommand.Parameters.AddWithValue("$note", NormalizeDbText(note));
             updateCommand.Parameters.AddWithValue("$updatedAt", processedAt.ToString("O", CultureInfo.InvariantCulture));
             updateCommand.ExecuteNonQuery();
+            ReplaceAttachments(connection, transaction, recordId.Value, attachments);
 
             var currentStep = GetProcessStepNumber(status);
             DeleteProcessHistoryFromStep(connection, transaction, recordId.Value, currentStep);
@@ -1331,7 +1339,7 @@ WHERE Id = $recordId;";
             string searchText = null,
             string status = null,
             string areaName = null,
-            string priorityLevel = null,
+            string severityLevel = null,
             string cardFilterKey = null,
             int skip = 0,
             int take = 20)
@@ -1343,7 +1351,7 @@ WHERE Id = $recordId;";
                     SearchText = searchText,
                     Status = status,
                     AreaName = areaName,
-                    PriorityLevel = priorityLevel,
+                    SeverityLevel = severityLevel,
                     CardFilterKey = cardFilterKey,
                     Skip = skip,
                     Take = take
@@ -1372,14 +1380,14 @@ WHERE Id = $recordId;";
 
             AddOptionalAreaFilter(command, conditions, areaName);
 
-            if (!string.IsNullOrWhiteSpace(priorityLevel) && priorityLevel != "Tất cả")
+            if (!string.IsNullOrWhiteSpace(severityLevel) && severityLevel != "Tất cả")
             {
-                conditions.Add("SeverityLevel = $priorityLevel");
-                command.Parameters.AddWithValue("$priorityLevel", priorityLevel);
+                conditions.Add("SeverityLevel = $severityLevel");
+                command.Parameters.AddWithValue("$severityLevel", severityLevel);
             }
 
             command.CommandText = $@"
-SELECT RecordCode, ReceivedDate, SenderName, AreaName, CaseType, PriorityLevel, SeverityLevel, Status, UpdatedAt
+SELECT RecordCode, ReceivedDate, SenderName, AreaName, CaseType, SeverityLevel, Status, UpdatedAt
 FROM Records
 WHERE {string.Join(" AND ", conditions)}
 ORDER BY UpdatedAt DESC, Id DESC
@@ -1399,10 +1407,9 @@ LIMIT $take OFFSET $skip;";
                     SenderName = reader.GetString(2),
                     AreaName = reader.GetString(3),
                     CaseType = reader.GetString(4),
-                    PriorityLevel = reader.GetString(5),
-                    SeverityLevel = reader.GetString(6),
-                    Status = reader.GetString(7),
-                    UpdatedAt = FormatDateTime(reader.GetString(8))
+                    SeverityLevel = reader.GetString(5),
+                    Status = reader.GetString(6),
+                    UpdatedAt = FormatDateTime(reader.GetString(7))
                 });
             }
 
@@ -1414,7 +1421,7 @@ LIMIT $take OFFSET $skip;";
             string searchText = null,
             string status = null,
             string areaName = null,
-            string priorityLevel = null,
+            string severityLevel = null,
             string cardFilterKey = null)
         {
             if (AppPathSettings.Current.IsClientMode)
@@ -1424,7 +1431,7 @@ LIMIT $take OFFSET $skip;";
                     SearchText = searchText,
                     Status = status,
                     AreaName = areaName,
-                    PriorityLevel = priorityLevel,
+                    SeverityLevel = severityLevel,
                     CardFilterKey = cardFilterKey
                 });
             }
@@ -1449,10 +1456,10 @@ LIMIT $take OFFSET $skip;";
 
             AddOptionalAreaFilter(command, conditions, areaName);
 
-            if (!string.IsNullOrWhiteSpace(priorityLevel) && priorityLevel != "Tất cả")
+            if (!string.IsNullOrWhiteSpace(severityLevel) && severityLevel != "Tất cả")
             {
-                conditions.Add("SeverityLevel = $priorityLevel");
-                command.Parameters.AddWithValue("$priorityLevel", priorityLevel);
+                conditions.Add("SeverityLevel = $severityLevel");
+                command.Parameters.AddWithValue("$severityLevel", severityLevel);
             }
 
             command.CommandText = $"SELECT COUNT(*) FROM Records WHERE {string.Join(" AND ", conditions)};";
@@ -1714,7 +1721,6 @@ CREATE TABLE IF NOT EXISTS Records (
     SenderExpectedHandlingMethod TEXT NOT NULL DEFAULT '',
     SeverityLevel TEXT NOT NULL,
     ExpectedResultDate TEXT NOT NULL,
-    PriorityLevel TEXT NOT NULL,
     Status TEXT NOT NULL,
     ProcessorName TEXT NOT NULL,
     Note TEXT NOT NULL,
@@ -1768,6 +1774,278 @@ CREATE TABLE IF NOT EXISTS Users (
             CreateIndexes(connection);
         }
 
+        private static void MigrateLegacyPriorityColumnIfNeeded(SqliteConnection connection)
+        {
+            if (!ColumnExists(connection, "Records", "PriorityLevel"))
+            {
+                return;
+            }
+
+            try
+            {
+                using (var fkOff = connection.CreateCommand())
+                {
+                    fkOff.CommandText = "PRAGMA foreign_keys = OFF;";
+                    fkOff.ExecuteNonQuery();
+                }
+
+                using var transaction = connection.BeginTransaction();
+                ExecuteNonQuery(connection, "ALTER TABLE Records RENAME TO Records_Legacy;");
+                ExecuteNonQuery(connection, @"
+CREATE TABLE Records (
+    Id INTEGER PRIMARY KEY AUTOINCREMENT,
+    RecordCode TEXT NOT NULL UNIQUE,
+    ReceivedDate TEXT NOT NULL,
+    ReceiveSource TEXT NOT NULL,
+    ReceiverName TEXT NOT NULL,
+    SenderName TEXT NOT NULL,
+    SenderPhone TEXT NOT NULL,
+    ContactAddress TEXT NOT NULL,
+    AreaName TEXT NOT NULL,
+    IncidentAddress TEXT NOT NULL,
+    Content TEXT NOT NULL,
+    CaseType TEXT NOT NULL,
+    ContentGroup TEXT NOT NULL,
+    Field TEXT NOT NULL,
+    RelatedPerson TEXT NOT NULL,
+    ExpectedHandlingMethod TEXT NOT NULL,
+    SenderExpectedHandlingMethod TEXT NOT NULL DEFAULT '',
+    SeverityLevel TEXT NOT NULL,
+    ExpectedResultDate TEXT NOT NULL,
+    Status TEXT NOT NULL,
+    ProcessorName TEXT NOT NULL,
+    Note TEXT NOT NULL,
+    AdditionalNote TEXT NOT NULL,
+    CreatedAt TEXT NOT NULL,
+    UpdatedAt TEXT NOT NULL
+);");
+
+                ExecuteNonQuery(connection, @"
+INSERT INTO Records (
+    Id, RecordCode, ReceivedDate, ReceiveSource, ReceiverName, SenderName, SenderPhone, ContactAddress,
+    AreaName, IncidentAddress, Content, CaseType, ContentGroup, Field, RelatedPerson,
+    ExpectedHandlingMethod, SenderExpectedHandlingMethod, SeverityLevel, ExpectedResultDate,
+    Status, ProcessorName, Note, AdditionalNote, CreatedAt, UpdatedAt)
+SELECT
+    Id, RecordCode, ReceivedDate, ReceiveSource, ReceiverName, SenderName, SenderPhone, ContactAddress,
+    AreaName, IncidentAddress, Content, CaseType, ContentGroup, Field, RelatedPerson,
+    ExpectedHandlingMethod, SenderExpectedHandlingMethod, SeverityLevel, ExpectedResultDate,
+    Status, ProcessorName, Note, AdditionalNote, CreatedAt, UpdatedAt
+FROM Records_Legacy;");
+
+                ExecuteNonQuery(connection, "DROP TABLE Records_Legacy;");
+                transaction.Commit();
+            }
+            catch
+            {
+                try
+                {
+                    using var rollback = connection.BeginTransaction();
+                    rollback.Rollback();
+                }
+                catch
+                {
+                    // Ignore rollback failures during a failed migration.
+                }
+
+                throw;
+            }
+            finally
+            {
+                using var fkOn = connection.CreateCommand();
+                fkOn.CommandText = "PRAGMA foreign_keys = ON;";
+                fkOn.ExecuteNonQuery();
+            }
+        }
+
+        private static void RepairRecordForeignKeys(SqliteConnection connection)
+        {
+            var needsRepair = TableSqlContains(connection, "RecordAttachments", "Records_Legacy")
+                || TableSqlContains(connection, "ProcessHistories", "Records_Legacy");
+            if (!needsRepair)
+            {
+                return;
+            }
+
+            SqliteTransaction transaction = null;
+            try
+            {
+                ExecuteNonQuery(connection, "PRAGMA foreign_keys = OFF;");
+                transaction = connection.BeginTransaction();
+                ExecuteNonQuery(connection, "ALTER TABLE RecordAttachments RENAME TO RecordAttachments_Legacy;");
+                ExecuteNonQuery(connection, "ALTER TABLE ProcessHistories RENAME TO ProcessHistories_Legacy;");
+                ExecuteNonQuery(connection, @"
+CREATE TABLE RecordAttachments (
+    Id INTEGER PRIMARY KEY AUTOINCREMENT,
+    RecordId INTEGER NOT NULL,
+    FileName TEXT NOT NULL,
+    FileSize TEXT NOT NULL,
+    FilePath TEXT NOT NULL DEFAULT '',
+    FOREIGN KEY (RecordId) REFERENCES Records(Id)
+);
+CREATE TABLE ProcessHistories (
+    Id INTEGER PRIMARY KEY AUTOINCREMENT,
+    RecordId INTEGER NOT NULL,
+    Title TEXT NOT NULL,
+    ProcessedAt TEXT NOT NULL,
+    ProcessorName TEXT NOT NULL,
+    Content TEXT NOT NULL,
+    IsCompleted INTEGER NOT NULL,
+    FOREIGN KEY (RecordId) REFERENCES Records(Id)
+);");
+                ExecuteNonQuery(connection, @"
+INSERT INTO RecordAttachments (Id, RecordId, FileName, FileSize, FilePath)
+SELECT Id, RecordId, FileName, FileSize, FilePath FROM RecordAttachments_Legacy;
+INSERT INTO ProcessHistories (Id, RecordId, Title, ProcessedAt, ProcessorName, Content, IsCompleted)
+SELECT Id, RecordId, Title, ProcessedAt, ProcessorName, Content, IsCompleted FROM ProcessHistories_Legacy;
+DROP TABLE RecordAttachments_Legacy;
+DROP TABLE ProcessHistories_Legacy;");
+                transaction.Commit();
+            }
+            catch
+            {
+                transaction?.Rollback();
+                throw;
+            }
+            finally
+            {
+                transaction?.Dispose();
+                ExecuteNonQuery(connection, "PRAGMA foreign_keys = ON;");
+            }
+        }
+
+        private static bool TableSqlContains(SqliteConnection connection, string tableName, string value)
+        {
+            using var command = connection.CreateCommand();
+            command.CommandText = "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = $tableName;";
+            command.Parameters.AddWithValue("$tableName", tableName);
+            return command.ExecuteScalar()?.ToString()?.IndexOf(value, StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
+        private static void NormalizeSeverityCatalog(SqliteConnection connection)
+        {
+            var severityMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["Bình thường"] = "Ít nghiêm trọng",
+                ["Ưu tiên"] = "Nghiêm trọng",
+                ["Khẩn"] = "Rất nghiêm trọng",
+                ["Ít nghiêm trọng"] = "Ít nghiêm trọng",
+                ["Nghiêm trọng"] = "Nghiêm trọng",
+                ["Rất nghiêm trọng"] = "Rất nghiêm trọng",
+                ["Đặc biệt nghiêm trọng"] = "Đặc biệt nghiêm trọng"
+            };
+
+            var severityValues = new[]
+            {
+                "Ít nghiêm trọng",
+                "Nghiêm trọng",
+                "Rất nghiêm trọng",
+                "Đặc biệt nghiêm trọng"
+            };
+
+            using var command = connection.CreateCommand();
+            command.CommandText = "SELECT Id, Name FROM CatalogItems WHERE CatalogType = 'Priority';";
+            using var reader = command.ExecuteReader();
+            var existing = new List<(int Id, string Name)>();
+            while (reader.Read())
+            {
+                existing.Add((reader.GetInt32(0), reader.GetString(1)));
+            }
+
+            foreach (var item in existing)
+            {
+                var normalized = severityMap.TryGetValue(item.Name, out var value) ? value : item.Name;
+                using var updateCommand = connection.CreateCommand();
+                updateCommand.CommandText = "UPDATE CatalogItems SET Name = $name WHERE Id = $id;";
+                updateCommand.Parameters.AddWithValue("$name", normalized);
+                updateCommand.Parameters.AddWithValue("$id", item.Id);
+                updateCommand.ExecuteNonQuery();
+            }
+
+            foreach (var severity in severityValues)
+            {
+                using var checkCommand = connection.CreateCommand();
+                checkCommand.CommandText = "SELECT COUNT(*) FROM CatalogItems WHERE CatalogType = 'Priority' AND Name = $name;";
+                checkCommand.Parameters.AddWithValue("$name", severity);
+                var count = Convert.ToInt32(checkCommand.ExecuteScalar(), CultureInfo.InvariantCulture);
+                if (count > 0)
+                {
+                    continue;
+                }
+
+                using var insertCommand = connection.CreateCommand();
+                insertCommand.CommandText = "INSERT INTO CatalogItems (CatalogType, Name, DisplayOrder, IsActive) VALUES ('Priority', $name, (SELECT COALESCE(MAX(DisplayOrder), 0) + 1 FROM CatalogItems WHERE CatalogType = 'Priority'), 1);";
+                insertCommand.Parameters.AddWithValue("$name", severity);
+                insertCommand.ExecuteNonQuery();
+            }
+        }
+
+        private static void NormalizeRecordSeverity(SqliteConnection connection)
+        {
+            var severityValues = new[]
+            {
+                "Ít nghiêm trọng",
+                "Nghiêm trọng",
+                "Rất nghiêm trọng",
+                "Đặc biệt nghiêm trọng"
+            };
+            var legacyValues = new[] { "Bình thường", "Ưu tiên", "Khẩn" };
+            var placeholders = string.Join(", ", legacyValues.Select((_, index) => $"$legacy{index}"));
+            var recordIds = new List<int>();
+
+            using (var selectCommand = connection.CreateCommand())
+            {
+                selectCommand.CommandText = $"SELECT Id FROM Records WHERE SeverityLevel IN ({placeholders}) ORDER BY Id;";
+                for (var index = 0; index < legacyValues.Length; index++)
+                {
+                    selectCommand.Parameters.AddWithValue($"$legacy{index}", legacyValues[index]);
+                }
+
+                using var reader = selectCommand.ExecuteReader();
+                while (reader.Read())
+                {
+                    recordIds.Add(reader.GetInt32(0));
+                }
+            }
+
+            if (recordIds.Count == 0)
+            {
+                return;
+            }
+
+            var random = new Random();
+            using var transaction = connection.BeginTransaction();
+            using var updateCommand = connection.CreateCommand();
+            updateCommand.Transaction = transaction;
+            updateCommand.CommandText = "UPDATE Records SET SeverityLevel = $severity WHERE Id = $id;";
+            var severityParameter = updateCommand.Parameters.Add("$severity", SqliteType.Text);
+            var idParameter = updateCommand.Parameters.Add("$id", SqliteType.Integer);
+
+            foreach (var recordId in recordIds)
+            {
+                severityParameter.Value = severityValues[random.Next(severityValues.Length)];
+                idParameter.Value = recordId;
+                updateCommand.ExecuteNonQuery();
+            }
+
+            transaction.Commit();
+            AppLogger.Info("Database", "NormalizeRecordSeverity", $"Updated {recordIds.Count} legacy record severity value(s).");
+        }
+
+        private static void NormalizeProcessingHistoryTitles(SqliteConnection connection)
+        {
+            using var command = connection.CreateCommand();
+            command.CommandText = @"
+UPDATE ProcessHistories
+SET Title = 'Kết quả xử lý ban đầu'
+WHERE Title = 'Gia hạn';";
+            var updatedRows = command.ExecuteNonQuery();
+            if (updatedRows > 0)
+            {
+                AppLogger.Info("Database", "NormalizeProcessingHistoryTitles", $"Updated {updatedRows} legacy processing history title(s).");
+            }
+        }
+
         private static void CreateIndexes(SqliteConnection connection)
         {
             ExecuteNonQuery(connection, "CREATE INDEX IF NOT EXISTS IX_Records_ReceivedDate_Id ON Records (ReceivedDate, Id);");
@@ -1777,7 +2055,6 @@ CREATE TABLE IF NOT EXISTS Users (
             ExecuteNonQuery(connection, "CREATE INDEX IF NOT EXISTS IX_Records_CaseType_ReceivedDate_Id ON Records (CaseType, ReceivedDate, Id);");
             ExecuteNonQuery(connection, "CREATE INDEX IF NOT EXISTS IX_Records_Field_ReceivedDate_Id ON Records (Field, ReceivedDate, Id);");
             ExecuteNonQuery(connection, "CREATE INDEX IF NOT EXISTS IX_Records_ProcessorName_UpdatedAt_Id ON Records (ProcessorName, UpdatedAt, Id);");
-            ExecuteNonQuery(connection, "CREATE INDEX IF NOT EXISTS IX_Records_PriorityLevel_UpdatedAt_Id ON Records (PriorityLevel, UpdatedAt, Id);");
             ExecuteNonQuery(connection, "CREATE INDEX IF NOT EXISTS IX_Records_SeverityLevel_UpdatedAt_Id ON Records (SeverityLevel, UpdatedAt, Id);");
             ExecuteNonQuery(connection, "CREATE INDEX IF NOT EXISTS IX_RecordAttachments_RecordId ON RecordAttachments (RecordId);");
             ExecuteNonQuery(connection, "CREATE INDEX IF NOT EXISTS IX_ProcessHistories_RecordId_ProcessedAt ON ProcessHistories (RecordId, ProcessedAt);");
@@ -1915,9 +2192,10 @@ VALUES (
                 ("ContentGroup", "Môi trường"),
                 ("ContentGroup", "An ninh trật tự"),
                 ("ContentGroup", "Khác"),
-                ("Priority", "Bình thường"),
-                ("Priority", "Ưu tiên"),
-                ("Priority", "Khẩn"),
+                ("Priority", "Ít nghiêm trọng"),
+                ("Priority", "Nghiêm trọng"),
+                ("Priority", "Rất nghiêm trọng"),
+                ("Priority", "Đặc biệt nghiêm trọng"),
                 ("ProcessorName", "Trần Văn B"),
                 ("ProcessorName", "Trần Văn C"),
                 ("ProcessorName", "Lê Thị D"),
@@ -1960,7 +2238,13 @@ VALUES (
             var caseTypes = ReadCatalog(connection, "CaseType");
             var fields = ReadCatalog(connection, "Field");
             var contentGroups = ReadCatalog(connection, "ContentGroup");
-            var priorities = ReadCatalog(connection, "Priority");
+            var severities = new[]
+            {
+                "Ít nghiêm trọng",
+                "Nghiêm trọng",
+                "Rất nghiêm trọng",
+                "Đặc biệt nghiêm trọng"
+            };
             var methods = ReadCatalog(connection, "ExpectedHandlingMethod");
             var statuses = new[] { "Mới tiếp nhận", "Đang phân loại", "Đã phân công", "Đang xác minh", "Chờ kết quả", "Đang chờ bổ sung tài liệu", "Đã giải quyết", "Chuyển cơ quan khác" };
             var processors = new[] { "Trần Văn B", "Trần Văn C", "Lê Thị D", "Nguyễn Thị H", "Phạm Văn K" };
@@ -1997,12 +2281,12 @@ VALUES (
 INSERT INTO Records (
     RecordCode, ReceivedDate, ReceiveSource, ReceiverName, SenderName, SenderPhone, ContactAddress,
     AreaName, IncidentAddress, Content, CaseType, ContentGroup, Field, RelatedPerson,
-    ExpectedHandlingMethod, SenderExpectedHandlingMethod, SeverityLevel, ExpectedResultDate, PriorityLevel, Status, ProcessorName,
+    ExpectedHandlingMethod, SenderExpectedHandlingMethod, SeverityLevel, ExpectedResultDate, Status, ProcessorName,
     Note, AdditionalNote, CreatedAt, UpdatedAt)
 VALUES (
     $recordCode, $receivedDate, $receiveSource, $receiverName, $senderName, $senderPhone, $contactAddress,
     $areaName, $incidentAddress, $content, $caseType, $contentGroup, $field, $relatedPerson,
-    $method, $senderMethod, $severity, $expectedDate, $priority, $status, $processor,
+    $method, $senderMethod, $severity, $expectedDate, $status, $processor,
     $note, $additionalNote, $createdAt, $updatedAt);
 SELECT last_insert_rowid();";
                 command.Parameters.AddWithValue("$recordCode", recordCode);
@@ -2021,9 +2305,8 @@ SELECT last_insert_rowid();";
                 command.Parameters.AddWithValue("$relatedPerson", relatedPersons[random.Next(relatedPersons.Length)]);
                 command.Parameters.AddWithValue("$method", methods[random.Next(methods.Count)]);
                 command.Parameters.AddWithValue("$senderMethod", methods[random.Next(methods.Count)]);
-                command.Parameters.AddWithValue("$severity", priorities[random.Next(priorities.Count)]);
+                command.Parameters.AddWithValue("$severity", severities[random.Next(severities.Length)]);
                 command.Parameters.AddWithValue("$expectedDate", expectedDate.ToString("O", CultureInfo.InvariantCulture));
-                command.Parameters.AddWithValue("$priority", priorities[random.Next(priorities.Count)]);
                 command.Parameters.AddWithValue("$status", status);
                 command.Parameters.AddWithValue("$processor", processor);
                 command.Parameters.AddWithValue("$note", "Hồ sơ mẫu được tạo tự động để phục vụ thiết kế giao diện.");
@@ -2182,6 +2465,7 @@ ORDER BY ProcessedAt;";
             {
                 StepNumber = stepNumber,
                 IconGlyph = definition.IconGlyph,
+                IconFontFamily = definition.IconFontFamily,
                 Title = definition.Title,
                 DateText = historyItem?.ProcessedAt?.Split(' ').FirstOrDefault() ?? (stepNumber <= currentStep ? "Đã thực hiện" : "Chưa thực hiện"),
                 TimeText = historyItem?.ProcessedAt?.Contains(" ") == true
@@ -2228,18 +2512,18 @@ ORDER BY ProcessedAt;";
             };
         }
 
-        private static (string IconGlyph, string Title) GetProcessStepDefinition(int stepNumber)
+        private static (string IconGlyph, string IconFontFamily, string Title) GetProcessStepDefinition(int stepNumber)
         {
             return stepNumber switch
             {
-                1 => ("\uE8A5", "Tiếp nhận"),
-                2 => ("\uE8FD", "Phân loại"),
-                3 => ("\uE77B", "Phân công"),
-                4 => ("\uE721", "Xác minh"),
-                5 => ("\uE916", "Gia hạn"),
-                6 => ("\uE73E", "Kết thúc"),
-                7 => ("\uE74E", "Lưu hồ sơ"),
-                _ => ("\uE8A5", "Tiếp nhận")
+                1 => ("\uE8A5", "Segoe MDL2 Assets", "Tiếp nhận"),
+                2 => ("\uE8FD", "Segoe MDL2 Assets", "Phân loại"),
+                3 => ("\uE77B", "Segoe MDL2 Assets", "Phân công"),
+                4 => ("\uE721", "Segoe MDL2 Assets", "Xác minh"),
+                5 => ("analytics", "pack://application:,,,/Assets/Fonts/#Material Symbols Outlined", "Kết quả xử lý ban đầu"),
+                6 => ("\uE73E", "Segoe MDL2 Assets", "Kết thúc"),
+                7 => ("\uE74E", "Segoe MDL2 Assets", "Lưu hồ sơ"),
+                _ => ("\uE8A5", "Segoe MDL2 Assets", "Tiếp nhận")
             };
         }
 
@@ -2832,7 +3116,7 @@ AreaName IN (
                     command.Parameters.AddWithValue("$today", DateTime.Today.ToString("O", CultureInfo.InvariantCulture));
                     break;
                 case "HighPriority":
-                    conditions.Add("SeverityLevel IN ('Ưu tiên', 'Khẩn')");
+                    conditions.Add("SeverityLevel IN ('Nghiêm trọng', 'Rất nghiêm trọng', 'Đặc biệt nghiêm trọng')");
                     break;
             }
         }
@@ -2866,7 +3150,7 @@ WHERE Status <> 'Đã giải quyết'
 SELECT COUNT(*)
 FROM Records
 WHERE Status <> 'Đã giải quyết'
-  AND SeverityLevel IN ('Ưu tiên', 'Khẩn')" + BuildUserRecordCondition(command) + ";";
+  AND SeverityLevel IN ('Nghiêm trọng', 'Rất nghiêm trọng', 'Đặc biệt nghiêm trọng')" + BuildUserRecordCondition(command) + ";";
             return Convert.ToInt32(command.ExecuteScalar(), CultureInfo.InvariantCulture);
         }
 
