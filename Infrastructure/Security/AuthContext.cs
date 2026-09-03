@@ -12,6 +12,8 @@ namespace QuanLyHoSo.Infrastructure.Security
         public static bool IsLeader => string.Equals(CurrentUser?.Role, UserRoles.Leader, StringComparison.Ordinal);
         public static bool IsOfficer => string.Equals(CurrentUser?.Role, UserRoles.Officer, StringComparison.Ordinal);
         public static bool CanWrite => IsAdmin || IsOfficer;
+        public static bool CanCreateRecord => IsAdmin;
+        public static bool CanDeleteRecord => IsAdmin;
         public static bool CanManageUsers => IsAdmin;
         public static string CurrentDisplayName => CurrentUser?.DisplayName ?? string.Empty;
 

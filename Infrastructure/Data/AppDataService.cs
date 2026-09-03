@@ -4,8 +4,10 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Windows;
 using Microsoft.Data.Sqlite;
 using QuanLyHoSo.Infrastructure.Configuration;
+using QuanLyHoSo.Infrastructure.Documents;
 using QuanLyHoSo.Infrastructure.Logging;
 using QuanLyHoSo.Infrastructure.Network;
 using QuanLyHoSo.Infrastructure.Security;
@@ -504,6 +506,338 @@ ORDER BY Name;";
             return result;
         }
 
+        public IReadOnlyList<StaffPerformanceRow> GetStaffPerformanceRows(DateTime? fromDate = null, DateTime? toDate = null)
+        {
+            if (AppPathSettings.Current.IsClientMode)
+            {
+                return _lanClient.Call<IReadOnlyList<StaffPerformanceRow>>("staff/performance", new DateRangeRequest { FromDate = fromDate, ToDate = toDate });
+            }
+
+            var processorNames = GetProcessorNames(includeAll: false)
+                .Where(name => !string.IsNullOrWhiteSpace(name))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            if (AuthContext.IsOfficer)
+            {
+                processorNames = processorNames
+                    .Where(name => string.Equals(name.Trim(), AuthContext.CurrentDisplayName.Trim(), StringComparison.CurrentCultureIgnoreCase))
+                    .ToList();
+            }
+
+            var result = new List<StaffPerformanceRow>();
+            if (processorNames.Count == 0)
+            {
+                return result;
+            }
+
+            using var connection = OpenConnection();
+            var today = DateTime.Today.ToString("O", CultureInfo.InvariantCulture);
+            var dueSoon = DateTime.Today.AddDays(7).Date.AddDays(1).AddTicks(-1).ToString("O", CultureInfo.InvariantCulture);
+            var from = fromDate?.Date.ToString("O", CultureInfo.InvariantCulture);
+            var to = toDate?.Date.AddDays(1).AddTicks(-1).ToString("O", CultureInfo.InvariantCulture);
+
+            foreach (var processorName in processorNames)
+            {
+                using var command = connection.CreateCommand();
+                command.CommandText = @"
+SELECT
+    COUNT(*) AS AssignedCount,
+    SUM(CASE WHEN Status <> 'Đã giải quyết' THEN 1 ELSE 0 END) AS ProcessingCount,
+    SUM(CASE WHEN Status = 'Đã giải quyết' THEN 1 ELSE 0 END) AS CompletedCount,
+    SUM(CASE WHEN Status <> 'Đã giải quyết' AND ExpectedResultDate <> '' AND ExpectedResultDate >= $today AND ExpectedResultDate <= $dueSoon THEN 1 ELSE 0 END) AS DueSoonCount,
+    SUM(CASE WHEN Status <> 'Đã giải quyết' AND ExpectedResultDate <> '' AND ExpectedResultDate < $today THEN 1 ELSE 0 END) AS OverdueCount,
+    SUM(CASE WHEN Status = 'Đã giải quyết' AND ExpectedResultDate <> '' AND UpdatedAt <> '' AND datetime(UpdatedAt) <= datetime(ExpectedResultDate) THEN 1 ELSE 0 END) AS OnTimeCompletedCount,
+    SUM(CASE WHEN ExpectedResultDate <> '' THEN 1 ELSE 0 END) AS DeadlineTrackedCount,
+    AVG(CASE WHEN Status = 'Đã giải quyết' AND ReceivedDate <> '' AND UpdatedAt <> '' AND datetime(UpdatedAt) >= datetime(ReceivedDate) THEN julianday(UpdatedAt) - julianday(ReceivedDate) END) AS AverageProcessingDays
+FROM Records
+WHERE TRIM(ProcessorName) = $processorName
+    AND ($fromDate IS NULL OR ReceivedDate >= $fromDate)
+    AND ($toDate IS NULL OR ReceivedDate <= $toDate);";
+                command.Parameters.AddWithValue("$processorName", processorName.Trim());
+                command.Parameters.AddWithValue("$today", today);
+                command.Parameters.AddWithValue("$dueSoon", dueSoon);
+                                command.Parameters.AddWithValue("$fromDate", (object)from ?? DBNull.Value);
+                                command.Parameters.AddWithValue("$toDate", (object)to ?? DBNull.Value);
+
+                using var reader = command.ExecuteReader();
+                if (!reader.Read())
+                {
+                    continue;
+                }
+
+                var assignedCount = reader.IsDBNull(0) ? 0 : Convert.ToInt32(reader.GetValue(0), CultureInfo.InvariantCulture);
+                var processingCount = reader.IsDBNull(1) ? 0 : Convert.ToInt32(reader.GetValue(1), CultureInfo.InvariantCulture);
+                var completedCount = reader.IsDBNull(2) ? 0 : Convert.ToInt32(reader.GetValue(2), CultureInfo.InvariantCulture);
+                var dueSoonCount = reader.IsDBNull(3) ? 0 : Convert.ToInt32(reader.GetValue(3), CultureInfo.InvariantCulture);
+                var overdueCount = reader.IsDBNull(4) ? 0 : Convert.ToInt32(reader.GetValue(4), CultureInfo.InvariantCulture);
+                var onTimeCompletedCount = reader.IsDBNull(5) ? 0 : Convert.ToInt32(reader.GetValue(5), CultureInfo.InvariantCulture);
+                var deadlineTrackedCount = reader.IsDBNull(6) ? 0 : Convert.ToInt32(reader.GetValue(6), CultureInfo.InvariantCulture);
+                var averageProcessingDays = reader.IsDBNull(7) ? 0d : Convert.ToDouble(reader.GetValue(7), CultureInfo.InvariantCulture);
+                var onTimeRate = deadlineTrackedCount > 0
+                    ? (int)Math.Round((double)onTimeCompletedCount / deadlineTrackedCount * 100d, MidpointRounding.AwayFromZero)
+                    : 100;
+
+                result.Add(new StaffPerformanceRow
+                {
+                    Initials = BuildInitials(processorName),
+                    Name = processorName,
+                    Position = "Chuyên viên",
+                    AssignedCount = assignedCount,
+                    ProcessingCount = processingCount,
+                    CompletedCount = completedCount,
+                    DueSoonCount = dueSoonCount,
+                    OverdueCount = overdueCount,
+                    AverageProcessingTimeText = averageProcessingDays > 0d ? $"{averageProcessingDays:0.0} ngày" : "0 ngày",
+                    OnTimeRateText = $"{onTimeRate}%",
+                    OnTimeRateColor = onTimeRate >= 90 ? "#0FA958" : onTimeRate >= 84 ? "#1784E8" : "#F97316",
+                    KpiPercent = Math.Clamp(onTimeRate, 0, 100),
+                    KpiStatus = onTimeRate >= 90 ? "Tốt" : onTimeRate >= 80 ? "Khá" : "Cần cải thiện",
+                    KpiStatusBackground = onTimeRate >= 90 ? "#DCFCE7" : onTimeRate >= 80 ? "#E7F0FF" : "#FFF0E6",
+                    KpiStatusForeground = onTimeRate >= 90 ? "#0D7A2A" : onTimeRate >= 80 ? "#075CE8" : "#EA580C"
+                });
+            }
+
+            return result.OrderBy(row => row.Name, StringComparer.OrdinalIgnoreCase).ToList();
+        }
+
+        public IReadOnlyList<StatusStat> GetStaffDeadlineStats(DateTime? fromDate = null, DateTime? toDate = null)
+        {
+            if (AppPathSettings.Current.IsClientMode)
+            {
+                return _lanClient.Call<IReadOnlyList<StatusStat>>("staff/deadlines", new DateRangeRequest { FromDate = fromDate, ToDate = toDate });
+            }
+
+            using var connection = OpenConnection();
+            using var command = connection.CreateCommand();
+            var today = DateTime.Today.ToString("O", CultureInfo.InvariantCulture);
+            var dueSoon = DateTime.Today.AddDays(7).Date.AddDays(1).AddTicks(-1).ToString("O", CultureInfo.InvariantCulture);
+            var from = fromDate?.Date.ToString("O", CultureInfo.InvariantCulture);
+            var to = toDate?.Date.AddDays(1).AddTicks(-1).ToString("O", CultureInfo.InvariantCulture);
+
+            command.CommandText = @"
+SELECT
+    SUM(CASE WHEN ExpectedResultDate <> '' AND ((Status = 'Đã giải quyết' AND UpdatedAt <> '' AND datetime(UpdatedAt) <= datetime(ExpectedResultDate)) OR (Status <> 'Đã giải quyết' AND ExpectedResultDate > $dueSoon)) THEN 1 ELSE 0 END) AS OnTimeCount,
+    SUM(CASE WHEN Status <> 'Đã giải quyết' AND ExpectedResultDate <> '' AND ExpectedResultDate >= $today AND ExpectedResultDate <= $dueSoon THEN 1 ELSE 0 END) AS DueSoonCount,
+    SUM(CASE WHEN ExpectedResultDate <> '' AND ((Status <> 'Đã giải quyết' AND ExpectedResultDate < $today) OR (Status = 'Đã giải quyết' AND UpdatedAt <> '' AND datetime(UpdatedAt) > datetime(ExpectedResultDate))) THEN 1 ELSE 0 END) AS OverdueCount
+FROM Records
+WHERE TRIM(ProcessorName) <> ''
+  AND ($currentProcessorName IS NULL OR TRIM(ProcessorName) = $currentProcessorName)
+  AND ($fromDate IS NULL OR ReceivedDate >= $fromDate)
+  AND ($toDate IS NULL OR ReceivedDate <= $toDate);";
+            command.Parameters.AddWithValue("$today", today);
+            command.Parameters.AddWithValue("$dueSoon", dueSoon);
+            command.Parameters.AddWithValue("$currentProcessorName", AuthContext.IsOfficer ? AuthContext.CurrentDisplayName.Trim() : DBNull.Value);
+            command.Parameters.AddWithValue("$fromDate", (object)from ?? DBNull.Value);
+            command.Parameters.AddWithValue("$toDate", (object)to ?? DBNull.Value);
+
+            using var reader = command.ExecuteReader();
+            var onTimeCount = 0;
+            var dueSoonCount = 0;
+            var overdueCount = 0;
+            if (reader.Read())
+            {
+                onTimeCount = reader.IsDBNull(0) ? 0 : Convert.ToInt32(reader.GetValue(0), CultureInfo.InvariantCulture);
+                dueSoonCount = reader.IsDBNull(1) ? 0 : Convert.ToInt32(reader.GetValue(1), CultureInfo.InvariantCulture);
+                overdueCount = reader.IsDBNull(2) ? 0 : Convert.ToInt32(reader.GetValue(2), CultureInfo.InvariantCulture);
+            }
+
+            var total = Math.Max(1, onTimeCount + dueSoonCount + overdueCount);
+            var result = new List<StatusStat>
+            {
+                CreateDeadlineStatusStat("Đúng hạn", onTimeCount, total, "#35C47B"),
+                CreateDeadlineStatusStat("Sắp quá hạn", dueSoonCount, total, "#F6A623"),
+                CreateDeadlineStatusStat("Quá hạn", overdueCount, total, "#EF4444")
+            };
+
+            var startAngle = -90.0;
+            foreach (var item in result)
+            {
+                item.StartAngle = startAngle;
+                item.SweepAngle = item.Count * 360.0 / total;
+                startAngle += item.SweepAngle;
+            }
+
+            return result;
+        }
+
+        public IReadOnlyList<StaffWorkRecord> GetStaffActiveRecords(string processorName, DateTime? fromDate = null, DateTime? toDate = null, int take = 4)
+        {
+            if (AppPathSettings.Current.IsClientMode)
+            {
+                return _lanClient.Call<IReadOnlyList<StaffWorkRecord>>("staff/active-records", new StaffActiveRecordsRequest { ProcessorName = processorName, FromDate = fromDate, ToDate = toDate, Take = take });
+            }
+
+            if (string.IsNullOrWhiteSpace(processorName))
+            {
+                return Array.Empty<StaffWorkRecord>();
+            }
+
+            using var connection = OpenConnection();
+            using var command = connection.CreateCommand();
+            command.CommandText = @"
+SELECT RecordCode, CaseType, ExpectedResultDate
+FROM Records
+WHERE TRIM(ProcessorName) = $processorName
+  AND Status <> 'Đã giải quyết'
+  AND ($fromDate IS NULL OR ReceivedDate >= $fromDate)
+  AND ($toDate IS NULL OR ReceivedDate <= $toDate)
+ORDER BY
+  CASE WHEN ExpectedResultDate = '' THEN 1 ELSE 0 END,
+  ExpectedResultDate ASC,
+  UpdatedAt DESC
+LIMIT $take;";
+            command.Parameters.AddWithValue("$processorName", processorName.Trim());
+            command.Parameters.AddWithValue("$fromDate", (object)fromDate?.Date.ToString("O", CultureInfo.InvariantCulture) ?? DBNull.Value);
+            command.Parameters.AddWithValue("$toDate", (object)toDate?.Date.AddDays(1).AddTicks(-1).ToString("O", CultureInfo.InvariantCulture) ?? DBNull.Value);
+            command.Parameters.AddWithValue("$take", Math.Max(1, take));
+
+            var result = new List<StaffWorkRecord>();
+            using var reader = command.ExecuteReader();
+            while (reader.Read())
+            {
+                var expectedResultDate = reader.IsDBNull(2) ? string.Empty : reader.GetString(2);
+                var deadlineStatus = BuildStaffDeadlineStatus(expectedResultDate, out var statusColor);
+                result.Add(new StaffWorkRecord
+                {
+                    RecordCode = reader.GetString(0),
+                    CaseType = reader.GetString(1),
+                    DeadlineText = string.IsNullOrWhiteSpace(expectedResultDate) ? "Chưa có hạn xử lý" : $"Deadline: {FormatDate(expectedResultDate)}",
+                    DeadlineStatus = deadlineStatus,
+                    StatusColor = statusColor
+                });
+            }
+
+            return result;
+        }
+
+        public (string Message, string ReceivedText) GetLatestLeadershipNotice(string officerName)
+        {
+            if (AppPathSettings.Current.IsClientMode)
+            {
+                var response = _lanClient.Call<LeadershipNoticeResponse>("leadership-notices/latest", new LeadershipNoticeRequest { OfficerName = officerName });
+                return (response?.Message ?? "Chưa có thông báo mới từ lãnh đạo.", response?.ReceivedText ?? "Cập nhật mới nhất: --/--/---- --:--");
+            }
+
+            using var connection = OpenConnection();
+            using var command = connection.CreateCommand();
+            command.CommandText = @"
+SELECT Message, CreatedAt, SenderName
+FROM LeadershipNotices
+WHERE $officerName = '' OR Scope = 'All' OR TRIM(TargetName) = $officerName
+ORDER BY CreatedAt DESC, Id DESC
+LIMIT 1;";
+            command.Parameters.AddWithValue("$officerName", (officerName ?? string.Empty).Trim());
+
+            using var reader = command.ExecuteReader();
+            if (!reader.Read())
+            {
+                return ("Chưa có thông báo mới từ lãnh đạo.", "Cập nhật mới nhất: --/--/---- --:--");
+            }
+
+            var message = reader.GetString(0);
+            var createdAt = FormatDateTime(reader.GetString(1));
+            var senderName = reader.GetString(2);
+            return (message, $"Nhận lúc {createdAt} từ {senderName}");
+        }
+
+        public void SaveLeadershipNotice(string scope, string targetName, string kpiTarget, string message)
+        {
+            if (AppPathSettings.Current.IsClientMode)
+            {
+                _lanClient.Call<bool>("leadership-notices/save", new SaveLeadershipNoticeRequest { Scope = scope, TargetName = targetName, KpiTarget = kpiTarget, Message = message });
+                return;
+            }
+
+            if (!AuthContext.IsLeader)
+            {
+                throw new UnauthorizedAccessException("Chi lanh dao duoc gui thong bao.");
+            }
+
+            if (string.IsNullOrWhiteSpace(message))
+            {
+                throw new ArgumentException("Noi dung thong bao khong duoc de trong.", nameof(message));
+            }
+
+            using var connection = OpenConnection();
+            using var transaction = connection.BeginTransaction();
+            using var command = connection.CreateCommand();
+            command.Transaction = transaction;
+            command.CommandText = @"
+INSERT INTO LeadershipNotices (CreatedAt, SenderName, Scope, TargetName, KpiTarget, Message)
+VALUES ($createdAt, $senderName, $scope, $targetName, $kpiTarget, $message);";
+            command.Parameters.AddWithValue("$createdAt", DateTime.Now.ToString("O", CultureInfo.InvariantCulture));
+            command.Parameters.AddWithValue("$senderName", AuthContext.CurrentDisplayName);
+            command.Parameters.AddWithValue("$scope", string.Equals(scope, "All", StringComparison.OrdinalIgnoreCase) ? "All" : "Staff");
+            command.Parameters.AddWithValue("$targetName", NormalizeDbText(targetName));
+            command.Parameters.AddWithValue("$kpiTarget", NormalizeDbText(kpiTarget));
+            command.Parameters.AddWithValue("$message", NormalizeDbText(message));
+            command.ExecuteNonQuery();
+
+            WriteDatabaseLog(connection, transaction, "Theo dõi cán bộ", "Thông báo", targetName, "Lãnh đạo gửi thông báo cho cán bộ.");
+            transaction.Commit();
+        }
+
+        private static StatusStat CreateDeadlineStatusStat(string name, int count, int total, string color)
+        {
+            return new StatusStat
+            {
+                Name = name,
+                Count = count,
+                Percentage = $"{count * 100.0 / total:0.0}%",
+                Width = Math.Max(8, (int)Math.Round(count * 130.0 / total)),
+                Color = color
+            };
+        }
+
+        private static string BuildStaffDeadlineStatus(string expectedResultDate, out string statusColor)
+        {
+            statusColor = "#35C47B";
+            if (string.IsNullOrWhiteSpace(expectedResultDate) || !DateTime.TryParse(expectedResultDate, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var deadline))
+            {
+                statusColor = "#6B7280";
+                return "Chưa xác định";
+            }
+
+            var remainingDays = (deadline.Date - DateTime.Today).Days;
+            if (remainingDays < 0)
+            {
+                statusColor = "#EF4444";
+                return $"Quá hạn {Math.Abs(remainingDays)} ngày";
+            }
+
+            if (remainingDays <= 7)
+            {
+                statusColor = "#F6A623";
+                return $"Còn {remainingDays} ngày";
+            }
+
+            return $"Còn {remainingDays} ngày";
+        }
+
+        private static string BuildInitials(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                return "NV";
+            }
+
+            var tokens = name.Trim().Split(new[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries);
+            if (tokens.Length == 0)
+            {
+                return "NV";
+            }
+
+            if (tokens.Length == 1)
+            {
+                var token = tokens[0];
+                return token.Substring(0, Math.Min(2, token.Length)).ToUpperInvariant();
+            }
+
+            var first = tokens[0][0];
+            var last = tokens[^1][0];
+            return string.Concat(first, last).ToString().ToUpperInvariant();
+        }
+
         public int GetAreaCount()
         {
             using var connection = OpenConnection();
@@ -914,7 +1248,6 @@ LIMIT 1;";
                 throw new InvalidOperationException("Chế độ máy trạm chưa hỗ trợ nhập mới hồ sơ qua máy admin trong bản thử LAN này.");
             }
 
-            EnsureCanWriteRecords();
             if (record == null)
             {
                 return string.Empty;
@@ -968,6 +1301,7 @@ WHERE Id = $recordId;";
             }
             else
             {
+                EnsureCanCreateRecords();
                 savedRecordCode = GenerateNextRecordCode(connection, transaction, DateTime.Today.Year);
                 record.RecordCode = savedRecordCode;
                 using var insertCommand = connection.CreateCommand();
@@ -999,12 +1333,12 @@ SELECT last_insert_rowid();";
 
         public bool DeleteRecord(string recordCode)
         {
+            EnsureCanDeleteRecords();
             if (AppPathSettings.Current.IsClientMode)
             {
                 return _lanClient.Call<bool>("records/delete", new RecordCodeRequest { RecordCode = recordCode });
             }
 
-            EnsureCanWriteRecords();
             if (string.IsNullOrWhiteSpace(recordCode))
             {
                 return false;
@@ -1025,7 +1359,6 @@ SELECT last_insert_rowid();";
             }
 
             var recordId = Convert.ToInt32(recordIdValue, CultureInfo.InvariantCulture);
-            EnsureCanEditRecord(connection, transaction, recordId);
             using var deleteHistoriesCommand = connection.CreateCommand();
             deleteHistoriesCommand.Transaction = transaction;
             deleteHistoriesCommand.CommandText = "DELETE FROM ProcessHistories WHERE RecordId = $recordId;";
@@ -1117,6 +1450,96 @@ SELECT last_insert_rowid();";
             }
         }
 
+        private IReadOnlyList<AttachmentDraft> MergeInitialResultDocuments(
+            SqliteConnection connection,
+            SqliteTransaction transaction,
+            int recordId,
+            string recordCode,
+            DateTime processedAt,
+            IReadOnlyList<AttachmentDraft> attachments)
+        {
+            var result = new List<AttachmentDraft>(attachments ?? Array.Empty<AttachmentDraft>());
+            foreach (var attachment in BuildInitialResultDocuments(connection, transaction, recordId, recordCode, processedAt.ToString("O", CultureInfo.InvariantCulture)))
+            {
+                var existingIndex = result.FindIndex(item => string.Equals(item.FileName, attachment.FileName, StringComparison.OrdinalIgnoreCase));
+                if (existingIndex >= 0)
+                {
+                    result[existingIndex] = attachment;
+                }
+                else
+                {
+                    result.Add(attachment);
+                }
+            }
+
+            return result;
+        }
+
+        private void EnsureInitialResultDocuments(SqliteConnection connection, SqliteTransaction transaction, int recordId, string recordCode, string processingDate)
+        {
+            foreach (var attachment in BuildInitialResultDocuments(connection, transaction, recordId, recordCode, processingDate))
+            {
+                InsertAttachmentIfMissing(connection, transaction, recordId, attachment);
+            }
+        }
+
+        private IReadOnlyList<AttachmentDraft> BuildInitialResultDocuments(SqliteConnection connection, SqliteTransaction transaction, int recordId, string recordCode, string processingDate)
+        {
+            try
+            {
+                var record = ReadRecordFormById(connection, transaction, recordId);
+                return InitialResultDocumentGenerator.Generate(record, recordCode, processingDate, GetGeneratedDocumentsRoot());
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Error("Documents", "GenerateInitialResultDocuments", ex, "Failed to generate initial result Word documents.", recordCode);
+                return Array.Empty<AttachmentDraft>();
+            }
+        }
+
+        private static void InsertAttachmentIfMissing(SqliteConnection connection, SqliteTransaction transaction, int recordId, AttachmentDraft attachment)
+        {
+            if (attachment == null || string.IsNullOrWhiteSpace(attachment.FileName))
+            {
+                return;
+            }
+
+            using var existsCommand = connection.CreateCommand();
+            existsCommand.Transaction = transaction;
+            existsCommand.CommandText = "SELECT Id FROM RecordAttachments WHERE RecordId = $recordId AND FileName = $fileName LIMIT 1;";
+            existsCommand.Parameters.AddWithValue("$recordId", recordId);
+            existsCommand.Parameters.AddWithValue("$fileName", NormalizeDbText(attachment.FileName));
+            var existingId = existsCommand.ExecuteScalar();
+            if (existingId != null)
+            {
+                using var updateCommand = connection.CreateCommand();
+                updateCommand.Transaction = transaction;
+                updateCommand.CommandText = "UPDATE RecordAttachments SET FileSize = $fileSize, FilePath = $filePath WHERE Id = $id;";
+                updateCommand.Parameters.AddWithValue("$id", Convert.ToInt32(existingId, CultureInfo.InvariantCulture));
+                updateCommand.Parameters.AddWithValue("$fileSize", NormalizeDbText(attachment.FileSize));
+                updateCommand.Parameters.AddWithValue("$filePath", NormalizeDbText(attachment.FilePath));
+                updateCommand.ExecuteNonQuery();
+                return;
+            }
+
+            using var insertCommand = connection.CreateCommand();
+            insertCommand.Transaction = transaction;
+            insertCommand.CommandText = "INSERT INTO RecordAttachments (RecordId, FileName, FileSize, FilePath) VALUES ($recordId, $fileName, $fileSize, $filePath);";
+            insertCommand.Parameters.AddWithValue("$recordId", recordId);
+            insertCommand.Parameters.AddWithValue("$fileName", NormalizeDbText(attachment.FileName));
+            insertCommand.Parameters.AddWithValue("$fileSize", NormalizeDbText(attachment.FileSize));
+            insertCommand.Parameters.AddWithValue("$filePath", NormalizeDbText(attachment.FilePath));
+            insertCommand.ExecuteNonQuery();
+        }
+
+        private static string GetGeneratedDocumentsRoot()
+        {
+            return Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "QuanLyHoSo",
+                "GeneratedDocuments");
+        }
+
         private static string NormalizeDbText(string value)
         {
             return value?.Trim() ?? string.Empty;
@@ -1158,6 +1581,21 @@ SELECT last_insert_rowid();";
             };
         }
 
+        private RecordFormDraft ReadRecordFormById(SqliteConnection connection, SqliteTransaction transaction, int recordId)
+        {
+            using var command = connection.CreateCommand();
+            command.Transaction = transaction;
+            command.CommandText = @"
+SELECT Id, RecordCode, ReceivedDate, ReceiveSource, ReceiverName, SenderName, SenderPhone, ContactAddress,
+       AreaName, IncidentAddress, Content, CaseType, ContentGroup, Field, RelatedPerson,
+       ExpectedHandlingMethod, SenderExpectedHandlingMethod, SeverityLevel, ExpectedResultDate, Note, AdditionalNote
+FROM Records
+WHERE Id = $recordId
+LIMIT 1;";
+            command.Parameters.AddWithValue("$recordId", recordId);
+            return ReadRecordForm(connection, command);
+        }
+
         public ProcessingRecordDetail GetProcessingRecordDetail(string recordCode = null)
         {
             if (AppPathSettings.Current.IsClientMode)
@@ -1183,28 +1621,53 @@ LIMIT 1;";
                 command.Parameters.AddWithValue("$recordCode", recordCode);
             }
 
-            using var reader = command.ExecuteReader();
-            if (!reader.Read())
+            int recordId;
+            string recordCodeValue;
+            string receivedDate;
+            string receiveSource;
+            string senderName;
+            string senderPhone;
+            string areaName;
+            string caseType;
+            string field;
+            string status;
+            string processorName;
+            string processingDate;
+            using (var reader = command.ExecuteReader())
             {
-                return new ProcessingRecordDetail();
+                if (!reader.Read())
+                {
+                    return new ProcessingRecordDetail();
+                }
+
+                recordId = reader.GetInt32(0);
+                recordCodeValue = reader.GetString(1);
+                receivedDate = FormatDate(reader.GetString(2));
+                receiveSource = reader.GetString(3);
+                senderName = reader.GetString(4);
+                senderPhone = reader.GetString(5);
+                areaName = reader.GetString(6);
+                caseType = reader.GetString(7);
+                field = reader.GetString(8);
+                status = reader.GetString(9);
+                processorName = reader.GetString(10);
+                processingDate = FormatDateTime(reader.GetString(11));
             }
 
-            var recordId = reader.GetInt32(0);
-            var status = reader.GetString(9);
             var history = GetProcessHistory(connection, recordId, status);
             return new ProcessingRecordDetail
             {
-                RecordCode = reader.GetString(1),
-                ReceivedDate = FormatDate(reader.GetString(2)),
-                ReceiveSource = reader.GetString(3),
-                SenderName = reader.GetString(4),
-                SenderPhone = reader.GetString(5),
-                AreaName = reader.GetString(6),
-                CaseType = reader.GetString(7),
-                Field = reader.GetString(8),
+                RecordCode = recordCodeValue,
+                ReceivedDate = receivedDate,
+                ReceiveSource = receiveSource,
+                SenderName = senderName,
+                SenderPhone = senderPhone,
+                AreaName = areaName,
+                CaseType = caseType,
+                Field = field,
                 Status = status,
-                ProcessorName = reader.GetString(10),
-                ProcessingDate = FormatDateTime(reader.GetString(11)),
+                ProcessorName = processorName,
+                ProcessingDate = processingDate,
                 ProcessContent = "Đang cập nhật tiến độ xử lý hồ sơ theo thông tin từ cơ sở dữ liệu.",
                 ProcessNote = "Dữ liệu mẫu được seed tự động cho giai đoạn thiết kế giao diện.",
                 Attachments = GetAttachments(connection, recordId),
@@ -1213,7 +1676,7 @@ LIMIT 1;";
             };
         }
 
-        public void UpdateProcessingRecord(string recordCode, string status, DateTime processedAt, string processorName, string content, string note, string transferAreaName, IReadOnlyList<AttachmentDraft> attachments)
+        public void UpdateProcessingRecord(string recordCode, string status, DateTime processedAt, string processorName, string content, string note, string transferAreaName, IReadOnlyList<AttachmentDraft> attachments, bool generateInitialResultDocuments = false)
         {
             if (AppPathSettings.Current.IsClientMode)
             {
@@ -1226,7 +1689,8 @@ LIMIT 1;";
                     Content = content,
                     Note = note,
                     TransferAreaName = transferAreaName,
-                    Attachments = attachments
+                    Attachments = attachments,
+                    GenerateInitialResultDocuments = generateInitialResultDocuments
                 });
                 return;
             }
@@ -1247,6 +1711,7 @@ LIMIT 1;";
             }
 
             EnsureCanEditRecord(connection, transaction, recordId.Value);
+            EnsureCanUpdateProcessingStatus(status);
 
             using var updateCommand = connection.CreateCommand();
             updateCommand.Transaction = transaction;
@@ -1265,7 +1730,10 @@ WHERE Id = $recordId;";
             updateCommand.Parameters.AddWithValue("$note", NormalizeDbText(note));
             updateCommand.Parameters.AddWithValue("$updatedAt", processedAt.ToString("O", CultureInfo.InvariantCulture));
             updateCommand.ExecuteNonQuery();
-            ReplaceAttachments(connection, transaction, recordId.Value, attachments);
+            var attachmentsToSave = generateInitialResultDocuments && GetProcessStepNumber(status) >= 5
+                ? MergeInitialResultDocuments(connection, transaction, recordId.Value, recordCode, processedAt, attachments)
+                : attachments;
+            ReplaceAttachments(connection, transaction, recordId.Value, attachmentsToSave);
 
             var currentStep = GetProcessStepNumber(status);
             DeleteProcessHistoryFromStep(connection, transaction, recordId.Value, currentStep);
@@ -1759,6 +2227,16 @@ CREATE TABLE IF NOT EXISTS SystemLogs (
     Detail TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS LeadershipNotices (
+    Id INTEGER PRIMARY KEY AUTOINCREMENT,
+    CreatedAt TEXT NOT NULL,
+    SenderName TEXT NOT NULL,
+    Scope TEXT NOT NULL,
+    TargetName TEXT NOT NULL,
+    KpiTarget TEXT NOT NULL,
+    Message TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS Users (
     Id INTEGER PRIMARY KEY AUTOINCREMENT,
     UserName TEXT NOT NULL UNIQUE,
@@ -2248,11 +2726,19 @@ VALUES (
             var methods = ReadCatalog(connection, "ExpectedHandlingMethod");
             var statuses = new[] { "Mới tiếp nhận", "Đang phân loại", "Đã phân công", "Đang xác minh", "Chờ kết quả", "Đang chờ bổ sung tài liệu", "Đã giải quyết", "Chuyển cơ quan khác" };
             var processors = new[] { "Trần Văn B", "Trần Văn C", "Lê Thị D", "Nguyễn Thị H", "Phạm Văn K" };
+            var processorProfiles = new Dictionary<string, (int CompletedChance, int HighOnTimeChance, int PendingChance, int OverdueChance)>
+            {
+                ["Trần Văn B"] = (8, 8, 2, 1),
+                ["Trần Văn C"] = (6, 6, 3, 2),
+                ["Lê Thị D"] = (4, 4, 5, 3),
+                ["Nguyễn Thị H"] = (7, 7, 2, 1),
+                ["Phạm Văn K"] = (3, 3, 6, 4)
+            };
             var senders = new[] { "Nguyễn Văn A", "Trần Thị B", "Lê Văn C", "Phạm Thị D", "Võ Văn E", "Huỳnh Văn F", "Đặng Thị G", "Bùi Văn H" };
             var relatedPersons = new[] { "Trần Văn C", "Lê Thị D", "Nguyễn Văn M", "Công ty TNHH An Phú", "Hộ dân liền kề" };
 
             using var transaction = connection.BeginTransaction();
-            for (var i = 1; i <= 50; i++)
+            for (var i = 1; i <= 80; i++)
             {
                 var now = DateTime.Now;
                 var receivedDate = DateTime.Today.AddDays(-random.Next(0, 90)).AddHours(random.Next(8, 17)).AddMinutes(random.Next(0, 60));
@@ -2261,16 +2747,58 @@ VALUES (
                     receivedDate = now;
                 }
 
+                var processor = processors[(i - 1) % processors.Length];
+                var profile = processorProfiles[processor];
+                var profileRoll = (i + profile.CompletedChance) % 10;
+                string status;
+                if (profileRoll < profile.CompletedChance)
+                {
+                    status = "Đã giải quyết";
+                }
+                else if (profileRoll < profile.CompletedChance + profile.HighOnTimeChance)
+                {
+                    status = "Đang xác minh";
+                }
+                else if (profileRoll < profile.CompletedChance + profile.HighOnTimeChance + profile.PendingChance)
+                {
+                    status = "Chờ kết quả";
+                }
+                else if (profileRoll < profile.CompletedChance + profile.HighOnTimeChance + profile.PendingChance + profile.OverdueChance)
+                {
+                    status = "Đang chờ bổ sung tài liệu";
+                }
+                else
+                {
+                    status = "Mới tiếp nhận";
+                }
+
+                var areaName = areaNames[random.Next(areaNames.Count)];
                 var updatedAt = receivedDate.AddDays(random.Next(0, 12)).AddHours(random.Next(0, 8));
                 if (updatedAt > now)
                 {
                     updatedAt = now;
                 }
 
-                var expectedDate = receivedDate.Date.AddDays(random.Next(15, 46));
-                var status = statuses[random.Next(statuses.Length)];
-                var processor = processors[random.Next(processors.Length)];
-                var areaName = areaNames[random.Next(areaNames.Count)];
+                var expectedDate = status == "Đã giải quyết"
+                    ? receivedDate.Date.AddDays(-random.Next(0, 3))
+                    : receivedDate.Date.AddDays(random.Next(3, 18) + (profile.OverdueChance > 2 ? 5 : 0));
+
+                if (status == "Đang chờ bổ sung tài liệu" || status == "Chờ kết quả")
+                {
+                    expectedDate = receivedDate.Date.AddDays(random.Next(1, 7));
+                }
+
+                if (status == "Mới tiếp nhận")
+                {
+                    expectedDate = receivedDate.Date.AddDays(random.Next(8, 20));
+                }
+
+                if (profile.OverdueChance >= 4 && i % 4 == 0 && status != "Đã giải quyết")
+                {
+                    expectedDate = receivedDate.Date.AddDays(-random.Next(1, 5));
+                    status = "Đang chờ bổ sung tài liệu";
+                }
+
                 var caseType = caseTypes[random.Next(caseTypes.Count)];
                 var field = fields[random.Next(fields.Count)];
                 var recordCode = $"HS-{DateTime.Today:yyyy}-{i:000000}";
@@ -2512,6 +3040,14 @@ ORDER BY ProcessedAt;";
             };
         }
 
+        private static void EnsureCanUpdateProcessingStatus(string status)
+        {
+            if (AuthContext.IsOfficer && GetProcessStepNumber(status) < 3)
+            {
+                throw new UnauthorizedAccessException("Can bo khong duoc lui quy trinh ve Moi tiep nhan hoac Dang phan loai.");
+            }
+        }
+
         private static (string IconGlyph, string IconFontFamily, string Title) GetProcessStepDefinition(int stepNumber)
         {
             return stepNumber switch
@@ -2681,10 +3217,25 @@ ORDER BY ProcessorName;";
 
         private void NotifyCatalogChanged(string catalogType)
         {
-            if (!string.IsNullOrWhiteSpace(catalogType))
+            if (string.IsNullOrWhiteSpace(catalogType))
             {
-                CatalogChanged?.Invoke(catalogType);
+                return;
             }
+
+            var handlers = CatalogChanged;
+            if (handlers == null)
+            {
+                return;
+            }
+
+            var dispatcher = Application.Current?.Dispatcher;
+            if (dispatcher != null && !dispatcher.CheckAccess())
+            {
+                dispatcher.BeginInvoke(new Action(() => handlers.Invoke(catalogType)));
+                return;
+            }
+
+            handlers.Invoke(catalogType);
         }
 
         private static void EnsureCatalogItem(SqliteConnection connection, SqliteTransaction transaction, string catalogType, string name)
@@ -2982,6 +3533,22 @@ WHERE RecordCode LIKE $prefixLike;";
             if (!AuthContext.CanWrite)
             {
                 throw new UnauthorizedAccessException("Tài khoản hiện tại chỉ được xem dữ liệu, không được chỉnh sửa.");
+            }
+        }
+
+        private static void EnsureCanCreateRecords()
+        {
+            if (!AuthContext.CanCreateRecord)
+            {
+                throw new UnauthorizedAccessException("Chi admin duoc them moi ho so.");
+            }
+        }
+
+        private static void EnsureCanDeleteRecords()
+        {
+            if (!AuthContext.CanDeleteRecord)
+            {
+                throw new UnauthorizedAccessException("Chi admin duoc xoa ho so.");
             }
         }
 

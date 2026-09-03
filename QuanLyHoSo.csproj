@@ -16,6 +16,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Content Include="doc\phieu_de_xuat.docx" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="doc\phieu_huong_dan.docx" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="doc\thong_bao.docx" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <None Remove="Assets\AppIcon.ico" />
     <None Remove="Assets\AppIcon.png" />
     <None Remove="Assets\Fonts\MaterialSymbolsOutlined.ttf" />

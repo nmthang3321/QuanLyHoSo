@@ -173,7 +173,24 @@ namespace QuanLyHoSo.Infrastructure.Network
                         return _dataService.GetProcessingRecordDetail(ReadData<RecordCodeRequest>(body).RecordCode);
                     case "processing/update":
                         var update = ReadData<UpdateProcessingRequest>(body);
-                        _dataService.UpdateProcessingRecord(update.RecordCode, update.Status, update.ProcessedAt, update.ProcessorName, update.Content, update.Note, update.TransferAreaName, update.Attachments);
+                        _dataService.UpdateProcessingRecord(update.RecordCode, update.Status, update.ProcessedAt, update.ProcessorName, update.Content, update.Note, update.TransferAreaName, update.Attachments, update.GenerateInitialResultDocuments);
+                        return true;
+                    case "staff/performance":
+                        var staffPerformance = ReadData<DateRangeRequest>(body);
+                        return _dataService.GetStaffPerformanceRows(staffPerformance.FromDate, staffPerformance.ToDate);
+                    case "staff/deadlines":
+                        var staffDeadlines = ReadData<DateRangeRequest>(body);
+                        return _dataService.GetStaffDeadlineStats(staffDeadlines.FromDate, staffDeadlines.ToDate);
+                    case "staff/active-records":
+                        var staffActiveRecords = ReadData<StaffActiveRecordsRequest>(body);
+                        return _dataService.GetStaffActiveRecords(staffActiveRecords.ProcessorName, staffActiveRecords.FromDate, staffActiveRecords.ToDate, staffActiveRecords.Take);
+                    case "leadership-notices/latest":
+                        var noticeRequest = ReadData<LeadershipNoticeRequest>(body);
+                        var notice = _dataService.GetLatestLeadershipNotice(noticeRequest.OfficerName);
+                        return new LeadershipNoticeResponse { Message = notice.Message, ReceivedText = notice.ReceivedText };
+                    case "leadership-notices/save":
+                        var saveNotice = ReadData<SaveLeadershipNoticeRequest>(body);
+                        _dataService.SaveLeadershipNotice(saveNotice.Scope, saveNotice.TargetName, saveNotice.KpiTarget, saveNotice.Message);
                         return true;
                     default:
                         throw new InvalidOperationException($"Unknown LAN API route: {route}");

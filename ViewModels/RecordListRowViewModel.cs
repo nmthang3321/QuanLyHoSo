@@ -21,7 +21,7 @@ namespace QuanLyHoSo.ViewModels
             ProcessorName = record.ProcessorName;
             CanEdit = AuthContext.CanEditRecord(record.ProcessorName) && !AppPathSettings.Current.IsClientMode;
             CanClassify = AuthContext.CanEditRecord(record.ProcessorName);
-            CanDelete = AuthContext.CanEditRecord(record.ProcessorName);
+            CanDelete = AuthContext.CanDeleteRecord;
             ViewCommand = viewCommand;
             EditCommand = editCommand;
             ClassifyCommand = classifyCommand;

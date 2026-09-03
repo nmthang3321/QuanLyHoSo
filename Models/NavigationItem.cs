@@ -5,6 +5,7 @@ namespace QuanLyHoSo.Models
     public sealed class NavigationItem : ViewModels.ViewModelBase
     {
         private bool _isSelected;
+        private bool _isVisible = true;
 
         public string Key { get; set; }
         public string Title { get; set; }
@@ -16,6 +17,12 @@ namespace QuanLyHoSo.Models
         {
             get => _isSelected;
             set => SetProperty(ref _isSelected, value);
+        }
+
+        public bool IsVisible
+        {
+            get => _isVisible;
+            set => SetProperty(ref _isVisible, value);
         }
     }
 }

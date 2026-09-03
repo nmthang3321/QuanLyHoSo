@@ -17,6 +17,7 @@ namespace QuanLyHoSo.ViewModels
         private RecordInputViewModel _recordInputViewModel;
         private RecordListViewModel _recordListViewModel;
         private RecordProcessingViewModel _recordProcessingViewModel;
+        private StaffTrackingViewModel _staffTrackingViewModel;
         private SettingsViewModel _settingsViewModel;
 
         private ViewModelBase _currentViewModel;
@@ -42,7 +43,8 @@ namespace QuanLyHoSo.ViewModels
                 CreateNavigationItem("Dashboard", "Tổng quan", "\uE80F"),
                 CreateNavigationItem("Input", "Nhập dữ liệu", "\uF7DD", "pack://application:,,,/Assets/Fonts/#Material Symbols Outlined"),
                 CreateNavigationItem("RecordList", "Danh sách hồ sơ", "\uE8FD"),
-                CreateNavigationItem("Processing", "Phân loại & Xử lý", "\uE72C", "pack://application:,,,/Assets/Fonts/#Material Symbols Outlined")
+                CreateNavigationItem("Processing", "Phân loại & Xử lý", "\uE72C", "pack://application:,,,/Assets/Fonts/#Material Symbols Outlined"),
+                CreateNavigationItem("StaffTracking", "Theo dõi cán bộ", "\uE716")
             };
             SettingsNavigationItem = CreateNavigationItem("Settings", "Cài đặt", "\uE713");
 
@@ -104,6 +106,7 @@ namespace QuanLyHoSo.ViewModels
                 "Input" => RecordInputViewModel,
                 "RecordList" => RecordListViewModel,
                 "Processing" => RecordProcessingViewModel,
+                "StaffTracking" => StaffTrackingViewModel,
                 "Settings" => SettingsViewModel,
                 _ => DashboardViewModel
             };
@@ -167,6 +170,8 @@ namespace QuanLyHoSo.ViewModels
         private RecordProcessingViewModel RecordProcessingViewModel => _recordProcessingViewModel ??= new RecordProcessingViewModel(
             () => NavigateTo("RecordList"));
 
+        private StaffTrackingViewModel StaffTrackingViewModel => _staffTrackingViewModel ??= new StaffTrackingViewModel();
+
         private SettingsViewModel SettingsViewModel => _settingsViewModel ??= new SettingsViewModel();
 
         private void SignIn(AppUser user)
@@ -176,6 +181,7 @@ namespace QuanLyHoSo.ViewModels
             OnPropertyChanged(nameof(IsAuthenticated));
             OnPropertyChanged(nameof(CurrentUserDisplayName));
             OnPropertyChanged(nameof(CurrentUserRoleText));
+            UpdateNavigationVisibility();
             RaiseNavigationCommandStates();
             NavigateTo(AuthContext.IsOfficer ? "RecordList" : "Dashboard");
         }
@@ -188,6 +194,7 @@ namespace QuanLyHoSo.ViewModels
             _recordInputViewModel = null;
             _recordListViewModel = null;
             _recordProcessingViewModel = null;
+            _staffTrackingViewModel = null;
             _settingsViewModel = null;
             CurrentPageKey = null;
             UpdateNavigationSelection(null);
@@ -195,6 +202,7 @@ namespace QuanLyHoSo.ViewModels
             OnPropertyChanged(nameof(IsAuthenticated));
             OnPropertyChanged(nameof(CurrentUserDisplayName));
             OnPropertyChanged(nameof(CurrentUserRoleText));
+            UpdateNavigationVisibility();
             RaiseNavigationCommandStates();
         }
 
@@ -221,6 +229,14 @@ namespace QuanLyHoSo.ViewModels
             }
 
             (SettingsNavigationItem.Command as RelayCommand)?.RaiseCanExecuteChanged();
+        }
+
+        private void UpdateNavigationVisibility()
+        {
+            foreach (var item in NavigationItems)
+            {
+                item.IsVisible = item.Key != "Input" || !AuthContext.IsOfficer;
+            }
         }
 
         private static void LogElapsed(string action, Stopwatch stopwatch)

@@ -41,11 +41,11 @@ namespace QuanLyHoSo.ViewModels
             _dataService.CatalogChanged += DataService_CatalogChanged;
             Attachments = new ObservableCollection<AttachmentDraft>();
             Attachments.CollectionChanged += Attachments_CollectionChanged;
-            NewCommand = new RelayCommand(ClearForm);
-            SaveCommand = new RelayCommand(Save, () => CanWrite);
+            NewCommand = new RelayCommand(ClearForm, () => CanCreateRecord);
+            SaveCommand = new RelayCommand(Save, () => CanSave);
             BackCommand = new RelayCommand(_goBack);
             CancelCommand = new RelayCommand(CancelForm);
-            DeleteCommand = new RelayCommand(DeleteCurrentRecord, () => CanWrite);
+            DeleteCommand = new RelayCommand(DeleteCurrentRecord, () => CanDelete);
             RemoveAttachmentCommand = new RelayCommand(RemoveAttachment);
             OpenAttachmentCommand = new RelayCommand(OpenAttachment);
 
@@ -70,7 +70,10 @@ namespace QuanLyHoSo.ViewModels
         public ICommand DeleteCommand { get; }
         public ICommand RemoveAttachmentCommand { get; }
         public ICommand OpenAttachmentCommand { get; }
-        public bool CanWrite => AuthContext.CanWrite && !AppPathSettings.Current.IsClientMode;
+        public bool CanWrite => CanSave;
+        public bool CanCreateRecord => AuthContext.CanCreateRecord && !AppPathSettings.Current.IsClientMode;
+        public bool CanSave => !AppPathSettings.Current.IsClientMode && (IsEditingExistingRecord ? AuthContext.CanWrite : AuthContext.CanCreateRecord);
+        public bool CanDelete => AuthContext.CanDeleteRecord && IsEditingExistingRecord && !AppPathSettings.Current.IsClientMode;
         public bool IsEditingExistingRecord => !string.IsNullOrWhiteSpace(_editingRecordCode);
         public string SaveButtonText => IsEditingExistingRecord ? "Cập nhật" : "Lưu";
 
@@ -140,6 +143,7 @@ namespace QuanLyHoSo.ViewModels
 
             OnPropertyChanged(nameof(IsEditingExistingRecord));
             OnPropertyChanged(nameof(SaveButtonText));
+            RaisePermissionPropertyChanges();
             RaiseFormPropertyChanges();
         }
 
@@ -173,6 +177,7 @@ namespace QuanLyHoSo.ViewModels
             Attachments.Clear();
             OnPropertyChanged(nameof(IsEditingExistingRecord));
             OnPropertyChanged(nameof(SaveButtonText));
+            RaisePermissionPropertyChanges();
             RaiseFormPropertyChanges();
         }
 
@@ -243,7 +248,7 @@ namespace QuanLyHoSo.ViewModels
 
         private void Save()
         {
-            if (!CanWrite)
+            if (!CanSave)
             {
                 MessageBox.Show("Tài khoản hiện tại chỉ được xem dữ liệu.", "Phân quyền", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
@@ -272,6 +277,7 @@ namespace QuanLyHoSo.ViewModels
                 OnPropertyChanged(nameof(RecordCode));
                 OnPropertyChanged(nameof(IsEditingExistingRecord));
                 OnPropertyChanged(nameof(SaveButtonText));
+                RaisePermissionPropertyChanges();
                 var actionText = isEditing ? "cập nhật" : "lưu";
                 MessageBox.Show($"Đã {actionText} hồ sơ vào cơ sở dữ liệu.", "Hồ sơ", MessageBoxButton.OK, MessageBoxImage.Information);
             }
@@ -324,7 +330,7 @@ namespace QuanLyHoSo.ViewModels
 
         private void DeleteCurrentRecord()
         {
-            if (!CanWrite)
+            if (!CanDelete)
             {
                 MessageBox.Show("Tài khoản hiện tại chỉ được xem dữ liệu.", "Phân quyền", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
@@ -547,6 +553,17 @@ namespace QuanLyHoSo.ViewModels
             }
 
             return "Vui lòng nhập đầy đủ các thông tin bắt buộc:\n\n- " + string.Join("\n- ", missingFields);
+        }
+
+        private void RaisePermissionPropertyChanges()
+        {
+            OnPropertyChanged(nameof(CanWrite));
+            OnPropertyChanged(nameof(CanCreateRecord));
+            OnPropertyChanged(nameof(CanSave));
+            OnPropertyChanged(nameof(CanDelete));
+            (NewCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            (SaveCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            (DeleteCommand as RelayCommand)?.RaiseCanExecuteChanged();
         }
 
         private void RaiseFormPropertyChanges()
@@ -797,7 +814,7 @@ namespace QuanLyHoSo.ViewModels
             const long maxFileSize = 10 * 1024 * 1024;
             var extension = fileInfo.Extension?.ToLowerInvariant();
             return fileInfo.Length <= maxFileSize
-                && (extension == ".pdf" || extension == ".jpg" || extension == ".jpeg" || extension == ".png");
+                && (extension == ".pdf" || extension == ".doc" || extension == ".docx" || extension == ".jpg" || extension == ".jpeg" || extension == ".png");
         }
 
         private static string FormatFileSize(long bytes)

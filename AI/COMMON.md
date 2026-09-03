@@ -22,7 +22,7 @@ File chinh:
 Role:
 - `Admin`: toan quyen.
 - `Leader`: chi xem, khong sua.
-- `Officer`: chi toan quyen tren ho so co `Records.ProcessorName == AuthContext.CurrentDisplayName`.
+- `Officer`: xem, chinh sua, phan loai/xu ly ho so co `Records.ProcessorName == AuthContext.CurrentDisplayName`; khong duoc them moi/xoa ho so.
 
 Dang co login, logout, quan ly user trong Settings. User mac dinh seed: `admin/admin123`.
 

@@ -7,6 +7,8 @@ using System.Windows;
 using System.Windows.Input;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.Win32;
 using QuanLyHoSo.Infrastructure.Data;
 using QuanLyHoSo.Infrastructure.Logging;
 using QuanLyHoSo.Infrastructure.Security;
@@ -19,6 +21,7 @@ namespace QuanLyHoSo.ViewModels
         private const int DefaultPageSize = 20;
         private const int MinimumPageSize = 1;
         private const int MaximumPageSize = 50;
+        private const int AssignedProcessStep = 3;
 
         private readonly AppDataService _dataService;
         private readonly Action _goBackToPreviousPage;
@@ -42,6 +45,9 @@ namespace QuanLyHoSo.ViewModels
         private string _selectedSeverity;
         private string _selectedStatus;
         private bool _shouldReturnToPreviousPage;
+        private bool _isProcessingUpdateBusy;
+        private bool _isGeneratingInitialResultDocuments;
+        private string _initialResultProgressText;
         private int _totalPages = 1;
         private string _totalRecordsText;
 
@@ -58,17 +64,7 @@ namespace QuanLyHoSo.ViewModels
             FilteredTransferAreas = AreaSelectionOptions.Filter(TransferAreas, null);
             TransferAreaChoices = new ObservableCollection<AreaSelectionOption>(AreaSelectionOptions.Flatten(TransferAreas).Where(item => !item.IsGroup && item.IsSelectable));
             Attachments = new ObservableCollection<AttachmentDraft>();
-            ProcessingStatuses = new ObservableCollection<string>
-            {
-                "Mới tiếp nhận",
-                "Đang phân loại",
-                "Đã phân công",
-                "Đang xác minh",
-                "Đang chờ bổ sung tài liệu",
-                "Chờ kết quả",
-                "Đã giải quyết",
-                "Chuyển cơ quan khác"
-            };
+            ProcessingStatuses = new ObservableCollection<string>(GetAllowedProcessingStatuses());
             StatusFilters = new ObservableCollection<string>
             {
                 "Tất cả",
@@ -92,9 +88,10 @@ namespace QuanLyHoSo.ViewModels
             _nextPageCommand = new RelayCommand(NextPage, () => CurrentPage < TotalPages);
             CloseDetailCommand = new RelayCommand(CloseDetail);
             BackToQueueCommand = new RelayCommand(BackToQueue);
-            SaveProcessingCommand = new RelayCommand(SaveProcessing, () => CanUpdateProcessing);
+            SaveProcessingCommand = new RelayCommand(async () => await SaveProcessingAsync(), () => CanUpdateProcessing && !IsProcessingUpdateBusy);
             RemoveAttachmentCommand = new RelayCommand(RemoveAttachment);
             OpenAttachmentCommand = new RelayCommand(OpenAttachment);
+            DownloadAttachmentCommand = new RelayCommand(DownloadAttachment);
 
             _selectedStatus = StatusFilters[0];
             _selectedArea = AreaFilters.Count > 0 ? AreaFilters[0].FilterValue : "Tất cả";
@@ -129,6 +126,7 @@ namespace QuanLyHoSo.ViewModels
         public ICommand SaveProcessingCommand { get; }
         public ICommand RemoveAttachmentCommand { get; }
         public ICommand OpenAttachmentCommand { get; }
+        public ICommand DownloadAttachmentCommand { get; }
         public string TransferAreaSearchText
         {
             get => _transferAreaSearchText;
@@ -147,6 +145,30 @@ namespace QuanLyHoSo.ViewModels
             set => SetProperty(ref _transferAreaName, value);
         }
         public bool CanUpdateProcessing => SelectedProcessingDetail != null && AuthContext.CanEditRecord(SelectedProcessingDetail.ProcessorName);
+
+        public bool IsProcessingUpdateBusy
+        {
+            get => _isProcessingUpdateBusy;
+            private set
+            {
+                if (SetProperty(ref _isProcessingUpdateBusy, value))
+                {
+                    (SaveProcessingCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                }
+            }
+        }
+
+        public bool IsGeneratingInitialResultDocuments
+        {
+            get => _isGeneratingInitialResultDocuments;
+            private set => SetProperty(ref _isGeneratingInitialResultDocuments, value);
+        }
+
+        public string InitialResultProgressText
+        {
+            get => _initialResultProgressText;
+            private set => SetProperty(ref _initialResultProgressText, value);
+        }
 
         public int CurrentPage
         {
@@ -457,7 +479,12 @@ namespace QuanLyHoSo.ViewModels
             ReplaceItems(ProcessorNames, _dataService.GetProcessorNames());
             ReplaceItems(ProcessSteps, SelectedProcessingDetail.Steps);
             ReplaceItems(History, SelectedProcessingDetail.History);
+            ReplaceItems(ProcessingStatuses, GetAllowedProcessingStatuses());
             ProcessingStatus = SelectedProcessingDetail.Status;
+            if (!ProcessingStatuses.Contains(ProcessingStatus))
+            {
+                ProcessingStatus = ProcessingStatuses.FirstOrDefault() ?? SelectedProcessingDetail.Status;
+            }
             SelectedProcessingDate = ParseProcessingDate(SelectedProcessingDetail.ProcessingDate) ?? DateTime.Now;
             ProcessingProcessorName = SelectedProcessingDetail.ProcessorName;
             ProcessingContent = SelectedProcessingDetail.ProcessContent;
@@ -513,7 +540,7 @@ namespace QuanLyHoSo.ViewModels
             Reload();
         }
 
-        private void SaveProcessing()
+        private async Task SaveProcessingAsync()
         {
             if (!CanUpdateProcessing)
             {
@@ -530,6 +557,11 @@ namespace QuanLyHoSo.ViewModels
             if (string.IsNullOrWhiteSpace(ProcessingStatus))
             {
                 missingFields.Add("Trạng thái hiện tại");
+            }
+            else if (!CanSelectProcessingStatus(ProcessingStatus))
+            {
+                MessageBox.Show("Cán bộ không được lùi quy trình về Mới tiếp nhận hoặc Đang phân loại. Vui lòng chọn trạng thái từ Đã phân công trở đi.", "Phân quyền quy trình", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
             }
 
             if (!SelectedProcessingDate.HasValue)
@@ -560,38 +592,59 @@ namespace QuanLyHoSo.ViewModels
             }
 
             var recordCode = SelectedProcessingDetail.RecordCode;
+            var generateInitialResultDocuments = ShouldOfferInitialResultDocuments()
+                && MessageBox.Show(
+                    "Bạn có muốn tạo phiếu đề xuất, phiếu hướng dẫn và thông báo không?",
+                    "Tạo tài liệu kết quả xử lý ban đầu",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Question) == MessageBoxResult.Yes;
+            var attachmentsToSave = Attachments.ToList();
             try
             {
-                _dataService.UpdateProcessingRecord(
-                    recordCode,
-                    ProcessingStatus,
-                    SelectedProcessingDate.Value,
-                    ProcessingProcessorName,
-                    ProcessingContent,
-                    ProcessingNote,
-                    string.Equals(ProcessingStatus, "Chuyển cơ quan khác", StringComparison.Ordinal) ? TransferAreaName : null,
-                    Attachments);
+                IsProcessingUpdateBusy = true;
+                if (generateInitialResultDocuments)
+                {
+                    InitialResultProgressText = "Đang tạo phiếu đề xuất, phiếu hướng dẫn và thông báo...";
+                    IsGeneratingInitialResultDocuments = true;
+                }
+
+                ProcessingRecordDetail refreshedDetail = null;
+                await Task.Run(() =>
+                {
+                    _dataService.UpdateProcessingRecord(
+                        recordCode,
+                        ProcessingStatus,
+                        SelectedProcessingDate.Value,
+                        ProcessingProcessorName,
+                        ProcessingContent,
+                        ProcessingNote,
+                        string.Equals(ProcessingStatus, "Chuyển cơ quan khác", StringComparison.Ordinal) ? TransferAreaName : null,
+                        attachmentsToSave,
+                        generateInitialResultDocuments);
+
+                    refreshedDetail = _dataService.GetProcessingRecordDetail(recordCode);
+                });
 
                 AppLogger.Info("Processing", "UpdateProcessingRecord", "Processing record updated.", recordCode);
-                SelectedProcessingDetail = _dataService.GetProcessingRecordDetail(recordCode);
-                ReplaceItems(ProcessSteps, SelectedProcessingDetail.Steps);
-                ReplaceItems(History, SelectedProcessingDetail.History);
-                ReplaceItems(ProcessorNames, _dataService.GetProcessorNames());
-                ProcessingStatus = SelectedProcessingDetail.Status;
-                ProcessingProcessorName = SelectedProcessingDetail.ProcessorName;
-                TransferAreaName = SelectedProcessingDetail.AreaName;
-                TransferAreaSearchText = SelectedProcessingDetail.AreaName;
-                Attachments.Clear();
-                foreach (var attachment in SelectedProcessingDetail.Attachments)
-                {
-                    Attachments.Add(attachment);
-                }
-                MessageBox.Show("Đã cập nhật xử lý hồ sơ.", "Cập nhật xử lý", MessageBoxButton.OK, MessageBoxImage.Information);
+                ApplyProcessingDetail(refreshedDetail);
+                IsGeneratingInitialResultDocuments = false;
+                InitialResultProgressText = null;
+                MessageBox.Show(
+                    generateInitialResultDocuments ? "Đã cập nhật xử lý hồ sơ và tạo tài liệu liên quan." : "Đã cập nhật xử lý hồ sơ.",
+                    "Cập nhật xử lý",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
             }
             catch (Exception ex)
             {
                 AppLogger.Error("Processing", "UpdateProcessingRecord", ex, "Failed to update processing record.", recordCode);
                 MessageBox.Show($"Không thể cập nhật xử lý hồ sơ.\n\nChi tiết: {ex.Message}", "Lỗi cập nhật xử lý", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            finally
+            {
+                IsGeneratingInitialResultDocuments = false;
+                InitialResultProgressText = null;
+                IsProcessingUpdateBusy = false;
             }
         }
 
@@ -605,7 +658,7 @@ namespace QuanLyHoSo.ViewModels
                 }
 
                 var fileInfo = new FileInfo(filePath);
-                if (fileInfo.Length > 10 * 1024 * 1024 || !new[] { ".pdf", ".jpg", ".jpeg", ".png" }.Contains(fileInfo.Extension, StringComparer.OrdinalIgnoreCase))
+                if (fileInfo.Length > 10 * 1024 * 1024 || !new[] { ".pdf", ".doc", ".docx", ".jpg", ".jpeg", ".png" }.Contains(fileInfo.Extension, StringComparer.OrdinalIgnoreCase))
                 {
                     continue;
                 }
@@ -651,6 +704,50 @@ namespace QuanLyHoSo.ViewModels
             });
         }
 
+        private void DownloadAttachment(object parameter)
+        {
+            if (parameter is not AttachmentDraft attachment || string.IsNullOrWhiteSpace(attachment.FilePath))
+            {
+                MessageBox.Show("Tài liệu này chưa có đường dẫn file để tải về.", "Tải tài liệu", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            if (!File.Exists(attachment.FilePath))
+            {
+                MessageBox.Show("Không tìm thấy file trên máy. Vui lòng tạo lại hoặc chọn lại tài liệu.", "Tải tài liệu", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            var dialog = new SaveFileDialog
+            {
+                FileName = attachment.FileName,
+                Filter = BuildDownloadFilter(attachment.FileName),
+                AddExtension = true,
+                OverwritePrompt = true
+            };
+
+            if (dialog.ShowDialog() != true)
+            {
+                return;
+            }
+
+            File.Copy(attachment.FilePath, dialog.FileName, true);
+            MessageBox.Show("Đã tải tài liệu về máy.", "Tải tài liệu", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        private static string BuildDownloadFilter(string fileName)
+        {
+            var extension = Path.GetExtension(fileName)?.ToLowerInvariant();
+            return extension switch
+            {
+                ".doc" or ".docx" => "Word (*.doc;*.docx)|*.doc;*.docx|Tất cả tệp (*.*)|*.*",
+                ".pdf" => "PDF (*.pdf)|*.pdf|Tất cả tệp (*.*)|*.*",
+                ".jpg" or ".jpeg" => "JPEG (*.jpg;*.jpeg)|*.jpg;*.jpeg|Tất cả tệp (*.*)|*.*",
+                ".png" => "PNG (*.png)|*.png|Tất cả tệp (*.*)|*.*",
+                _ => "Tất cả tệp (*.*)|*.*"
+            };
+        }
+
         private static string FormatFileSize(long bytes)
         {
             return bytes < 1024 * 1024
@@ -677,6 +774,88 @@ namespace QuanLyHoSo.ViewModels
             {
                 target.Add(item);
             }
+        }
+
+        private void ApplyProcessingDetail(ProcessingRecordDetail detail)
+        {
+            SelectedProcessingDetail = detail;
+            ReplaceItems(ProcessSteps, SelectedProcessingDetail.Steps);
+            ReplaceItems(History, SelectedProcessingDetail.History);
+            ReplaceItems(ProcessingStatuses, GetAllowedProcessingStatuses());
+            ReplaceItems(ProcessorNames, _dataService.GetProcessorNames());
+            ProcessingStatus = SelectedProcessingDetail.Status;
+            if (!ProcessingStatuses.Contains(ProcessingStatus))
+            {
+                ProcessingStatus = ProcessingStatuses.FirstOrDefault() ?? SelectedProcessingDetail.Status;
+            }
+
+            ProcessingProcessorName = SelectedProcessingDetail.ProcessorName;
+            TransferAreaName = SelectedProcessingDetail.AreaName;
+            TransferAreaSearchText = SelectedProcessingDetail.AreaName;
+            Attachments.Clear();
+            foreach (var attachment in SelectedProcessingDetail.Attachments)
+            {
+                Attachments.Add(attachment);
+            }
+
+            OnPropertyChanged(nameof(HasAttachments));
+        }
+
+        private bool ShouldOfferInitialResultDocuments()
+        {
+            return GetProcessStepNumber(ProcessingStatus) >= 5
+                && !HasAllInitialResultDocuments();
+        }
+
+        private bool HasAllInitialResultDocuments()
+        {
+            var fileNames = Attachments
+                .Select(attachment => attachment.FileName)
+                .Where(fileName => !string.IsNullOrWhiteSpace(fileName))
+                .ToList();
+
+            return fileNames.Any(fileName => string.Equals(fileName, "phieu_de_xuat.docx", StringComparison.OrdinalIgnoreCase))
+                && fileNames.Any(fileName => string.Equals(fileName, "phieu_huong_dan.docx", StringComparison.OrdinalIgnoreCase))
+                && fileNames.Any(fileName => string.Equals(fileName, "thong_bao.docx", StringComparison.OrdinalIgnoreCase));
+        }
+
+        private static IReadOnlyList<string> GetAllowedProcessingStatuses()
+        {
+            var statuses = new[]
+            {
+                "Mới tiếp nhận",
+                "Đang phân loại",
+                "Đã phân công",
+                "Đang xác minh",
+                "Đang chờ bổ sung tài liệu",
+                "Chờ kết quả",
+                "Đã giải quyết",
+                "Chuyển cơ quan khác"
+            };
+
+            return AuthContext.IsOfficer
+                ? statuses.Where(CanSelectProcessingStatus).ToList()
+                : statuses;
+        }
+
+        private static bool CanSelectProcessingStatus(string status)
+        {
+            return !AuthContext.IsOfficer || GetProcessStepNumber(status) >= AssignedProcessStep;
+        }
+
+        private static int GetProcessStepNumber(string status)
+        {
+            return status switch
+            {
+                "Mới tiếp nhận" => 1,
+                "Đang phân loại" => 2,
+                "Đã phân công" => 3,
+                "Đang xác minh" => 4,
+                "Đang chờ bổ sung tài liệu" => 5,
+                "Chờ kết quả" => 6,
+                "Đã giải quyết" => 7,
+                _ => 4
+            };
         }
 
         private void RaisePageCommandStates()

@@ -198,6 +198,9 @@
         <DataTemplate DataType="{x:Type viewModels:RecordProcessingViewModel}">
             <records:RecordProcessingView />
         </DataTemplate>
+        <DataTemplate DataType="{x:Type viewModels:StaffTrackingViewModel}">
+            <records:StaffTrackingView />
+        </DataTemplate>
         <DataTemplate DataType="{x:Type viewModels:SettingsViewModel}">
             <settings:SettingsView />
         </DataTemplate>

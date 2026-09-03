@@ -325,7 +325,7 @@ namespace QuanLyHoSo.Views.Records
         {
             var dialog = new OpenFileDialog
             {
-                Filter = "Tài liệu hỗ trợ (*.pdf;*.jpg;*.jpeg;*.png)|*.pdf;*.jpg;*.jpeg;*.png",
+                Filter = "Tài liệu hỗ trợ (*.pdf;*.doc;*.docx;*.jpg;*.jpeg;*.png)|*.pdf;*.doc;*.docx;*.jpg;*.jpeg;*.png",
                 Multiselect = true,
                 Title = "Chọn tài liệu đính kèm"
             };

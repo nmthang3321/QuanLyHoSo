@@ -90,5 +90,31 @@ namespace QuanLyHoSo.Infrastructure.Network
         public string Note { get; set; }
         public string TransferAreaName { get; set; }
         public IReadOnlyList<AttachmentDraft> Attachments { get; set; }
+        public bool GenerateInitialResultDocuments { get; set; }
+    }
+
+    public sealed class StaffActiveRecordsRequest : DateRangeRequest
+    {
+        public string ProcessorName { get; set; }
+        public int Take { get; set; }
+    }
+
+    public sealed class LeadershipNoticeRequest
+    {
+        public string OfficerName { get; set; }
+    }
+
+    public sealed class LeadershipNoticeResponse
+    {
+        public string Message { get; set; }
+        public string ReceivedText { get; set; }
+    }
+
+    public sealed class SaveLeadershipNoticeRequest
+    {
+        public string Scope { get; set; }
+        public string TargetName { get; set; }
+        public string KpiTarget { get; set; }
+        public string Message { get; set; }
     }
 }

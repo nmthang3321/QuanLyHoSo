@@ -14,6 +14,7 @@ Session handoff nam tai `AI/SESSION_HANDOFF_2026-08-26.md`. Context AI chi dung 
 - Nhap du lieu summary: `AI/RECORD_INPUT.md`
 - Danh sach ho so summary: `AI/RECORD_LIST.md`
 - Phan loai & xu ly summary: `AI/PROCESSING.md`
+- Theo doi can bo summary: `AI/STAFF_TRACKING.md`
 - Cai dat summary: `AI/SETTINGS.md`
 - DB/schema summary: `AI/DATABASE.md`
 - Quy tac sua code/build/git: `AI/RULES.md`
@@ -27,6 +28,7 @@ Session handoff nam tai `AI/SESSION_HANDOFF_2026-08-26.md`. Context AI chi dung 
 - Danh sach table: `AI/pages/RECORD_LIST_TABLE.md`
 - Xu ly queue: `AI/pages/PROCESSING_QUEUE.md`
 - Xu ly detail/update: `AI/pages/PROCESSING_DETAIL.md`
+- Theo doi can bo: `AI/pages/STAFF_TRACKING.md`
 - Cai dat home: `AI/pages/SETTINGS_HOME.md`
 
 ## Popups/overlays

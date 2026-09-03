@@ -700,15 +700,19 @@
                                                                 <ColumnDefinition Width="*" />
                                                                 <ColumnDefinition Width="Auto" />
                                                                 <ColumnDefinition Width="Auto" />
+                                                                <ColumnDefinition Width="Auto" />
                                                             </Grid.ColumnDefinitions>
                                                             <StackPanel VerticalAlignment="Center">
                                                                 <TextBlock Text="{Binding FileName}" TextTrimming="CharacterEllipsis" />
                                                                 <TextBlock Text="{Binding FileSize}" Style="{StaticResource MutedText}" FontSize="11" />
                                                             </StackPanel>
                                                             <Button Grid.Column="1" Style="{StaticResource SecondaryButton}" Width="28" MinWidth="28" Height="28" Padding="0" Margin="4,0,3,0" Command="{Binding DataContext.OpenAttachmentCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" ToolTip="Mở tài liệu">
-                                                                <TextBlock Text="&#xE896;" FontFamily="Segoe MDL2 Assets" Foreground="{StaticResource PrimaryBrush}" />
+                                                                <TextBlock Text="&#xE8E5;" FontFamily="Segoe MDL2 Assets" Foreground="{StaticResource PrimaryBrush}" />
                                                             </Button>
-                                                            <Button Grid.Column="2" Style="{StaticResource SecondaryButton}" Width="28" MinWidth="28" Height="28" Padding="0" Command="{Binding DataContext.RemoveAttachmentCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" ToolTip="Xóa tài liệu">
+                                                            <Button Grid.Column="2" Style="{StaticResource SecondaryButton}" Width="28" MinWidth="28" Height="28" Padding="0" Margin="0,0,3,0" Command="{Binding DataContext.DownloadAttachmentCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" ToolTip="Tải về">
+                                                                <TextBlock Text="&#xE896;" FontFamily="Segoe MDL2 Assets" Foreground="#159A72" />
+                                                            </Button>
+                                                            <Button Grid.Column="3" Style="{StaticResource SecondaryButton}" Width="28" MinWidth="28" Height="28" Padding="0" Command="{Binding DataContext.RemoveAttachmentCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" ToolTip="Xóa tài liệu">
                                                                 <TextBlock Text="&#xE74D;" FontFamily="Segoe MDL2 Assets" Foreground="#E11414" />
                                                             </Button>
                                                         </Grid>
@@ -724,7 +728,7 @@
                                             <TextBlock Text="&#xE898;" FontFamily="Segoe MDL2 Assets" FontSize="22" Foreground="{StaticResource PrimaryBrush}" VerticalAlignment="Center" Margin="0,0,8,0" />
                                             <TextBlock Text="Kéo thả file vào đây" Style="{StaticResource MutedText}" VerticalAlignment="Center" />
                                         </StackPanel>
-                                        <TextBlock Text="PDF, JPG, PNG - tối đa 10MB/file" Style="{StaticResource MutedText}" FontSize="11" HorizontalAlignment="Center" Margin="0,4,0,0" />
+                                        <TextBlock Text="PDF, Word, JPG, PNG - tối đa 10MB/file" Style="{StaticResource MutedText}" FontSize="11" HorizontalAlignment="Center" Margin="0,4,0,0" />
                                         <Button Style="{StaticResource SecondaryButton}" Content="Chọn file" Click="ChooseProcessingAttachmentFilesButton_Click" HorizontalAlignment="Center" Margin="0,8,0,0" />
                                     </StackPanel>
                                 </Border>
@@ -771,6 +775,39 @@
                 </Grid>
             </StackPanel>
         </ScrollViewer>
+
+        <Grid Background="#6606164A"
+              Visibility="{Binding IsGeneratingInitialResultDocuments, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <Border Background="White"
+                    BorderBrush="{StaticResource LineBrush}"
+                    BorderThickness="1"
+                    CornerRadius="6"
+                    Width="420"
+                    Padding="22"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center">
+                <Border.Effect>
+                    <DropShadowEffect BlurRadius="24" ShadowDepth="6" Opacity="0.22" Color="#06164A" />
+                </Border.Effect>
+                <StackPanel>
+                    <TextBlock Text="Đang tạo tài liệu"
+                               Style="{StaticResource SectionTitleText}"
+                               Foreground="{StaticResource PrimaryBrush}"
+                               HorizontalAlignment="Center" />
+                    <TextBlock Text="{Binding InitialResultProgressText}"
+                               Style="{StaticResource MutedText}"
+                               TextWrapping="Wrap"
+                               TextAlignment="Center"
+                               Margin="0,8,0,14" />
+                    <ProgressBar Height="8"
+                                 Minimum="0"
+                                 Maximum="100"
+                                 IsIndeterminate="True"
+                                 Foreground="{StaticResource PrimaryBrush}"
+                                 Background="#E9EEF6" />
+                </StackPanel>
+            </Border>
+        </Grid>
 
         <Grid Background="#9906164A"
               Visibility="{Binding IsDetailOpen, Converter={StaticResource BooleanToVisibilityConverter}}">
