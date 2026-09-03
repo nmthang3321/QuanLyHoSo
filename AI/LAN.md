@@ -2,9 +2,13 @@
 
 Chi tiet hon: `AI/infra/LAN_API.md`.
 
-Da lam ban don gian: 1 may server/admin giu DB, client khong mo SQLite truc tiep.
+Da co server console rieng: 1 may server giu DB va chay API LAN, client khong mo SQLite truc tiep. App WPF van co the chay AdminHost nhu cu, nhung khong bat buoc de server DB song.
 
 File chinh:
+- `QuanLyHoSo.Server\Program.cs`
+- `QuanLyHoSo.Server\QuanLyHoSo.Server.csproj`
+- `QuanLyHoSo.Core\QuanLyHoSo.Core.csproj`
+- `QuanLyHoSo.Shared\QuanLyHoSo.Shared.csproj`
 - `Infrastructure\Configuration\AppPathSettings.cs`
 - `Infrastructure\Network\LanApiModels.cs`
 - `Infrastructure\Network\LanDataClient.cs`
@@ -16,6 +20,19 @@ File chinh:
 Mode:
 - `AdminHost`: mo SQLite local, seed/schema, dong thoi bat API noi bo LAN tai `AdminServerUrl`.
 - `Client`: khong tao/mo SQLite, chi goi HTTP API toi may admin.
+
+Chay server console rieng:
+
+```powershell
+dotnet run --project QuanLyHoSo.Server\QuanLyHoSo.Server.csproj -- --url http://0.0.0.0:5055
+```
+
+Luu y: `0.0.0.0` chi dung cho server listen moi card mang. Client khong ket noi bang `0.0.0.0`; client phai dung `http://localhost:5055` neu cung may hoac `http://IP-may-server:5055` neu may khac.
+
+Tham so tuy chon:
+- `--url http://0.0.0.0:5055`
+- `--database C:\QuanLyHoSo\Data\quanlyhoso.db`
+- `--log-folder C:\QuanLyHoSo\Logs`
 
 Config mau server:
 
@@ -62,5 +79,5 @@ Da noi cac luong chinh:
 
 Chua lam day du:
 - nhap moi/sua form ho so tu client qua API, dac biet attachment/upload file.
-- service Windows chay nen rieng; hien server API dang nhung trong app admin.
+- dong goi `QuanLyHoSo.Server` thanh Windows Service chay nen/start cung Windows.
 - dong bo nhieu admin host. Khuyen nghi hien tai: 1 admin host giu DB, admin phu chay `Client` nhung dang nhap role `Admin`.

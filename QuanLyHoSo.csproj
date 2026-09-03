@@ -16,6 +16,29 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="QuanLyHoSo.Core\QuanLyHoSo.Core.csproj" />
+    <ProjectReference Include="QuanLyHoSo.Shared\QuanLyHoSo.Shared.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="Infrastructure\Configuration\*.cs" />
+    <Compile Remove="Infrastructure\Data\*.cs" />
+    <Compile Remove="Infrastructure\Documents\*.cs" />
+    <Compile Remove="Infrastructure\Logging\*.cs" />
+    <Compile Remove="Infrastructure\Network\*.cs" />
+    <Compile Remove="Infrastructure\Security\*.cs" />
+    <Compile Remove="Models\AuthModels.cs" />
+    <Compile Remove="Models\AreaSelectionModels.cs" />
+    <Compile Remove="Models\DashboardModels.cs" />
+    <Compile Remove="Models\RecordModels.cs" />
+    <Compile Remove="Models\SettingsModels.cs" />
+    <Compile Remove="Models\StaffTrackingModels.cs" />
+    <Compile Remove="QuanLyHoSo.Core\**\*.cs" />
+    <Compile Remove="QuanLyHoSo.Shared\**\*.cs" />
+    <Compile Remove="QuanLyHoSo.Server\**\*.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Content Include="doc\phieu_de_xuat.docx" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="doc\phieu_huong_dan.docx" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="doc\thong_bao.docx" CopyToOutputDirectory="PreserveNewest" />

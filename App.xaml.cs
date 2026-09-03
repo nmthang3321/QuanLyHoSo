@@ -2,6 +2,7 @@ using System;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Threading;
+using QuanLyHoSo.Infrastructure.Data;
 using QuanLyHoSo.Infrastructure.Logging;
 using QuanLyHoSo.Infrastructure.Network;
 
@@ -18,6 +19,16 @@ namespace QuanLyHoSo
             DispatcherUnhandledException += OnDispatcherUnhandledException;
             AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
             TaskScheduler.UnobservedTaskException += OnUnobservedTaskException;
+            AppDataService.UiDispatcher = action =>
+            {
+                if (Current?.Dispatcher?.CheckAccess() == true)
+                {
+                    action();
+                    return;
+                }
+
+                Current?.Dispatcher?.BeginInvoke(action);
+            };
             base.OnStartup(e);
         }
 

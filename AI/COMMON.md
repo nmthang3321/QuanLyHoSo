@@ -3,6 +3,7 @@
 ## Tong quan
 
 - App: WPF desktop, C#, MVVM tu viet, `.NET 5.0-windows`.
+- Projects: `QuanLyHoSo` WPF client/admin UI, `QuanLyHoSo.Core` data/network/config/logging/security/doc generation, `QuanLyHoSo.Shared` models/DTO, `QuanLyHoSo.Server` console LAN server.
 - DB: SQLite.
 - Local DB mac dinh: `%LocalAppData%\QuanLyHoSo\Data\quanlyhoso.db`.
 - Log: `%LocalAppData%\QuanLyHoSo\Logs\quanlyhoso-yyyyMMdd.log`.

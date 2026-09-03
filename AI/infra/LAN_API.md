@@ -3,6 +3,9 @@
 Dung khi task lien quan client/server LAN.
 
 Files:
+- `QuanLyHoSo.Server\Program.cs`
+- `QuanLyHoSo.Core\QuanLyHoSo.Core.csproj`
+- `QuanLyHoSo.Shared\QuanLyHoSo.Shared.csproj`
 - `Infrastructure\Configuration\AppPathSettings.cs`
 - `Infrastructure\Network\LanApiModels.cs`
 - `Infrastructure\Network\LanDataClient.cs`
@@ -17,6 +20,12 @@ Modes:
 
 Notes:
 - Client khong mo SQLite, goi HTTP API toi admin host.
-- Server API dang nhung trong app admin, chua tach Windows service.
+- Server API co the chay doc lap bang `QuanLyHoSo.Server`.
+- App WPF van co AdminHost mode de tu chay DB/API neu can tuong thich cu.
 - Neu server tat/mat mang, client hien popup qua `LanServerUnavailableException`.
 
+Run:
+
+```powershell
+dotnet run --project QuanLyHoSo.Server\QuanLyHoSo.Server.csproj -- --url http://0.0.0.0:5055
+```

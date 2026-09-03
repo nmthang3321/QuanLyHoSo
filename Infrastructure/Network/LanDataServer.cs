@@ -26,7 +26,7 @@ namespace QuanLyHoSo.Infrastructure.Network
         public LanDataServer(AppDataService dataService)
         {
             _dataService = dataService ?? throw new ArgumentNullException(nameof(dataService));
-            var prefix = AppPathSettings.Current.AdminServerUrl.TrimEnd('/') + "/";
+            var prefix = BuildListenerPrefix(AppPathSettings.Current.AdminServerUrl);
             _listener.Prefixes.Add(prefix);
         }
 
@@ -47,7 +47,17 @@ namespace QuanLyHoSo.Infrastructure.Network
             catch (Exception ex)
             {
                 AppLogger.Error("LAN", "StartServer", ex, "Cannot start admin LAN server.");
+                throw;
             }
+        }
+
+        private static string BuildListenerPrefix(string serverUrl)
+        {
+            var uri = new Uri((serverUrl ?? "http://localhost:5055").TrimEnd('/'));
+            var host = uri.Host == "0.0.0.0" || uri.Host == "*"
+                ? "+"
+                : uri.Host;
+            return $"{uri.Scheme}://{host}:{uri.Port}/";
         }
 
         private async Task ListenAsync(CancellationToken cancellationToken)
@@ -127,6 +137,31 @@ namespace QuanLyHoSo.Infrastructure.Network
                         return _dataService.GetCatalogValues(catalog.CatalogType, catalog.IncludeAll);
                     case "catalog/processors":
                         return _dataService.GetProcessorNames(ReadData<IncludeAllRequest>(body).IncludeAll);
+                    case "settings/catalog-items":
+                        var catalogItems = ReadData<CatalogItemsRequest>(body);
+                        return _dataService.GetCatalogItems(catalogItems.CatalogType, catalogItems.IncludeInactive);
+                    case "settings/catalog-counts":
+                        return _dataService.CountCatalogItemsByType();
+                    case "settings/catalog/add":
+                        var addCatalog = ReadData<SaveCatalogItemRequest>(body);
+                        return _dataService.AddCatalogItem(addCatalog.CatalogType, addCatalog.Name);
+                    case "settings/catalog/update":
+                        var updateCatalog = ReadData<SaveCatalogItemRequest>(body);
+                        return _dataService.UpdateCatalogItem(updateCatalog.Id, updateCatalog.Name);
+                    case "settings/catalog/delete":
+                        return _dataService.DeleteCatalogItem(ReadData<CatalogItemIdRequest>(body).Id);
+                    case "settings/catalog/reorder":
+                        _dataService.UpdateCatalogItemOrders(ReadData<ReorderCatalogItemsRequest>(body).Items);
+                        return true;
+                    case "settings/system-logs":
+                        return _dataService.GetSystemLogs(ReadData<SystemLogsRequest>(body).Take);
+                    case "settings/users":
+                        return _dataService.GetUsers();
+                    case "settings/users/save":
+                        var saveUser = ReadData<SaveUserRequest>(body);
+                        return _dataService.SaveUser(saveUser.User, saveUser.Password);
+                    case "settings/users/delete":
+                        return _dataService.DeleteUser(ReadData<UserIdRequest>(body).UserId);
                     case "dashboard/metrics":
                         var metrics = ReadData<DashboardMetricsRequest>(body);
                         return _dataService.GetDashboardMetrics(metrics.FromDate, metrics.ToDate, metrics.PreviousFromDate, metrics.PreviousToDate);

@@ -1,5 +1,8 @@
 namespace QuanLyHoSo.Models
 {
+    using System.ComponentModel;
+    using System.Runtime.CompilerServices;
+
     public static class UserRoles
     {
         public const string Admin = "Admin";
@@ -7,7 +10,7 @@ namespace QuanLyHoSo.Models
         public const string Leader = "Leader";
     }
 
-    public sealed class AppUser : ViewModels.ViewModelBase
+    public sealed class AppUser : INotifyPropertyChanged
     {
         private bool _isActive = true;
 
@@ -19,7 +22,16 @@ namespace QuanLyHoSo.Models
         public bool IsActive
         {
             get => _isActive;
-            set => SetProperty(ref _isActive, value);
+            set
+            {
+                if (_isActive == value)
+                {
+                    return;
+                }
+
+                _isActive = value;
+                OnPropertyChanged();
+            }
         }
 
         public string RoleText => Role switch
@@ -28,5 +40,12 @@ namespace QuanLyHoSo.Models
             UserRoles.Leader => "Lãnh đạo",
             _ => "Cán bộ"
         };
+
+        public event PropertyChangedEventHandler PropertyChanged;
+
+        private void OnPropertyChanged([CallerMemberName] string propertyName = null)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
     }
 }

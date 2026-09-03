@@ -26,6 +26,45 @@ namespace QuanLyHoSo.Infrastructure.Network
         public string CatalogType { get; set; }
     }
 
+    public sealed class CatalogItemsRequest
+    {
+        public string CatalogType { get; set; }
+        public bool IncludeInactive { get; set; }
+    }
+
+    public sealed class SaveCatalogItemRequest
+    {
+        public int Id { get; set; }
+        public string CatalogType { get; set; }
+        public string Name { get; set; }
+    }
+
+    public sealed class CatalogItemIdRequest
+    {
+        public int Id { get; set; }
+    }
+
+    public sealed class ReorderCatalogItemsRequest
+    {
+        public IReadOnlyList<CatalogValueSetting> Items { get; set; }
+    }
+
+    public sealed class SystemLogsRequest
+    {
+        public int Take { get; set; }
+    }
+
+    public sealed class SaveUserRequest
+    {
+        public AppUser User { get; set; }
+        public string Password { get; set; }
+    }
+
+    public sealed class UserIdRequest
+    {
+        public int UserId { get; set; }
+    }
+
     public sealed class DashboardMetricsRequest
     {
         public DateTime? FromDate { get; set; }

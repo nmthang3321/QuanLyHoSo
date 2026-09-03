@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net5.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="5.0.17" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\QuanLyHoSo.Shared\QuanLyHoSo.Shared.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="..\Infrastructure\Configuration\AppPathSettings.cs" Link="Configuration\AppPathSettings.cs" />
+    <Compile Include="..\Infrastructure\Data\AppDataService.cs" Link="Data\AppDataService.cs" />
+    <Compile Include="..\Infrastructure\Documents\InitialResultDocumentGenerator.cs" Link="Documents\InitialResultDocumentGenerator.cs" />
+    <Compile Include="..\Infrastructure\Logging\AppLogger.cs" Link="Logging\AppLogger.cs" />
+    <Compile Include="..\Infrastructure\Network\LanDataClient.cs" Link="Network\LanDataClient.cs" />
+    <Compile Include="..\Infrastructure\Network\LanDataServer.cs" Link="Network\LanDataServer.cs" />
+    <Compile Include="..\Infrastructure\Network\LanServerUnavailableException.cs" Link="Network\LanServerUnavailableException.cs" />
+    <Compile Include="..\Infrastructure\Security\AuthContext.cs" Link="Security\AuthContext.cs" />
+    <Compile Include="..\Infrastructure\Security\PasswordHasher.cs" Link="Security\PasswordHasher.cs" />
+  </ItemGroup>
+
+</Project>

@@ -4,6 +4,7 @@ Build verify:
 
 ```powershell
 dotnet build QuanLyHoSo.csproj -o .verify-builds/current
+dotnet build QuanLyHoSo.Server\QuanLyHoSo.Server.csproj -o .verify-builds/server
 ```
 
 Notes:

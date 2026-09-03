@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net5.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\Models\AuthModels.cs" Link="Models\AuthModels.cs" />
+    <Compile Include="..\Models\AreaSelectionModels.cs" Link="Models\AreaSelectionModels.cs" />
+    <Compile Include="..\Models\DashboardModels.cs" Link="Models\DashboardModels.cs" />
+    <Compile Include="..\Models\RecordModels.cs" Link="Models\RecordModels.cs" />
+    <Compile Include="..\Models\SettingsModels.cs" Link="Models\SettingsModels.cs" />
+    <Compile Include="..\Models\StaffTrackingModels.cs" Link="Models\StaffTrackingModels.cs" />
+    <Compile Include="..\Infrastructure\Network\LanApiModels.cs" Link="Network\LanApiModels.cs" />
+  </ItemGroup>
+
+</Project>

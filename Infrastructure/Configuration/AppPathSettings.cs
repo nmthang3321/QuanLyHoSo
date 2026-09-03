@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace QuanLyHoSo.Infrastructure.Configuration
 {
@@ -16,7 +17,10 @@ namespace QuanLyHoSo.Infrastructure.Configuration
         public string AdminMachineName { get; set; }
         public string AdminServerUrl { get; set; }
 
+        [JsonIgnore]
         public bool IsClientMode => string.Equals(DataAccessMode, "Client", StringComparison.OrdinalIgnoreCase);
+
+        [JsonIgnore]
         public bool IsAdminHostMode => !IsClientMode;
 
         public static AppPathSettings Current
@@ -62,6 +66,24 @@ namespace QuanLyHoSo.Infrastructure.Configuration
             Directory.CreateDirectory(SettingsFolder);
             var json = JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true });
             File.WriteAllText(Path.Combine(SettingsFolder, SettingsFileName), json);
+
+            lock (SyncRoot)
+            {
+                _current = settings;
+            }
+        }
+
+        public static void UseServerMode(string databasePath = null, string logFolder = null, string adminServerUrl = null)
+        {
+            var current = Current;
+            var settings = new AppPathSettings
+            {
+                DatabasePath = NormalizeDatabasePath(databasePath ?? current.DatabasePath),
+                LogFolder = NormalizeLogFolder(logFolder ?? current.LogFolder),
+                DataAccessMode = "AdminHost",
+                AdminMachineName = Environment.MachineName,
+                AdminServerUrl = NormalizeAdminServerUrl(adminServerUrl ?? current.AdminServerUrl)
+            };
 
             lock (SyncRoot)
             {

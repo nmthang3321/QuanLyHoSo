@@ -1,6 +1,9 @@
 namespace QuanLyHoSo.Models
 {
-    public sealed class CatalogGroupSetting : ViewModels.ViewModelBase
+    using System.ComponentModel;
+    using System.Runtime.CompilerServices;
+
+    public sealed class CatalogGroupSetting : INotifyPropertyChanged
     {
         private int _itemCount;
         private bool _isSelected;
@@ -15,17 +18,42 @@ namespace QuanLyHoSo.Models
         public int ItemCount
         {
             get => _itemCount;
-            set => SetProperty(ref _itemCount, value);
+            set
+            {
+                if (_itemCount == value)
+                {
+                    return;
+                }
+
+                _itemCount = value;
+                OnPropertyChanged();
+            }
         }
 
         public bool IsSelected
         {
             get => _isSelected;
-            set => SetProperty(ref _isSelected, value);
+            set
+            {
+                if (_isSelected == value)
+                {
+                    return;
+                }
+
+                _isSelected = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public event PropertyChangedEventHandler PropertyChanged;
+
+        private void OnPropertyChanged([CallerMemberName] string propertyName = null)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
     }
 
-    public sealed class CatalogValueSetting : ViewModels.ViewModelBase
+    public sealed class CatalogValueSetting : INotifyPropertyChanged
     {
         private int _displayOrder;
 
@@ -37,7 +65,23 @@ namespace QuanLyHoSo.Models
         public int DisplayOrder
         {
             get => _displayOrder;
-            set => SetProperty(ref _displayOrder, value);
+            set
+            {
+                if (_displayOrder == value)
+                {
+                    return;
+                }
+
+                _displayOrder = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public event PropertyChangedEventHandler PropertyChanged;
+
+        private void OnPropertyChanged([CallerMemberName] string propertyName = null)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
     }
 

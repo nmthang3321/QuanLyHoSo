@@ -4,7 +4,6 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Windows;
 using Microsoft.Data.Sqlite;
 using QuanLyHoSo.Infrastructure.Configuration;
 using QuanLyHoSo.Infrastructure.Documents;
@@ -39,6 +38,8 @@ namespace QuanLyHoSo.Infrastructure.Data
         }
 
         public static AppDataService Instance => LazyInstance.Value;
+
+        public static Action<Action> UiDispatcher { get; set; }
 
         public event Action<string> CatalogChanged;
 
@@ -133,6 +134,11 @@ ORDER BY DisplayOrder;";
 
         public IReadOnlyList<CatalogValueSetting> GetCatalogItems(string catalogType, bool includeInactive = false)
         {
+            if (AppPathSettings.Current.IsClientMode)
+            {
+                return _lanClient.Call<IReadOnlyList<CatalogValueSetting>>("settings/catalog-items", new CatalogItemsRequest { CatalogType = catalogType, IncludeInactive = includeInactive });
+            }
+
             var result = new List<CatalogValueSetting>();
 
             using var connection = OpenConnection();
@@ -168,6 +174,11 @@ ORDER BY DisplayOrder, Name;";
 
         public IReadOnlyDictionary<string, int> CountCatalogItemsByType()
         {
+            if (AppPathSettings.Current.IsClientMode)
+            {
+                return _lanClient.Call<Dictionary<string, int>>("settings/catalog-counts", null);
+            }
+
             var result = new Dictionary<string, int>(StringComparer.Ordinal);
 
             using var connection = OpenConnection();
@@ -189,6 +200,11 @@ GROUP BY CatalogType;";
 
         public IReadOnlyList<SystemLogEntry> GetSystemLogs(int take = 200)
         {
+            if (AppPathSettings.Current.IsClientMode)
+            {
+                return _lanClient.Call<IReadOnlyList<SystemLogEntry>>("settings/system-logs", new SystemLogsRequest { Take = take });
+            }
+
             using var connection = OpenConnection();
             var result = new List<SystemLogEntry>();
             using var command = connection.CreateCommand();
@@ -263,6 +279,11 @@ LIMIT 1;";
 
         public IReadOnlyList<AppUser> GetUsers()
         {
+            if (AppPathSettings.Current.IsClientMode)
+            {
+                return _lanClient.Call<IReadOnlyList<AppUser>>("settings/users", null);
+            }
+
             var result = new List<AppUser>();
             using var connection = OpenConnection();
             using var command = connection.CreateCommand();
@@ -289,6 +310,11 @@ ORDER BY IsActive DESC, Role, DisplayName;";
 
         public bool SaveUser(AppUser user, string password)
         {
+            if (AppPathSettings.Current.IsClientMode)
+            {
+                return _lanClient.Call<bool>("settings/users/save", new SaveUserRequest { User = user, Password = password });
+            }
+
             EnsureAdmin();
             if (user == null ||
                 string.IsNullOrWhiteSpace(user.UserName) ||
@@ -346,6 +372,11 @@ VALUES ($userName, $displayName, $role, $passwordHash, $isActive, $now, $now);";
 
         public bool DeleteUser(int userId)
         {
+            if (AppPathSettings.Current.IsClientMode)
+            {
+                return _lanClient.Call<bool>("settings/users/delete", new UserIdRequest { UserId = userId });
+            }
+
             EnsureAdmin();
             if (userId <= 0 || AuthContext.CurrentUser?.Id == userId)
             {
@@ -368,6 +399,11 @@ VALUES ($userName, $displayName, $role, $passwordHash, $isActive, $now, $now);";
 
         public int AddCatalogItem(string catalogType, string name)
         {
+            if (AppPathSettings.Current.IsClientMode)
+            {
+                return _lanClient.Call<int>("settings/catalog/add", new SaveCatalogItemRequest { CatalogType = catalogType, Name = name });
+            }
+
             if (string.IsNullOrWhiteSpace(catalogType) || string.IsNullOrWhiteSpace(name))
             {
                 return 0;
@@ -399,6 +435,11 @@ SELECT last_insert_rowid();";
 
         public bool UpdateCatalogItem(int id, string name)
         {
+            if (AppPathSettings.Current.IsClientMode)
+            {
+                return _lanClient.Call<bool>("settings/catalog/update", new SaveCatalogItemRequest { Id = id, Name = name });
+            }
+
             if (id <= 0 || string.IsNullOrWhiteSpace(name))
             {
                 return false;
@@ -428,6 +469,11 @@ SELECT last_insert_rowid();";
 
         public bool DeleteCatalogItem(int id)
         {
+            if (AppPathSettings.Current.IsClientMode)
+            {
+                return _lanClient.Call<bool>("settings/catalog/delete", new CatalogItemIdRequest { Id = id });
+            }
+
             if (id <= 0)
             {
                 return false;
@@ -451,6 +497,12 @@ SELECT last_insert_rowid();";
 
         public void UpdateCatalogItemOrders(IReadOnlyList<CatalogValueSetting> items)
         {
+            if (AppPathSettings.Current.IsClientMode)
+            {
+                _lanClient.Call<bool>("settings/catalog/reorder", new ReorderCatalogItemsRequest { Items = items });
+                return;
+            }
+
             if (items == null || items.Count == 0)
             {
                 return;
@@ -3228,10 +3280,9 @@ ORDER BY ProcessorName;";
                 return;
             }
 
-            var dispatcher = Application.Current?.Dispatcher;
-            if (dispatcher != null && !dispatcher.CheckAccess())
+            if (UiDispatcher != null)
             {
-                dispatcher.BeginInvoke(new Action(() => handlers.Invoke(catalogType)));
+                UiDispatcher(() => handlers.Invoke(catalogType));
                 return;
             }
 
