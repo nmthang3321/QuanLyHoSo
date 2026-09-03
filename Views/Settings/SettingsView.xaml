@@ -67,7 +67,7 @@
             <StackPanel>
                 <StackPanel Margin="0,0,0,22">
                     <TextBlock Text="CÀI ĐẶT" Style="{StaticResource PageTitleText}" />
-                    <TextBlock Text="Quản lý danh mục, thông tin phần mềm và sao lưu dữ liệu"
+                    <TextBlock Text="Quản lý danh mục, thông tin phần mềm và nhật ký hệ thống"
                                Style="{StaticResource MutedText}"
                                Margin="0,4,0,0" />
                 </StackPanel>
@@ -166,23 +166,6 @@
                                                 <StackPanel Grid.Column="1">
                                                     <TextBlock Text="Nhật ký hệ thống" Foreground="{StaticResource PrimaryBrush}" FontWeight="SemiBold" />
                                                     <TextBlock Text="Theo dõi thêm, sửa, xóa và cập nhật dữ liệu" Foreground="{StaticResource MutedTextBrush}" FontSize="11" Margin="0,3,0,0" />
-                                                </StackPanel>
-                                                <TextBlock Grid.Column="2" Text="&#xE76C;" FontFamily="Segoe MDL2 Assets" VerticalAlignment="Center" />
-                                            </Grid>
-                                        </Border>
-                                    </Button>
-                                    <Button Command="{Binding OpenGeneralSettingsDialogCommand}" Style="{StaticResource CatalogCardButton}">
-                                        <Border BorderBrush="#E1E9F5" BorderThickness="1" CornerRadius="6" Padding="12" Margin="0,0,0,10">
-                                            <Grid>
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="34" />
-                                                    <ColumnDefinition Width="*" />
-                                                    <ColumnDefinition Width="Auto" />
-                                                </Grid.ColumnDefinitions>
-                                                <TextBlock Text="&#xE713;" FontFamily="Segoe MDL2 Assets" Foreground="{StaticResource PrimaryBrush}" FontSize="18" VerticalAlignment="Center" />
-                                                <StackPanel Grid.Column="1">
-                                                    <TextBlock Text="Cài đặt chung" Foreground="{StaticResource PrimaryBrush}" FontWeight="SemiBold" />
-                                                    <TextBlock Text="Đổi đường dẫn DB và thư mục log" Foreground="{StaticResource MutedTextBrush}" FontSize="11" Margin="0,3,0,0" />
                                                 </StackPanel>
                                                 <TextBlock Grid.Column="2" Text="&#xE76C;" FontFamily="Segoe MDL2 Assets" VerticalAlignment="Center" />
                                             </Grid>
@@ -293,18 +276,7 @@
                                     <TextBlock Text="&#xE777;" FontFamily="Segoe MDL2 Assets" FontSize="18" Foreground="{StaticResource PrimaryBrush}" Margin="0,0,10,0" VerticalAlignment="Center" />
                                     <TextBlock Text="SAO LƯU DỮ LIỆU" Style="{StaticResource SectionTitleText}" Foreground="{StaticResource PrimaryBrush}" VerticalAlignment="Center" />
                                 </StackPanel>
-                                <TextBlock Text="Sao lưu dữ liệu hồ sơ, danh mục và cài đặt hệ thống" Style="{StaticResource MutedText}" TextWrapping="Wrap" Margin="0,0,0,16" />
-                                <TextBlock Text="Thư mục sao lưu" Style="{StaticResource SettingsLabel}" Margin="0,0,0,6" />
-                                <Grid Margin="0,0,0,12">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="48" />
-                                    </Grid.ColumnDefinitions>
-                                    <TextBox Text="{Binding BackupFolder, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                    <Button Grid.Column="1" Style="{StaticResource CompactIconButton}" Command="{Binding ChooseBackupFolderCommand}" Margin="6,0,0,0" ToolTip="Chọn thư mục sao lưu">
-                                        <TextBlock Text="&#xE8B7;" FontFamily="Segoe MDL2 Assets" />
-                                    </Button>
-                                </Grid>
+                                <TextBlock Text="Tạo bản sao cơ sở dữ liệu trên máy server" Style="{StaticResource MutedText}" TextWrapping="Wrap" Margin="0,0,0,16" />
                                 <Border Background="#F8FAFE" CornerRadius="6" Padding="12" Margin="0,0,0,14">
                                     <StackPanel>
                                         <StackPanel Margin="0,0,0,8">
@@ -314,22 +286,15 @@
                                         <TextBlock Text="{Binding BackupStatus}" Foreground="{StaticResource PrimaryBrush}" TextWrapping="Wrap" />
                                     </StackPanel>
                                 </Border>
-                                <Grid>
-                                    <Button Style="{StaticResource PrimaryButton}" Command="{Binding BackupNowCommand}" HorizontalAlignment="Left">
-                                        <StackPanel Orientation="Horizontal">
-                                            <TextBlock Text="&#xE74E;" FontFamily="Segoe MDL2 Assets" Foreground="White" Margin="0,0,8,0" />
-                                            <TextBlock Text="Sao lưu ngay" Foreground="White" />
-                                        </StackPanel>
-                                    </Button>
-                                    <Button Style="{StaticResource SecondaryButton}" Command="{Binding RestoreDataCommand}" HorizontalAlignment="Right">
-                                        <StackPanel Orientation="Horizontal">
-                                            <TextBlock Text="&#xE777;" FontFamily="Segoe MDL2 Assets" Margin="0,0,8,0" />
-                                            <TextBlock Text="Khôi phục dữ liệu" />
-                                        </StackPanel>
-                                    </Button>
-                                </Grid>
+                                <Button Style="{StaticResource PrimaryButton}" Command="{Binding BackupNowCommand}" HorizontalAlignment="Left">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="&#xE74E;" FontFamily="Segoe MDL2 Assets" Foreground="White" Margin="0,0,8,0" />
+                                        <TextBlock Text="Sao lưu ngay" Foreground="White" />
+                                    </StackPanel>
+                                </Button>
                             </StackPanel>
                         </Border>
+
                 </Grid>
             </StackPanel>
         </ScrollViewer>
@@ -455,106 +420,6 @@
             </Border>
         </Grid>
 
-        <Grid Background="#6606164A" Visibility="{Binding IsGeneralSettingsDialogOpen, Converter={StaticResource BooleanToVisibilityConverter}}">
-            <Border Background="White" BorderBrush="#CBD8EA" BorderThickness="1" CornerRadius="6" Width="760" Padding="16" HorizontalAlignment="Center" VerticalAlignment="Center">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                    </Grid.RowDefinitions>
-
-                    <Grid>
-                        <StackPanel>
-                            <TextBlock Text="CÀI ĐẶT CHUNG" Style="{StaticResource SectionTitleText}" />
-                            <TextBlock Text="Thiết lập đường dẫn cơ sở dữ liệu và thư mục log"
-                                       Foreground="{StaticResource MutedTextBrush}"
-                                       FontSize="12"
-                                       Margin="0,4,0,0" />
-                        </StackPanel>
-                        <Button Style="{StaticResource PopupIconButton}"
-                                HorizontalAlignment="Right"
-                                Foreground="{StaticResource MutedTextBrush}"
-                                Command="{Binding CloseGeneralSettingsDialogCommand}"
-                                ToolTip="Đóng">
-                            <TextBlock Text="&#xE711;" FontFamily="Segoe MDL2 Assets" />
-                        </Button>
-                    </Grid>
-
-                    <StackPanel Grid.Row="1" Margin="0,18,0,0">
-                        <TextBlock Text="Chế độ dữ liệu" Style="{StaticResource SettingsLabel}" Margin="0,0,0,6" />
-                        <Grid Margin="0,0,0,14">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="180" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <ComboBox ItemsSource="{Binding DataAccessModes}"
-                                      SelectedItem="{Binding SelectedDataAccessMode, Mode=TwoWay}" />
-                            <TextBlock Grid.Column="1"
-                                       Text="{Binding DataAccessModeText}"
-                                       Foreground="{StaticResource PrimaryBrush}"
-                                       FontWeight="SemiBold"
-                                       VerticalAlignment="Center"
-                                       Margin="12,0,0,0" />
-                        </Grid>
-
-                        <TextBlock Text="Tên máy admin" Style="{StaticResource SettingsLabel}" Margin="0,0,0,6" />
-                        <TextBox Text="{Binding AdminMachineNameText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,14" />
-
-                        <TextBlock Text="URL máy admin" Style="{StaticResource SettingsLabel}" Margin="0,0,0,6" />
-                        <TextBox Text="{Binding AdminServerUrlText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,14" />
-
-                        <TextBlock Text="Đường dẫn cơ sở dữ liệu" Style="{StaticResource SettingsLabel}" Margin="0,0,0,6" />
-                        <Grid Margin="0,0,0,14">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="48" />
-                            </Grid.ColumnDefinitions>
-                            <TextBox Text="{Binding DatabasePathText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                            <Button Grid.Column="1" Style="{StaticResource CompactIconButton}" Command="{Binding ChooseDatabasePathCommand}" Margin="6,0,0,0" ToolTip="Chọn file cơ sở dữ liệu">
-                                <TextBlock Text="&#xE8B7;" FontFamily="Segoe MDL2 Assets" />
-                            </Button>
-                        </Grid>
-
-                        <TextBlock Text="Thư mục log" Style="{StaticResource SettingsLabel}" Margin="0,0,0,6" />
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="48" />
-                            </Grid.ColumnDefinitions>
-                            <TextBox Text="{Binding LogFolderText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                            <Button Grid.Column="1" Style="{StaticResource CompactIconButton}" Command="{Binding ChooseLogFolderCommand}" Margin="6,0,0,0" ToolTip="Chọn thư mục log">
-                                <TextBlock Text="&#xE8B7;" FontFamily="Segoe MDL2 Assets" />
-                            </Button>
-                        </Grid>
-                    </StackPanel>
-
-                    <Border Grid.Row="2" Background="#F8FAFE" CornerRadius="6" Padding="12" Margin="0,16,0,0">
-                        <TextBlock Text="{Binding GeneralSettingsStatus}" Foreground="{StaticResource PrimaryBrush}" TextWrapping="Wrap" />
-                    </Border>
-
-                    <Grid Grid.Row="3" Margin="0,16,0,0">
-                        <Button Style="{StaticResource SecondaryButton}" Command="{Binding ResetGeneralSettingsCommand}" HorizontalAlignment="Left">
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="&#xE72C;" FontFamily="Segoe MDL2 Assets" Margin="0,0,8,0" />
-                                <TextBlock Text="Mặc định" />
-                            </StackPanel>
-                        </Button>
-                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                            <Button Content="Đóng" Style="{StaticResource SecondaryButton}" Command="{Binding CloseGeneralSettingsDialogCommand}" Margin="0,0,10,0" />
-                            <Button Style="{StaticResource PrimaryButton}" Command="{Binding SaveGeneralSettingsCommand}">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="&#xE74E;" FontFamily="Segoe MDL2 Assets" Foreground="White" Margin="0,0,8,0" />
-                                    <TextBlock Text="Lưu cài đặt" Foreground="White" />
-                                </StackPanel>
-                            </Button>
-                        </StackPanel>
-                    </Grid>
-                </Grid>
-            </Border>
-        </Grid>
-
         <Grid Background="#6606164A" Visibility="{Binding IsGuideDialogOpen, Converter={StaticResource BooleanToVisibilityConverter}}">
             <Border Background="White" BorderBrush="#CBD8EA" BorderThickness="1" CornerRadius="6" Width="680" Padding="16" HorizontalAlignment="Center" VerticalAlignment="Center">
                 <Grid>
@@ -584,12 +449,6 @@
                     <StackPanel Grid.Row="1" Margin="0,18,0,0">
                         <TextBlock Text="Danh mục hệ thống" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" />
                         <TextBlock Text="Rê chuột để xem nổi bật, click vào card để thêm mới, sửa hoặc xóa giá trị danh mục."
-                                   Foreground="{StaticResource MutedTextBrush}"
-                                   TextWrapping="Wrap"
-                                   Margin="0,4,0,14" />
-
-                        <TextBlock Text="Cài đặt chung" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" />
-                        <TextBlock Text="Dùng để đổi đường dẫn cơ sở dữ liệu và thư mục log. Đổi đường dẫn DB cần khởi động lại ứng dụng để áp dụng."
                                    Foreground="{StaticResource MutedTextBrush}"
                                    TextWrapping="Wrap"
                                    Margin="0,4,0,14" />

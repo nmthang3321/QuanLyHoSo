@@ -19,5 +19,7 @@ Service methods:
 - `DeleteRecord`
 
 Ghi chu:
-- Client mode hien chua cho vao trang nhap/sua ho so de tranh mo SQLite; can noi API rieng neu user yeu cau.
+- App WPF mac dinh chay `Client`. Admin van vao trang Nhap du lieu va luu/sua/xoa ho so qua server API.
+- Can bo khong thay muc Nhap du lieu trong sidebar va khong duoc them/xoa ho so.
 - Area selector trang nay dung root overlay `AreaOverlayCanvas`, khong dung `Popup`/`ContextMenu`.
+- Attachment hien van luu `FilePath` text; chua co upload/copy file tu client len server.

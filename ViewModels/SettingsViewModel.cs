@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
@@ -142,7 +142,7 @@ namespace QuanLyHoSo.ViewModels
             SelectedDataAccessMode = AppPathSettings.Current.DataAccessMode;
             AdminMachineNameText = AppPathSettings.Current.AdminMachineName;
             AdminServerUrlText = AppPathSettings.Current.AdminServerUrl;
-            GeneralSettingsStatus = "Thay đổi đường dẫn DB cần khởi động lại ứng dụng để áp dụng.";
+            GeneralSettingsStatus = "Cấu hình DB, log và URL API được quản lý ở ứng dụng server.";
             LastBackupText = "Chưa có bản sao lưu trong phiên này";
             BackupStatus = "Sẵn sàng sao lưu dữ liệu";
             UpdateStatus = "Chưa kiểm tra cập nhật";
@@ -706,8 +706,8 @@ namespace QuanLyHoSo.ViewModels
             SoftwareInfos.Clear();
             SoftwareInfos.Add(new SoftwareInfo { Label = "Phiên bản", Value = VersionText });
             SoftwareInfos.Add(new SoftwareInfo { Label = "Môi trường chạy", Value = RuntimeInformation.FrameworkDescription });
-            SoftwareInfos.Add(new SoftwareInfo { Label = "Loại cơ sở dữ liệu", Value = "SQLite local" });
-            SoftwareInfos.Add(new SoftwareInfo { Label = "Dung lượng dữ liệu", Value = GetDatabaseSizeText() });
+            SoftwareInfos.Add(new SoftwareInfo { Label = "Chế độ dữ liệu", Value = AppPathSettings.Current.IsClientMode ? "Máy trạm" : "Máy server" });
+            SoftwareInfos.Add(new SoftwareInfo { Label = "URL máy server", Value = AppPathSettings.Current.AdminServerUrl });
             SoftwareInfos.Add(new SoftwareInfo { Label = "Đơn vị phát triển", Value = "minhthang3321@gmail.com" });
         }
 
@@ -718,7 +718,7 @@ namespace QuanLyHoSo.ViewModels
             SelectedDataAccessMode = AppPathSettings.Current.DataAccessMode;
             AdminMachineNameText = AppPathSettings.Current.AdminMachineName;
             AdminServerUrlText = AppPathSettings.Current.AdminServerUrl;
-            GeneralSettingsStatus = "Máy admin giữ DB local và mở API LAN. Máy trạm chỉ nhập URL máy admin, không dùng DB local.";
+            GeneralSettingsStatus = "MÃ¡y admin giá»¯ DB local vÃ  má»Ÿ API LAN. MÃ¡y tráº¡m chá»‰ nháº­p URL mÃ¡y admin, khÃ´ng dÃ¹ng DB local.";
             IsGeneralSettingsDialogOpen = true;
         }
 
@@ -726,7 +726,7 @@ namespace QuanLyHoSo.ViewModels
         {
             using var dialog = new Forms.SaveFileDialog
             {
-                Title = "Chọn đường dẫn cơ sở dữ liệu",
+                Title = "Chá»n Ä‘Æ°á»ng dáº«n cÆ¡ sá»Ÿ dá»¯ liá»‡u",
                 Filter = "SQLite database (*.db)|*.db|All files (*.*)|*.*",
                 FileName = Path.GetFileName(DatabasePathText),
                 InitialDirectory = Directory.Exists(Path.GetDirectoryName(DatabasePathText))
@@ -745,7 +745,7 @@ namespace QuanLyHoSo.ViewModels
         {
             using var dialog = new Forms.FolderBrowserDialog
             {
-                Description = "Chọn thư mục lưu log",
+                Description = "Chá»n thÆ° má»¥c lÆ°u log",
                 SelectedPath = Directory.Exists(LogFolderText)
                     ? LogFolderText
                     : Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -771,8 +771,8 @@ namespace QuanLyHoSo.ViewModels
                 if (dataAccessMode == "Client" && !Uri.TryCreate(adminServerUrl, UriKind.Absolute, out _))
                 {
                     MessageBox.Show(
-                        "Máy trạm phải nhập URL máy admin hợp lệ, ví dụ http://localhost:5055 khi test local hoặc http://192.168.1.10:5055 khi chạy LAN.",
-                        "Cài đặt dữ liệu trung tâm",
+                        "MÃ¡y tráº¡m pháº£i nháº­p URL mÃ¡y admin há»£p lá»‡, vÃ­ dá»¥ http://localhost:5055 khi test local hoáº·c http://192.168.1.10:5055 khi cháº¡y LAN.",
+                        "CÃ i Ä‘áº·t dá»¯ liá»‡u trung tÃ¢m",
                         MessageBoxButton.OK,
                         MessageBoxImage.Warning);
                     return;
@@ -780,7 +780,7 @@ namespace QuanLyHoSo.ViewModels
 
                 if (dataAccessMode != "Client" && string.IsNullOrWhiteSpace(databaseFolder))
                 {
-                    MessageBox.Show("Đường dẫn cơ sở dữ liệu không hợp lệ.", "Cài đặt chung", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    MessageBox.Show("ÄÆ°á»ng dáº«n cÆ¡ sá»Ÿ dá»¯ liá»‡u khÃ´ng há»£p lá»‡.", "CÃ i Ä‘áº·t chung", MessageBoxButton.OK, MessageBoxImage.Warning);
                     return;
                 }
 
@@ -814,16 +814,16 @@ namespace QuanLyHoSo.ViewModels
                 AdminServerUrlText = adminServerUrl;
                 RefreshSoftwareInfos();
                 GeneralSettingsStatus = databasePath.Equals(_dataService.DatabasePath, StringComparison.OrdinalIgnoreCase)
-                    ? "Đã lưu cài đặt. Đường dẫn log mới có hiệu lực ngay."
-                    : "Đã lưu cài đặt. Vui lòng khởi động lại ứng dụng để dùng đường dẫn DB mới.";
+                    ? "ÄÃ£ lÆ°u cÃ i Ä‘áº·t. ÄÆ°á»ng dáº«n log má»›i cÃ³ hiá»‡u lá»±c ngay."
+                    : "ÄÃ£ lÆ°u cÃ i Ä‘áº·t. Vui lÃ²ng khá»Ÿi Ä‘á»™ng láº¡i á»©ng dá»¥ng Ä‘á»ƒ dÃ¹ng Ä‘Æ°á»ng dáº«n DB má»›i.";
 
-                MessageBox.Show(GeneralSettingsStatus, "Cài đặt chung", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show(GeneralSettingsStatus, "CÃ i Ä‘áº·t chung", MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception ex)
             {
                 AppLogger.Error("Settings", "SaveGeneralSettings", ex, "Failed to save path settings.");
-                GeneralSettingsStatus = "Không thể lưu cài đặt đường dẫn.";
-                MessageBox.Show($"Không thể lưu cài đặt đường dẫn.\n{ex.Message}", "Cài đặt chung", MessageBoxButton.OK, MessageBoxImage.Error);
+                GeneralSettingsStatus = "KhÃ´ng thá»ƒ lÆ°u cÃ i Ä‘áº·t Ä‘Æ°á»ng dáº«n.";
+                MessageBox.Show($"KhÃ´ng thá»ƒ lÆ°u cÃ i Ä‘áº·t Ä‘Æ°á»ng dáº«n.\n{ex.Message}", "CÃ i Ä‘áº·t chung", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -834,7 +834,7 @@ namespace QuanLyHoSo.ViewModels
             SelectedDataAccessMode = "AdminHost";
             AdminMachineNameText = Environment.MachineName;
             AdminServerUrlText = "http://localhost:5055";
-            GeneralSettingsStatus = "Đã đưa về chế độ máy admin giữ DB. Bấm Lưu cài đặt để áp dụng.";
+            GeneralSettingsStatus = "ÄÃ£ Ä‘Æ°a vá» cháº¿ Ä‘á»™ mÃ¡y admin giá»¯ DB. Báº¥m LÆ°u cÃ i Ä‘áº·t Ä‘á»ƒ Ã¡p dá»¥ng.";
         }
 
         private void OpenSystemLogDialog()
@@ -907,11 +907,11 @@ namespace QuanLyHoSo.ViewModels
                     item.Name?.IndexOf(CatalogSearchText.Trim(), StringComparison.CurrentCultureIgnoreCase) >= 0);
             }
 
-            if (SelectedCatalogStatusFilter == "Äang sá»­ dá»¥ng")
+            if (SelectedCatalogStatusFilter == "Đang sử dụng")
             {
                 filtered = filtered.Where(item => item.IsActive);
             }
-            else if (SelectedCatalogStatusFilter == "NgÆ°ng sá»­ dá»¥ng")
+            else if (SelectedCatalogStatusFilter == "Ngưng sử dụng")
             {
                 filtered = filtered.Where(item => !item.IsActive);
             }
@@ -1029,7 +1029,7 @@ namespace QuanLyHoSo.ViewModels
         {
             using var dialog = new Forms.FolderBrowserDialog
             {
-                Description = "Chọn thư mục sao lưu dữ liệu",
+                Description = "Chá»n thÆ° má»¥c sao lÆ°u dá»¯ liá»‡u",
                 SelectedPath = Directory.Exists(BackupFolder) ? BackupFolder : Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
                 ShowNewFolderButton = true
             };
@@ -1037,7 +1037,7 @@ namespace QuanLyHoSo.ViewModels
             if (dialog.ShowDialog() == Forms.DialogResult.OK)
             {
                 BackupFolder = dialog.SelectedPath;
-                BackupStatus = "Đã chọn thư mục sao lưu";
+                BackupStatus = "ÄÃ£ chá»n thÆ° má»¥c sao lÆ°u";
             }
         }
 
@@ -1066,13 +1066,11 @@ namespace QuanLyHoSo.ViewModels
         {
             try
             {
-                Directory.CreateDirectory(BackupFolder);
                 var fileName = $"quanlyhoso_backup_{DateTime.Now:yyyyMMdd_HHmmss}.db";
-                var destinationPath = Path.Combine(BackupFolder, fileName);
-                await Task.Run(() => _dataService.BackupDatabase(destinationPath));
+                var destinationPath = await Task.Run(() => _dataService.CreateBackupFile(fileName));
                 LastBackupText = DateTime.Now.ToString("dd/MM/yyyy HH:mm");
                 BackupStatus = $"Đã sao lưu: {fileName}";
-                MessageBox.Show($"Đã sao lưu dữ liệu vào:\n{destinationPath}", "Sao lưu dữ liệu", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show($"Đã sao lưu dữ liệu trên máy server:\n{destinationPath}", "Sao lưu dữ liệu", MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception ex)
             {
@@ -1086,7 +1084,7 @@ namespace QuanLyHoSo.ViewModels
         {
             using var dialog = new Forms.OpenFileDialog
             {
-                Title = "Chọn file sao lưu để khôi phục",
+                Title = "Chá»n file sao lÆ°u Ä‘á»ƒ khÃ´i phá»¥c",
                 Filter = "SQLite database (*.db)|*.db|All files (*.*)|*.*",
                 Multiselect = false,
                 InitialDirectory = Directory.Exists(BackupFolder)
@@ -1100,8 +1098,8 @@ namespace QuanLyHoSo.ViewModels
             }
 
             var confirm = MessageBox.Show(
-                "Khôi phục sẽ thay thế cơ sở dữ liệu hiện tại bằng file đã chọn. Hệ thống sẽ tạo một bản sao lưu an toàn trước khi khôi phục.\n\nBạn có muốn tiếp tục không?",
-                "Khôi phục dữ liệu",
+                "KhÃ´i phá»¥c sáº½ thay tháº¿ cÆ¡ sá»Ÿ dá»¯ liá»‡u hiá»‡n táº¡i báº±ng file Ä‘Ã£ chá»n. Há»‡ thá»‘ng sáº½ táº¡o má»™t báº£n sao lÆ°u an toÃ n trÆ°á»›c khi khÃ´i phá»¥c.\n\nBáº¡n cÃ³ muá»‘n tiáº¿p tá»¥c khÃ´ng?",
+                "KhÃ´i phá»¥c dá»¯ liá»‡u",
                 MessageBoxButton.YesNo,
                 MessageBoxImage.Warning);
             if (confirm != MessageBoxResult.Yes)
@@ -1116,16 +1114,16 @@ namespace QuanLyHoSo.ViewModels
                 var restorePath = dialog.FileName;
                 await Task.Run(() => _dataService.RestoreDatabaseFromFile(restorePath, safetyBackupPath));
                 LastBackupText = DateTime.Now.ToString("dd/MM/yyyy HH:mm");
-                BackupStatus = "Đã khôi phục dữ liệu";
+                BackupStatus = "ÄÃ£ khÃ´i phá»¥c dá»¯ liá»‡u";
                 RefreshSoftwareInfos();
                 RefreshCatalogGroupCounts();
-                MessageBox.Show($"Đã khôi phục dữ liệu.\nBản sao lưu an toàn được lưu tại:\n{safetyBackupPath}", "Khôi phục dữ liệu", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show($"ÄÃ£ khÃ´i phá»¥c dá»¯ liá»‡u.\nBáº£n sao lÆ°u an toÃ n Ä‘Æ°á»£c lÆ°u táº¡i:\n{safetyBackupPath}", "KhÃ´i phá»¥c dá»¯ liá»‡u", MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception ex)
             {
                 AppLogger.Error("Settings", "RestoreData", ex, "Failed to restore database.");
-                BackupStatus = "Khôi phục không thành công";
-                MessageBox.Show($"Không thể khôi phục dữ liệu.\n{ex.Message}", "Khôi phục dữ liệu", MessageBoxButton.OK, MessageBoxImage.Error);
+                BackupStatus = "KhÃ´i phá»¥c khÃ´ng thÃ nh cÃ´ng";
+                MessageBox.Show($"KhÃ´ng thá»ƒ khÃ´i phá»¥c dá»¯ liá»‡u.\n{ex.Message}", "KhÃ´i phá»¥c dá»¯ liá»‡u", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -1205,7 +1203,7 @@ namespace QuanLyHoSo.ViewModels
         {
             if (!HasAvailableUpdate || string.IsNullOrWhiteSpace(_latestReleaseDownloadUrl))
             {
-                MessageBox.Show("Chưa có bản cập nhật mới. Vui lòng bấm Check update để kiểm tra lại.", "Cập nhật phần mềm", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show("Chưa có bản cập nhật mới. Vui lòng bấm Kiểm tra cập nhật để kiểm tra lại.", "Cập nhật phần mềm", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
 

@@ -65,6 +65,11 @@ namespace QuanLyHoSo.Infrastructure.Network
         public int UserId { get; set; }
     }
 
+    public sealed class CreateBackupRequest
+    {
+        public string FileName { get; set; }
+    }
+
     public sealed class DashboardMetricsRequest
     {
         public DateTime? FromDate { get; set; }
@@ -106,6 +111,18 @@ namespace QuanLyHoSo.Infrastructure.Network
     public sealed class RecordCodeRequest
     {
         public string RecordCode { get; set; }
+    }
+
+    public sealed class SaveRecordFormRequest
+    {
+        public RecordFormDraft Record { get; set; }
+        public string OriginalRecordCode { get; set; }
+    }
+
+    public sealed class SimilarRecordRequest
+    {
+        public RecordFormDraft Record { get; set; }
+        public int DateRangeDays { get; set; }
     }
 
     public sealed class ProcessingQueueRequest

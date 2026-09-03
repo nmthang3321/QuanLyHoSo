@@ -911,6 +911,11 @@ VALUES ($createdAt, $senderName, $scope, $targetName, $kpiTarget, $message);";
 
         public SimilarRecordMatch FindSimilarRecord(RecordFormDraft record, int dateRangeDays = 30)
         {
+            if (AppPathSettings.Current.IsClientMode)
+            {
+                return _lanClient.Call<SimilarRecordMatch>("records/similar", new SimilarRecordRequest { Record = record, DateRangeDays = dateRangeDays });
+            }
+
             if (record == null ||
                 string.IsNullOrWhiteSpace(record.SenderName) ||
                 string.IsNullOrWhiteSpace(record.AreaName) ||
@@ -1297,7 +1302,7 @@ LIMIT 1;";
         {
             if (AppPathSettings.Current.IsClientMode)
             {
-                throw new InvalidOperationException("Chế độ máy trạm chưa hỗ trợ nhập mới hồ sơ qua máy admin trong bản thử LAN này.");
+                return _lanClient.Call<string>("records/save", new SaveRecordFormRequest { Record = record, OriginalRecordCode = originalRecordCode });
             }
 
             if (record == null)
@@ -1590,6 +1595,14 @@ SELECT last_insert_rowid();";
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                 "QuanLyHoSo",
                 "GeneratedDocuments");
+        }
+
+        private static string GetDefaultBackupFolder()
+        {
+            return Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "QuanLyHoSo",
+                "Backup");
         }
 
         private static string NormalizeDbText(string value)
@@ -2151,6 +2164,22 @@ LIMIT $take;";
             using var destination = OpenDatabaseFile(destinationPath);
             source.BackupDatabase(destination);
             ValidateDatabaseConnection(destination);
+        }
+
+        public string CreateBackupFile(string fileName)
+        {
+            if (AppPathSettings.Current.IsClientMode)
+            {
+                return _lanClient.Call<string>("settings/backup/create", new CreateBackupRequest { FileName = fileName });
+            }
+
+            EnsureAdmin();
+            var safeFileName = Path.GetFileName(string.IsNullOrWhiteSpace(fileName)
+                ? $"quanlyhoso_backup_{DateTime.Now:yyyyMMdd_HHmmss}.db"
+                : fileName);
+            var destinationPath = Path.Combine(GetDefaultBackupFolder(), safeFileName);
+            BackupDatabase(destinationPath);
+            return destinationPath;
         }
 
         public void RestoreDatabaseFromFile(string sourcePath, string safetyBackupPath)

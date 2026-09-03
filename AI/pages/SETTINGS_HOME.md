@@ -11,11 +11,11 @@ Files:
 Home cards/open commands:
 - catalog cards: `OpenCatalogDialogCommand`
 - system logs: `OpenSystemLogDialogCommand`
-- general settings: `OpenGeneralSettingsDialogCommand`
 - user management: `OpenUserManagementDialogCommand`
 - guide: `OpenGuideDialogCommand`
+- backup server-side: `BackupNowCommand`
 
 Notes:
 - Dialogs nam chung trong `SettingsView.xaml` bang overlay `Grid Background="#6606164A"`.
 - Drag/drop catalog values nam trong `SettingsView.xaml.cs`.
-
+- Khong con UI cai dat DB/log/url tren WPF. Cac thong so do thuoc server (`QuanLyHoSo.Server` args/config).

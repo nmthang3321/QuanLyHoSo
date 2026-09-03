@@ -123,7 +123,7 @@ namespace QuanLyHoSo.Infrastructure.Configuration
             {
                 DatabasePath = DefaultDatabasePath,
                 LogFolder = DefaultLogFolder,
-                DataAccessMode = "AdminHost",
+                DataAccessMode = "Client",
                 AdminMachineName = Environment.MachineName,
                 AdminServerUrl = "http://localhost:5055"
             };
@@ -155,9 +155,9 @@ namespace QuanLyHoSo.Infrastructure.Configuration
 
         public static string NormalizeDataAccessMode(string value)
         {
-            return string.Equals(value, "Client", StringComparison.OrdinalIgnoreCase)
-                ? "Client"
-                : "AdminHost";
+            return string.Equals(value, "AdminHost", StringComparison.OrdinalIgnoreCase)
+                ? "AdminHost"
+                : "Client";
         }
 
         public static bool IsNetworkDatabasePath(string databasePath)

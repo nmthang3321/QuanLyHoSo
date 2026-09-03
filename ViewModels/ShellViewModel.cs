@@ -143,7 +143,7 @@ namespace QuanLyHoSo.ViewModels
 
         private void EditRecordFromList(string recordCode)
         {
-            if (!AuthContext.CanWrite || AppPathSettings.Current.IsClientMode)
+            if (!AuthContext.CanWrite)
             {
                 return;
             }
@@ -163,7 +163,7 @@ namespace QuanLyHoSo.ViewModels
         private RecordInputViewModel RecordInputViewModel => _recordInputViewModel ??= new RecordInputViewModel(() => NavigateTo("RecordList"));
 
         private RecordListViewModel RecordListViewModel => _recordListViewModel ??= new RecordListViewModel(
-            () => NavigateTo(AppPathSettings.Current.IsClientMode ? "Dashboard" : "Input"),
+            () => NavigateTo(AuthContext.CanCreateRecord ? "Input" : "Dashboard"),
             EditRecordFromList,
             ClassifyRecordFromList);
 
@@ -211,11 +211,6 @@ namespace QuanLyHoSo.ViewModels
             if (key == "Settings")
             {
                 return AuthContext.IsAdmin;
-            }
-
-            if (key == "Input" && AppPathSettings.Current.IsClientMode)
-            {
-                return false;
             }
 
             return key != "Input" || AuthContext.CanWrite;

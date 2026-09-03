@@ -9,7 +9,6 @@ using System.Text;
 using System.Windows;
 using System.Windows.Data;
 using System.Windows.Input;
-using QuanLyHoSo.Infrastructure.Configuration;
 using QuanLyHoSo.Infrastructure.Data;
 using QuanLyHoSo.Infrastructure.Logging;
 using QuanLyHoSo.Infrastructure.Security;
@@ -71,9 +70,9 @@ namespace QuanLyHoSo.ViewModels
         public ICommand RemoveAttachmentCommand { get; }
         public ICommand OpenAttachmentCommand { get; }
         public bool CanWrite => CanSave;
-        public bool CanCreateRecord => AuthContext.CanCreateRecord && !AppPathSettings.Current.IsClientMode;
-        public bool CanSave => !AppPathSettings.Current.IsClientMode && (IsEditingExistingRecord ? AuthContext.CanWrite : AuthContext.CanCreateRecord);
-        public bool CanDelete => AuthContext.CanDeleteRecord && IsEditingExistingRecord && !AppPathSettings.Current.IsClientMode;
+        public bool CanCreateRecord => AuthContext.CanCreateRecord;
+        public bool CanSave => IsEditingExistingRecord ? AuthContext.CanWrite : AuthContext.CanCreateRecord;
+        public bool CanDelete => AuthContext.CanDeleteRecord && IsEditingExistingRecord;
         public bool IsEditingExistingRecord => !string.IsNullOrWhiteSpace(_editingRecordCode);
         public string SaveButtonText => IsEditingExistingRecord ? "Cập nhật" : "Lưu";
 

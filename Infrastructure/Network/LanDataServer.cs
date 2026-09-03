@@ -162,6 +162,8 @@ namespace QuanLyHoSo.Infrastructure.Network
                         return _dataService.SaveUser(saveUser.User, saveUser.Password);
                     case "settings/users/delete":
                         return _dataService.DeleteUser(ReadData<UserIdRequest>(body).UserId);
+                    case "settings/backup/create":
+                        return _dataService.CreateBackupFile(ReadData<CreateBackupRequest>(body).FileName);
                     case "dashboard/metrics":
                         var metrics = ReadData<DashboardMetricsRequest>(body);
                         return _dataService.GetDashboardMetrics(metrics.FromDate, metrics.ToDate, metrics.PreviousFromDate, metrics.PreviousToDate);
@@ -191,6 +193,12 @@ namespace QuanLyHoSo.Infrastructure.Network
                         return _dataService.CountExportRecords(exportCount.FromDate, exportCount.ToDate, exportCount.Status, exportCount.CaseType, exportCount.Field, exportCount.AreaName, exportCount.ProcessorName, exportCount.SearchText);
                     case "records/detail":
                         return _dataService.GetRecordForm(ReadData<RecordCodeRequest>(body).RecordCode);
+                    case "records/similar":
+                        var similar = ReadData<SimilarRecordRequest>(body);
+                        return _dataService.FindSimilarRecord(similar.Record, similar.DateRangeDays);
+                    case "records/save":
+                        var saveRecord = ReadData<SaveRecordFormRequest>(body);
+                        return _dataService.SaveRecordForm(saveRecord.Record, saveRecord.OriginalRecordCode);
                     case "records/delete":
                         return _dataService.DeleteRecord(ReadData<RecordCodeRequest>(body).RecordCode);
                     case "records/total":

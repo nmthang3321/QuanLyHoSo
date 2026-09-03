@@ -2,7 +2,7 @@
 
 Chi tiet hon: `AI/infra/LAN_API.md`.
 
-Da co server console rieng: 1 may server giu DB va chay API LAN, client khong mo SQLite truc tiep. App WPF van co the chay AdminHost nhu cu, nhung khong bat buoc de server DB song.
+Da co server console rieng: 1 may server giu DB va chay API LAN, client khong mo SQLite truc tiep. App WPF mac dinh la `Client`; `AdminHost` chi con la mode tuong thich/ky thuat neu can chay don may.
 
 File chinh:
 - `QuanLyHoSo.Server\Program.cs`
@@ -20,6 +20,7 @@ File chinh:
 Mode:
 - `AdminHost`: mo SQLite local, seed/schema, dong thoi bat API noi bo LAN tai `AdminServerUrl`.
 - `Client`: khong tao/mo SQLite, chi goi HTTP API toi may admin.
+- Default config khi thieu `DataAccessMode` la `Client`. Muon chay WPF don may moi can ghi ro `AdminHost`.
 
 Chay server console rieng:
 
@@ -73,11 +74,15 @@ Da noi cac luong chinh:
 - dashboard/read stats
 - danh sach ho so/filter/export preview
 - xem chi tiet ho so
+- nhap moi/sua form ho so qua server API cho admin
 - queue xu ly
 - cap nhat xu ly
 - xoa ho so qua server
+- settings: catalog counts/items/CRUD/reorder, system logs, user management
+- backup DB server-side tu WPF admin qua route `settings/backup/create`
 
 Chua lam day du:
-- nhap moi/sua form ho so tu client qua API, dac biet attachment/upload file.
+- upload/copy file dinh kem tu client len server. Hien record save van luu `FilePath` text; neu file nam tren may client thi may server/may khac co the khong mo duoc path do.
+- restore DB tu WPF client. Restore nen lam o server/bao tri de server doc duoc file backup.
 - dong goi `QuanLyHoSo.Server` thanh Windows Service chay nen/start cung Windows.
-- dong bo nhieu admin host. Khuyen nghi hien tai: 1 admin host giu DB, admin phu chay `Client` nhung dang nhap role `Admin`.
+- dong bo nhieu admin host. Khuyen nghi hien tai: 1 server giu DB, cac may WPF deu chay `Client`; admin dang nhap role `Admin`.

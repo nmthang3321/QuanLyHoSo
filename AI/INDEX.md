@@ -36,7 +36,7 @@ Session handoff nam tai `AI/SESSION_HANDOFF_2026-08-26.md`. Context AI chi dung 
 - Dashboard custom date range: `AI/popups/DASHBOARD_DATE_RANGE.md`
 - Record detail modal: `AI/popups/RECORD_DETAIL_MODAL.md`
 - Settings catalog dialog: `AI/popups/SETTINGS_CATALOG_DIALOG.md`
-- Settings general dialog: `AI/popups/SETTINGS_GENERAL_DIALOG.md`
+- Settings general dialog legacy/removed from WPF UI: `AI/popups/SETTINGS_GENERAL_DIALOG.md`
 - Settings guide dialog: `AI/popups/SETTINGS_GUIDE_DIALOG.md`
 - Settings system log dialog: `AI/popups/SETTINGS_SYSTEM_LOG_DIALOG.md`
 - Settings user management dialog: `AI/popups/SETTINGS_USER_DIALOG.md`
