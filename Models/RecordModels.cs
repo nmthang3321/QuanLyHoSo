@@ -104,6 +104,10 @@ namespace QuanLyHoSo.Models
         public string CaseType { get; set; }
         public string SeverityLevel { get; set; }
         public string Status { get; set; }
+        public string ExpectedResultDate { get; set; }
+        public string DeadlineText { get; set; }
+        public string DeadlineBrush { get; set; }
+        public string WorkLabel { get; set; }
         public string UpdatedAt { get; set; }
     }
 

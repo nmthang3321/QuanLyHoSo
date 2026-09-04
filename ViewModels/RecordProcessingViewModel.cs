@@ -13,6 +13,7 @@ using QuanLyHoSo.Infrastructure.Data;
 using QuanLyHoSo.Infrastructure.Logging;
 using QuanLyHoSo.Infrastructure.Security;
 using QuanLyHoSo.Models;
+using System.Windows.Threading;
 
 namespace QuanLyHoSo.ViewModels
 {
@@ -27,6 +28,7 @@ namespace QuanLyHoSo.ViewModels
         private readonly Action _goBackToPreviousPage;
         private readonly RelayCommand _nextPageCommand;
         private readonly RelayCommand _previousPageCommand;
+        private readonly DispatcherTimer _searchDebounceTimer;
         private int _currentPage = 1;
         private int _pageSize = DefaultPageSize;
         private string _pageSizeText = DefaultPageSize.ToString(CultureInfo.InvariantCulture);
@@ -86,6 +88,11 @@ namespace QuanLyHoSo.ViewModels
             SelectMetricCommand = new RelayCommand(SelectMetric);
             _previousPageCommand = new RelayCommand(PreviousPage, () => CurrentPage > 1);
             _nextPageCommand = new RelayCommand(NextPage, () => CurrentPage < TotalPages);
+            _searchDebounceTimer = new DispatcherTimer
+            {
+                Interval = TimeSpan.FromMilliseconds(300)
+            };
+            _searchDebounceTimer.Tick += SearchDebounceTimer_Tick;
             CloseDetailCommand = new RelayCommand(CloseDetail);
             BackToQueueCommand = new RelayCommand(BackToQueue);
             SaveProcessingCommand = new RelayCommand(async () => await SaveProcessingAsync(), () => CanUpdateProcessing && !IsProcessingUpdateBusy);
@@ -243,7 +250,14 @@ namespace QuanLyHoSo.ViewModels
         public string SearchText
         {
             get => _searchText;
-            set => SetProperty(ref _searchText, value);
+            set
+            {
+                if (SetProperty(ref _searchText, value))
+                {
+                    _searchDebounceTimer.Stop();
+                    _searchDebounceTimer.Start();
+                }
+            }
         }
 
         public string SelectedStatus
@@ -253,7 +267,7 @@ namespace QuanLyHoSo.ViewModels
             {
                 if (SetProperty(ref _selectedStatus, value))
                 {
-                    Reload();
+                    ReloadFromFirstPage();
                 }
             }
         }
@@ -266,7 +280,7 @@ namespace QuanLyHoSo.ViewModels
                 if (SetProperty(ref _selectedArea, value))
                 {
                     OnPropertyChanged(nameof(SelectedAreaDisplayName));
-                    Reload();
+                    ReloadFromFirstPage();
                 }
             }
         }
@@ -280,7 +294,7 @@ namespace QuanLyHoSo.ViewModels
             {
                 if (SetProperty(ref _selectedSeverity, value))
                 {
-                    Reload();
+                    ReloadFromFirstPage();
                 }
             }
         }
@@ -369,8 +383,15 @@ namespace QuanLyHoSo.ViewModels
 
         private void ReloadFromFirstPage()
         {
+            _searchDebounceTimer.Stop();
             CurrentPage = 1;
             Reload();
+        }
+
+        private void SearchDebounceTimer_Tick(object sender, EventArgs e)
+        {
+            _searchDebounceTimer.Stop();
+            ReloadFromFirstPage();
         }
 
         private void LoadPage()

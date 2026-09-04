@@ -225,7 +225,7 @@ namespace QuanLyHoSo.ViewModels
         {
             foreach (var item in NavigationItems)
             {
-                item.IsVisible = item.Key != "Input" || !AuthContext.IsOfficer;
+                item.IsVisible = item.Key != "Input" || AuthContext.CanCreateRecord;
             }
         }
 

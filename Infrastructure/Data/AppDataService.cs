@@ -1980,18 +1980,31 @@ WHERE Id = $recordId;";
             }
 
             command.CommandText = $@"
-SELECT RecordCode, ReceivedDate, SenderName, AreaName, CaseType, SeverityLevel, Status, UpdatedAt
+SELECT RecordCode, ReceivedDate, SenderName, AreaName, CaseType, SeverityLevel, Status, UpdatedAt, ExpectedResultDate
 FROM Records
 WHERE {string.Join(" AND ", conditions)}
-ORDER BY UpdatedAt DESC, Id DESC
+ORDER BY
+  CASE
+    WHEN ExpectedResultDate <> '' AND ExpectedResultDate < $todayOrder THEN 0
+    WHEN ExpectedResultDate <> '' AND ExpectedResultDate <= $dueSoonOrder THEN 1
+    WHEN Status IN ('Mới tiếp nhận', 'Đang phân loại') THEN 2
+    ELSE 3
+  END,
+  ExpectedResultDate ASC,
+  UpdatedAt DESC,
+  Id DESC
 LIMIT $take OFFSET $skip;";
             command.Parameters.AddWithValue("$take", Math.Max(1, take));
             command.Parameters.AddWithValue("$skip", Math.Max(0, skip));
+            command.Parameters.AddWithValue("$todayOrder", DateTime.Today.ToString("O", CultureInfo.InvariantCulture));
+            command.Parameters.AddWithValue("$dueSoonOrder", DateTime.Today.AddDays(7).Date.AddDays(1).AddTicks(-1).ToString("O", CultureInfo.InvariantCulture));
 
             using var reader = command.ExecuteReader();
-            var index = 1;
+            var index = skip + 1;
             while (reader.Read())
             {
+                var currentStatus = reader.GetString(6);
+                var expectedResultDate = reader.GetString(8);
                 result.Add(new ProcessingQueueRecord
                 {
                     Index = index++,
@@ -2001,8 +2014,12 @@ LIMIT $take OFFSET $skip;";
                     AreaName = reader.GetString(3),
                     CaseType = reader.GetString(4),
                     SeverityLevel = reader.GetString(5),
-                    Status = reader.GetString(6),
-                    UpdatedAt = FormatDateTime(reader.GetString(7))
+                    Status = currentStatus,
+                    UpdatedAt = FormatDateTime(reader.GetString(7)),
+                    ExpectedResultDate = FormatDate(expectedResultDate),
+                    DeadlineText = BuildProcessingDeadlineText(expectedResultDate),
+                    DeadlineBrush = BuildProcessingDeadlineBrush(expectedResultDate),
+                    WorkLabel = BuildProcessingWorkLabel(currentStatus)
                 });
             }
 
@@ -3929,6 +3946,79 @@ AreaName IN (
                     conditions.Add("SeverityLevel IN ('Nghiêm trọng', 'Rất nghiêm trọng', 'Đặc biệt nghiêm trọng')");
                     break;
             }
+        }
+
+        private static string BuildProcessingWorkLabel(string status)
+        {
+            return status switch
+            {
+                "Mới tiếp nhận" => "Cần phân loại",
+                "Đang phân loại" => "Hoàn tất phân loại",
+                "Đã phân công" => "Bắt đầu xử lý",
+                "Đang xác minh" => "Cập nhật xác minh",
+                "Đang chờ bổ sung tài liệu" => "Theo dõi bổ sung",
+                "Chờ kết quả" => "Theo dõi kết quả",
+                "Chuyển cơ quan khác" => "Theo dõi chuyển tiếp",
+                _ => "Cập nhật xử lý"
+            };
+        }
+
+        private static string BuildProcessingDeadlineText(string expectedResultDate)
+        {
+            if (!TryParseStoredDate(expectedResultDate, out var deadline))
+            {
+                return "Chưa có hạn xử lý";
+            }
+
+            var today = DateTime.Today;
+            var days = (deadline.Date - today).Days;
+            if (days < 0)
+            {
+                return $"Quá hạn {Math.Abs(days)} ngày";
+            }
+
+            if (days == 0)
+            {
+                return "Hạn hôm nay";
+            }
+
+            if (days <= 7)
+            {
+                return $"Còn {days} ngày";
+            }
+
+            return $"Hạn {FormatDate(expectedResultDate)}";
+        }
+
+        private static string BuildProcessingDeadlineBrush(string expectedResultDate)
+        {
+            if (!TryParseStoredDate(expectedResultDate, out var deadline))
+            {
+                return "#6B7280";
+            }
+
+            var days = (deadline.Date - DateTime.Today).Days;
+            if (days < 0)
+            {
+                return "#D13438";
+            }
+
+            if (days <= 7)
+            {
+                return "#F28C18";
+            }
+
+            return "#159A72";
+        }
+
+        private static bool TryParseStoredDate(string value, out DateTime date)
+        {
+            if (DateTime.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out date))
+            {
+                return true;
+            }
+
+            return DateTime.TryParse(value, CultureInfo.GetCultureInfo("vi-VN"), DateTimeStyles.None, out date);
         }
 
         private static int CountOpenProcessingRecords(SqliteConnection connection)
