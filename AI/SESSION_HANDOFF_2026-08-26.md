@@ -29,5 +29,6 @@ dotnet run --project QuanLyHoSo.Server\QuanLyHoSo.Server.csproj -- --url http://
 - Settings van co catalog, user management, system logs, update software va backup.
 - Backup trong Settings la server-side: admin bam Sao luu ngay -> client goi `settings/backup/create` -> server tao file trong `%LocalAppData%\QuanLyHoSo\Backup` tren may server.
 - Admin trong WPF client van co Nhap du lieu va luu/sua/xoa ho so qua LAN API (`records/similar`, `records/save`, `records/delete`).
+- Nut sua ho so o danh sach duoc mo theo `AuthContext.CanEditRecord(record.ProcessorName)`, khong khoa theo client mode.
 - Officer/can bo khong thay muc Nhap du lieu, khong them/xoa ho so; chi xem/chinh sua/phan loai theo quyen va khong duoc lui workflow ve buoc truoc phan cong.
 - Attachment LAN hien moi luu metadata/path; chua co upload/copy file vat ly tu client len server.

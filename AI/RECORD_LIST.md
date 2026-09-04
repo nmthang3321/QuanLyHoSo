@@ -26,3 +26,4 @@ Ghi chu:
 - Export Excel nam trong trang nay. Page `Export` rieng da bo.
 - Bo loc dia ban dung root overlay `AreaFilterOverlayCanvas`, search text va group bung/thu.
 - Chon duoc `Tat ca`, group, hoac item con. Click group vua set filter theo group vua bung/thu de xem item con.
+- Nut sua ho so tren tung dong dua theo `AuthContext.CanEditRecord(record.ProcessorName)`, khong khoa theo client mode nua. Khi WPF chay `Client`, sua/luu ho so di qua LAN API.

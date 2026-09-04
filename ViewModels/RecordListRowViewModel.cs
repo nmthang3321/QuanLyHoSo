@@ -1,5 +1,4 @@
 using System.Windows.Input;
-using QuanLyHoSo.Infrastructure.Configuration;
 using QuanLyHoSo.Infrastructure.Security;
 using QuanLyHoSo.Models;
 
@@ -19,7 +18,7 @@ namespace QuanLyHoSo.ViewModels
             Status = record.Status;
             UpdatedAt = record.UpdatedAt;
             ProcessorName = record.ProcessorName;
-            CanEdit = AuthContext.CanEditRecord(record.ProcessorName) && !AppPathSettings.Current.IsClientMode;
+            CanEdit = AuthContext.CanEditRecord(record.ProcessorName);
             CanClassify = AuthContext.CanEditRecord(record.ProcessorName);
             CanDelete = AuthContext.CanDeleteRecord;
             ViewCommand = viewCommand;

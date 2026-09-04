@@ -14,4 +14,4 @@ Notes:
 - Mouse wheel DataGrid forward ve `RecordListScrollViewer`.
 - Detail modal doc `AI/popups/RECORD_DETAIL_MODAL.md`.
 - Export doc `AI/features/EXPORT_EXCEL.md`.
-
+- Row action `CanEdit` = `AuthContext.CanEditRecord(record.ProcessorName)`. Khong check `AppPathSettings.Current.IsClientMode` tai row nua.
