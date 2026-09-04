@@ -138,6 +138,10 @@ namespace QuanLyHoSo.ViewModels
                 case "Processing":
                     _recordProcessingViewModel.Reload();
                     break;
+                case "StaffTracking":
+                    _staffTrackingViewModel.Reload();
+                    UpdateStaffNotificationBadge();
+                    break;
             }
         }
 
@@ -170,7 +174,7 @@ namespace QuanLyHoSo.ViewModels
         private RecordProcessingViewModel RecordProcessingViewModel => _recordProcessingViewModel ??= new RecordProcessingViewModel(
             () => NavigateTo("RecordList"));
 
-        private StaffTrackingViewModel StaffTrackingViewModel => _staffTrackingViewModel ??= new StaffTrackingViewModel();
+        private StaffTrackingViewModel StaffTrackingViewModel => _staffTrackingViewModel ??= new StaffTrackingViewModel(SetStaffNotificationBadge);
 
         private SettingsViewModel SettingsViewModel => _settingsViewModel ??= new SettingsViewModel();
 
@@ -183,6 +187,7 @@ namespace QuanLyHoSo.ViewModels
             OnPropertyChanged(nameof(CurrentUserRoleText));
             UpdateNavigationVisibility();
             RaiseNavigationCommandStates();
+            UpdateStaffNotificationBadge();
             NavigateTo(AuthContext.IsOfficer ? "RecordList" : "Dashboard");
         }
 
@@ -204,6 +209,26 @@ namespace QuanLyHoSo.ViewModels
             OnPropertyChanged(nameof(CurrentUserRoleText));
             UpdateNavigationVisibility();
             RaiseNavigationCommandStates();
+        }
+
+        private void UpdateStaffNotificationBadge()
+        {
+            var unreadCount = AuthContext.IsOfficer
+                ? AppDataService.Instance.CountUnreadLeadershipNotices(AuthContext.CurrentDisplayName)
+                : 0;
+            SetStaffNotificationBadge(unreadCount);
+        }
+
+        private void SetStaffNotificationBadge(int unreadCount)
+        {
+            foreach (var item in NavigationItems)
+            {
+                if (item.Key == "StaffTracking")
+                {
+                    item.BadgeCount = unreadCount;
+                    return;
+                }
+            }
         }
 
         private static bool CanNavigateTo(string key)

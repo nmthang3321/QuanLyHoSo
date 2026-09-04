@@ -244,9 +244,23 @@ namespace QuanLyHoSo.Infrastructure.Network
                         var noticeRequest = ReadData<LeadershipNoticeRequest>(body);
                         var notice = _dataService.GetLatestLeadershipNotice(noticeRequest.OfficerName);
                         return new LeadershipNoticeResponse { Message = notice.Message, ReceivedText = notice.ReceivedText };
+                    case "leadership-notices/list":
+                        var noticeListRequest = ReadData<LeadershipNoticeRequest>(body);
+                        return _dataService.GetLeadershipNotices(noticeListRequest.OfficerName, noticeListRequest.Skip, noticeListRequest.Take);
+                    case "leadership-notices/mark-read":
+                        var markReadRequest = ReadData<MarkLeadershipNoticesReadRequest>(body);
+                        _dataService.MarkLeadershipNoticesAsRead(markReadRequest.OfficerName, markReadRequest.NoticeIds);
+                        return true;
                     case "leadership-notices/save":
                         var saveNotice = ReadData<SaveLeadershipNoticeRequest>(body);
                         _dataService.SaveLeadershipNotice(saveNotice.Scope, saveNotice.TargetName, saveNotice.KpiTarget, saveNotice.Message);
+                        return true;
+                    case "leadership-kpi/latest":
+                        var kpiTargetRequest = ReadData<LeadershipKpiTargetRequest>(body);
+                        return new LeadershipKpiTargetResponse { KpiTarget = _dataService.GetLatestLeadershipKpiTarget(kpiTargetRequest.OfficerName) };
+                    case "leadership-kpi/save":
+                        var saveKpi = ReadData<SaveLeadershipKpiRequest>(body);
+                        _dataService.SaveLeadershipKpi(saveKpi.Scope, saveKpi.TargetName, saveKpi.KpiTarget);
                         return true;
                     default:
                         throw new InvalidOperationException($"Unknown LAN API route: {route}");

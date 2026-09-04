@@ -6,6 +6,7 @@ namespace QuanLyHoSo.Models
     {
         private bool _isSelected;
         private bool _isVisible = true;
+        private int _badgeCount;
 
         public string Key { get; set; }
         public string Title { get; set; }
@@ -24,5 +25,22 @@ namespace QuanLyHoSo.Models
             get => _isVisible;
             set => SetProperty(ref _isVisible, value);
         }
+
+        public int BadgeCount
+        {
+            get => _badgeCount;
+            set
+            {
+                if (SetProperty(ref _badgeCount, value))
+                {
+                    OnPropertyChanged(nameof(HasBadge));
+                    OnPropertyChanged(nameof(BadgeText));
+                }
+            }
+        }
+
+        public bool HasBadge => BadgeCount > 0;
+
+        public string BadgeText => BadgeCount > 99 ? "99+" : BadgeCount.ToString();
     }
 }

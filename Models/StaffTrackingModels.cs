@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+
 namespace QuanLyHoSo.Models
 {
     public sealed class StaffTrackingMetric
@@ -38,6 +40,25 @@ namespace QuanLyHoSo.Models
         public string DeadlineText { get; set; }
         public string DeadlineStatus { get; set; }
         public string StatusColor { get; set; }
+    }
+
+    public sealed class StaffNotification
+    {
+        public int Id { get; set; }
+        public string SenderName { get; set; }
+        public string Message { get; set; }
+        public string ReceivedText { get; set; }
+        public bool IsUnread { get; set; }
+        public string FontWeightText => IsUnread ? "Bold" : "Normal";
+        public string BackgroundColor => IsUnread ? "#FFF7ED" : "#F8FAFD";
+        public string BorderColor => IsUnread ? "#FDBA74" : "#DDE7F5";
+    }
+
+    public sealed class StaffNotificationPage
+    {
+        public IReadOnlyList<StaffNotification> Items { get; set; }
+        public int TotalCount { get; set; }
+        public int UnreadCount { get; set; }
     }
 
     public sealed class StaffBarStat

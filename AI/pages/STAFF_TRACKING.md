@@ -21,7 +21,10 @@ UI hien co:
 - Right panel bind `SelectedStaff`.
 - Active record cards dung `StaffWorkRecord`.
 - Neu dang nhap role `Officer`, trang chi hien thong tin cua `AuthContext.CurrentDisplayName`.
-- Khoi thong bao theo role: `Leader` co form gui thong bao, `Officer` doc thong bao moi nhat danh cho minh, `Admin` doc thong bao moi nhat tu lanh dao.
+- Khoi theo role: `Admin` gui thong bao; `Leader` gui thong bao va dat KPI bang card rieng; `Officer` nhan thong bao.
+- Danh sach thong bao cua can bo sap xep moi nhat truoc, 5 dong/trang, co nut trang truoc/sau va nut danh dau da doc.
+- Thong bao chua doc in dam; sidebar item `StaffTracking` co badge do bang so thong bao chua doc.
+- KPI dat boi lanh dao dung route/bang rieng `leadership-kpi/*` va `LeadershipKpiTargets`, khong tao item thong bao moi.
 - Bar chart dung `StaffBarStat`.
 - Deadline donut dung `StatusStat` va converter `StatusDonutSegmentConverter`.
 

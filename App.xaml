@@ -13,6 +13,7 @@
         <converters:BooleanToNavBrushConverter x:Key="BooleanToNavBrushConverter" />
         <converters:StatusToBrushConverter x:Key="StatusToBrushConverter" />
         <converters:StatusDonutSegmentConverter x:Key="StatusDonutSegmentConverter" />
+        <converters:NumberToVisibilityConverter x:Key="NumberToVisibilityConverter" />
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
         <converters:InverseBooleanToVisibilityConverter x:Key="InverseBooleanToVisibilityConverter" />
 

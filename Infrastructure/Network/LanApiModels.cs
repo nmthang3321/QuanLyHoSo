@@ -169,6 +169,8 @@ namespace QuanLyHoSo.Infrastructure.Network
     public sealed class LeadershipNoticeRequest
     {
         public string OfficerName { get; set; }
+        public int Skip { get; set; }
+        public int Take { get; set; }
     }
 
     public sealed class LeadershipNoticeResponse
@@ -177,11 +179,34 @@ namespace QuanLyHoSo.Infrastructure.Network
         public string ReceivedText { get; set; }
     }
 
+    public sealed class MarkLeadershipNoticesReadRequest
+    {
+        public string OfficerName { get; set; }
+        public IReadOnlyList<int> NoticeIds { get; set; }
+    }
+
     public sealed class SaveLeadershipNoticeRequest
     {
         public string Scope { get; set; }
         public string TargetName { get; set; }
         public string KpiTarget { get; set; }
         public string Message { get; set; }
+    }
+
+    public sealed class LeadershipKpiTargetRequest
+    {
+        public string OfficerName { get; set; }
+    }
+
+    public sealed class LeadershipKpiTargetResponse
+    {
+        public string KpiTarget { get; set; }
+    }
+
+    public sealed class SaveLeadershipKpiRequest
+    {
+        public string Scope { get; set; }
+        public string TargetName { get; set; }
+        public string KpiTarget { get; set; }
     }
 }

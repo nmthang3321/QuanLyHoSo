@@ -579,15 +579,12 @@
                             Padding="12"
                             Visibility="{Binding CanSendLeadershipNotice, Converter={StaticResource BooleanToVisibilityConverter}}">
                         <StackPanel>
-                            <TextBlock Text="GỬI THÔNG BÁO CHO CÁN BỘ" Style="{StaticResource SectionTitleText}" Margin="0,0,0,12" />
+                            <TextBlock Text="{Binding LeadershipCardTitle}" Style="{StaticResource SectionTitleText}" Margin="0,0,0,12" />
 
                             <TextBlock Text="Phạm vi thông báo" FontSize="12" Foreground="{StaticResource MutedTextBrush}" Margin="0,0,0,5" />
                             <ComboBox ItemsSource="{Binding LeadershipScopes}"
                                       SelectedItem="{Binding SelectedLeadershipScope, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                       Margin="0,0,0,10" />
-
-                            <TextBlock Text="Chỉ tiêu hồ sơ" FontSize="12" Foreground="{StaticResource MutedTextBrush}" Margin="0,0,0,5" />
-                            <TextBox Text="{Binding LeadershipKpiTargetText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,10" />
 
                             <TextBlock Text="Nội dung thông báo" FontSize="12" Foreground="{StaticResource MutedTextBrush}" Margin="0,0,0,5" />
                             <TextBox Height="86"
@@ -616,7 +613,136 @@
                             BorderThickness="1"
                             CornerRadius="6"
                             Padding="12"
+                            Margin="0,12,0,0"
+                            Visibility="{Binding CanSetLeadershipKpi, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <StackPanel>
+                            <TextBlock Text="ĐẶT KPI" Style="{StaticResource SectionTitleText}" Margin="0,0,0,12" />
+
+                            <TextBlock Text="Phạm vi áp dụng" FontSize="12" Foreground="{StaticResource MutedTextBrush}" Margin="0,0,0,5" />
+                            <ComboBox ItemsSource="{Binding LeadershipScopes}"
+                                      SelectedItem="{Binding SelectedLeadershipScope, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                      Margin="0,0,0,10" />
+
+                            <TextBlock Text="Chỉ tiêu hồ sơ" FontSize="12" Foreground="{StaticResource MutedTextBrush}" Margin="0,0,0,5" />
+                            <TextBox Text="{Binding LeadershipKpiTargetText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                     Margin="0,0,0,12" />
+
+                            <Button Style="{StaticResource PrimaryButton}" Command="{Binding SaveLeadershipKpiCommand}" HorizontalAlignment="Stretch" Padding="8,0">
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                    <TextBlock Text="&#xE9D9;" FontFamily="Segoe MDL2 Assets" Margin="0,0,6,0" />
+                                    <TextBlock Text="Lưu KPI" />
+                                </StackPanel>
+                            </Button>
+
+                            <TextBlock Text="{Binding LeadershipKpiStatus}"
+                                       Foreground="{StaticResource PrimaryBrush}"
+                                       FontSize="12"
+                                       TextWrapping="Wrap"
+                                       Margin="0,10,0,0" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border BorderBrush="{StaticResource LineBrush}"
+                            BorderThickness="1"
+                            CornerRadius="6"
+                            Padding="12"
+                            Margin="0,12,0,0"
                             Visibility="{Binding CanReadLeadershipNotice, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <StackPanel>
+                            <Grid Margin="0,0,0,10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="THÔNG BÁO" Style="{StaticResource SectionTitleText}" />
+                                <Button Grid.Column="1"
+                                        Style="{StaticResource SecondaryButton}"
+                                        Command="{Binding MarkNotificationsReadCommand}"
+                                        Height="28"
+                                        MinWidth="92"
+                                        Padding="8,0">
+                                    <TextBlock Text="Đã đọc" FontSize="12" FontWeight="SemiBold" />
+                                </Button>
+                            </Grid>
+
+                            <ItemsControl ItemsSource="{Binding Notifications}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Background="{Binding BackgroundColor}"
+                                                BorderBrush="{Binding BorderColor}"
+                                                BorderThickness="1"
+                                                CornerRadius="6"
+                                                Padding="10"
+                                                Margin="0,0,0,8">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="10" />
+                                                    <ColumnDefinition Width="*" />
+                                                </Grid.ColumnDefinitions>
+                                                <Ellipse Width="7"
+                                                         Height="7"
+                                                         Fill="#E3342F"
+                                                         VerticalAlignment="Top"
+                                                         Margin="0,5,0,0"
+                                                         Visibility="{Binding IsUnread, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                                <StackPanel Grid.Column="1">
+                                                    <TextBlock Text="{Binding Message}"
+                                                               TextWrapping="Wrap"
+                                                               FontWeight="{Binding FontWeightText}"
+                                                               Foreground="{StaticResource TextBrush}"
+                                                               LineHeight="19" />
+                                                    <TextBlock Text="{Binding ReceivedText}"
+                                                               FontSize="11"
+                                                               Foreground="{StaticResource MutedTextBrush}"
+                                                               TextWrapping="Wrap"
+                                                               Margin="0,6,0,0" />
+                                                </StackPanel>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <Grid Margin="0,2,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="{Binding NotificationSummaryText}"
+                                           Foreground="{StaticResource MutedTextBrush}"
+                                           FontSize="12"
+                                           VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="1"
+                                           Text="{Binding NotificationPageText}"
+                                           Foreground="{StaticResource MutedTextBrush}"
+                                           FontSize="12"
+                                           HorizontalAlignment="Right"
+                                           VerticalAlignment="Center"
+                                           Margin="0,0,8,0" />
+                                <Button Grid.Column="2"
+                                        Style="{StaticResource IconButton}"
+                                        Command="{Binding PreviousNotificationPageCommand}"
+                                        ToolTip="Trang trước"
+                                        Margin="0,0,6,0">
+                                    <TextBlock Text="&#xE76B;" FontFamily="Segoe MDL2 Assets" />
+                                </Button>
+                                <Button Grid.Column="3"
+                                        Style="{StaticResource IconButton}"
+                                        Command="{Binding NextNotificationPageCommand}"
+                                        ToolTip="Trang sau">
+                                    <TextBlock Text="&#xE76C;" FontFamily="Segoe MDL2 Assets" />
+                                </Button>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+
+                    <Border BorderBrush="{StaticResource LineBrush}"
+                            BorderThickness="1"
+                            CornerRadius="6"
+                            Padding="12"
+                            Visibility="Collapsed">
                         <StackPanel>
                             <TextBlock Text="THÔNG BÁO TỪ LÃNH ĐẠO" Style="{StaticResource SectionTitleText}" Margin="0,0,0,12" />
                             <Border Background="#F8FAFD" BorderBrush="#DDE7F5" BorderThickness="1" CornerRadius="6" Padding="10">

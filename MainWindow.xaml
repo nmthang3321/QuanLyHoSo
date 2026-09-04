@@ -97,6 +97,7 @@
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="34" />
                                         <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Text="{Binding IconGlyph}"
                                                FontFamily="{Binding IconFontFamily}"
@@ -108,6 +109,21 @@
                                                Foreground="White"
                                                FontSize="15"
                                                VerticalAlignment="Center" />
+                                    <Border Grid.Column="2"
+                                            MinWidth="20"
+                                            Height="20"
+                                            Padding="5,0"
+                                            CornerRadius="10"
+                                            Background="#E3342F"
+                                            VerticalAlignment="Center"
+                                            Visibility="{Binding BadgeCount, Converter={StaticResource NumberToVisibilityConverter}}">
+                                        <TextBlock Text="{Binding BadgeText}"
+                                                   Foreground="White"
+                                                   FontSize="11"
+                                                   FontWeight="Bold"
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center" />
+                                    </Border>
                                 </Grid>
                             </Button>
                         </DataTemplate>

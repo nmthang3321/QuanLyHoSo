@@ -852,6 +852,287 @@ LIMIT 1;";
             return (message, $"Nhận lúc {createdAt} từ {senderName}");
         }
 
+        public StaffNotificationPage GetLeadershipNotices(string officerName, int skip, int take)
+        {
+            if (AppPathSettings.Current.IsClientMode)
+            {
+                try
+                {
+                    return _lanClient.Call<StaffNotificationPage>("leadership-notices/list", new LeadershipNoticeRequest
+                    {
+                        OfficerName = officerName,
+                        Skip = Math.Max(0, skip),
+                        Take = Math.Max(1, take)
+                    }) ?? new StaffNotificationPage { Items = Array.Empty<StaffNotification>() };
+                }
+                catch (InvalidOperationException)
+                {
+                    var latest = GetLatestLeadershipNotice(officerName);
+                    return new StaffNotificationPage
+                    {
+                        Items = string.IsNullOrWhiteSpace(latest.Message)
+                            ? Array.Empty<StaffNotification>()
+                            : new[]
+                            {
+                                new StaffNotification
+                                {
+                                    Message = latest.Message,
+                                    ReceivedText = latest.ReceivedText,
+                                    IsUnread = false
+                                }
+                            },
+                        TotalCount = string.IsNullOrWhiteSpace(latest.Message) ? 0 : 1,
+                        UnreadCount = 0
+                    };
+                }
+            }
+
+            var normalizedOfficerName = (officerName ?? string.Empty).Trim();
+            var readToken = BuildNoticeReadToken(normalizedOfficerName);
+            using var connection = OpenConnection();
+
+            using var countCommand = connection.CreateCommand();
+            countCommand.CommandText = @"
+SELECT COUNT(*),
+       SUM(CASE WHEN $readToken <> '||' AND INSTR(ReadBy, $readToken) = 0 THEN 1 ELSE 0 END)
+FROM LeadershipNotices
+WHERE $officerName = '' OR Scope = 'All' OR TRIM(TargetName) = $officerName;";
+            countCommand.Parameters.AddWithValue("$officerName", normalizedOfficerName);
+            countCommand.Parameters.AddWithValue("$readToken", readToken);
+            using var countReader = countCommand.ExecuteReader();
+            var totalCount = 0;
+            var unreadCount = 0;
+            if (countReader.Read())
+            {
+                totalCount = countReader.IsDBNull(0) ? 0 : countReader.GetInt32(0);
+                unreadCount = countReader.IsDBNull(1) ? 0 : countReader.GetInt32(1);
+            }
+
+            using var command = connection.CreateCommand();
+            command.CommandText = @"
+SELECT Id, Message, CreatedAt, SenderName, ReadBy
+FROM LeadershipNotices
+WHERE $officerName = '' OR Scope = 'All' OR TRIM(TargetName) = $officerName
+ORDER BY CreatedAt DESC, Id DESC
+LIMIT $take OFFSET $skip;";
+            command.Parameters.AddWithValue("$officerName", normalizedOfficerName);
+            command.Parameters.AddWithValue("$take", Math.Max(1, take));
+            command.Parameters.AddWithValue("$skip", Math.Max(0, skip));
+
+            var items = new List<StaffNotification>();
+            using var reader = command.ExecuteReader();
+            while (reader.Read())
+            {
+                var createdAt = FormatDateTime(reader.GetString(2));
+                var senderName = reader.GetString(3);
+                var readBy = reader.IsDBNull(4) ? string.Empty : reader.GetString(4);
+                items.Add(new StaffNotification
+                {
+                    Id = reader.GetInt32(0),
+                    Message = reader.GetString(1),
+                    SenderName = senderName,
+                    ReceivedText = $"Nhận lúc {createdAt} từ {senderName}",
+                    IsUnread = readToken != "||" && !readBy.Contains(readToken, StringComparison.OrdinalIgnoreCase)
+                });
+            }
+
+            return new StaffNotificationPage
+            {
+                Items = items,
+                TotalCount = totalCount,
+                UnreadCount = unreadCount
+            };
+        }
+
+            /*
+            using var countCommand = connection.CreateCommand();
+            countCommand.CommandText = @"
+SELECT COUNT(*),
+       SUM(CASE WHEN $readToken <> '||' AND INSTR(ReadBy, $readToken) = 0 THEN 1 ELSE 0 END)
+FROM LeadershipNotices
+WHERE $officerName = '' OR Scope = 'All' OR TRIM(TargetName) = $officerName;";
+            countCommand.Parameters.AddWithValue("$officerName", normalizedOfficerName);
+            countCommand.Parameters.AddWithValue("$readToken", readToken);
+            using var countReader = countCommand.ExecuteReader();
+            var totalCount = 0;
+            var unreadCount = 0;
+            if (countReader.Read())
+            {
+                totalCount = countReader.IsDBNull(0) ? 0 : countReader.GetInt32(0);
+                unreadCount = countReader.IsDBNull(1) ? 0 : countReader.GetInt32(1);
+            }
+
+            using var command = connection.CreateCommand();
+            command.CommandText = @"
+SELECT Id, Message, CreatedAt, SenderName, ReadBy
+FROM LeadershipNotices
+WHERE $officerName = '' OR Scope = 'All' OR TRIM(TargetName) = $officerName
+ORDER BY CreatedAt DESC, Id DESC
+LIMIT $take OFFSET $skip;";
+            command.Parameters.AddWithValue("$officerName", normalizedOfficerName);
+            command.Parameters.AddWithValue("$take", Math.Max(1, take));
+            command.Parameters.AddWithValue("$skip", Math.Max(0, skip));
+
+            var items = new List<StaffNotification>();
+            using var reader = command.ExecuteReader();
+            while (reader.Read())
+            {
+                var createdAt = FormatDateTime(reader.GetString(2));
+                var senderName = reader.GetString(3);
+                var readBy = reader.IsDBNull(4) ? string.Empty : reader.GetString(4);
+                items.Add(new StaffNotification
+                {
+                    Id = reader.GetInt32(0),
+                    Message = reader.GetString(1),
+                    SenderName = senderName,
+                    ReceivedText = $"Nhận lúc {createdAt} từ {senderName}",
+                    IsUnread = readToken != "||" && !readBy.Contains(readToken, StringComparison.OrdinalIgnoreCase)
+                });
+            }
+
+            return new StaffNotificationPage
+            {
+                Items = items,
+                TotalCount = totalCount,
+                UnreadCount = unreadCount
+            };
+        }
+
+        */
+        public int CountUnreadLeadershipNotices(string officerName)
+        {
+            if (AppPathSettings.Current.IsClientMode)
+            {
+                try
+                {
+                    var page = _lanClient.Call<StaffNotificationPage>("leadership-notices/list", new LeadershipNoticeRequest
+                    {
+                        OfficerName = officerName,
+                        Skip = 0,
+                        Take = 1
+                    });
+                    return page?.UnreadCount ?? 0;
+                }
+                catch (InvalidOperationException)
+                {
+                    return 0;
+                }
+            }
+
+            return GetLeadershipNotices(officerName, 0, 1).UnreadCount;
+        }
+
+        public void MarkLeadershipNoticesAsRead(string officerName, IReadOnlyList<int> noticeIds)
+        {
+            if (AppPathSettings.Current.IsClientMode)
+            {
+                try
+                {
+                    _lanClient.Call<bool>("leadership-notices/mark-read", new MarkLeadershipNoticesReadRequest
+                    {
+                        OfficerName = officerName,
+                        NoticeIds = noticeIds
+                    });
+                }
+                catch (InvalidOperationException)
+                {
+                }
+                return;
+            }
+
+            var normalizedOfficerName = (officerName ?? string.Empty).Trim();
+            var readToken = BuildNoticeReadToken(normalizedOfficerName);
+            if (readToken == "||" || noticeIds == null || noticeIds.Count == 0)
+            {
+                return;
+            }
+
+            using var connection = OpenConnection();
+            using var transaction = connection.BeginTransaction();
+            foreach (var noticeId in noticeIds.Distinct())
+            {
+                using var command = connection.CreateCommand();
+                command.Transaction = transaction;
+                command.CommandText = @"
+UPDATE LeadershipNotices
+SET ReadBy = ReadBy || $readToken
+WHERE Id = $id
+  AND ($officerName = '' OR Scope = 'All' OR TRIM(TargetName) = $officerName)
+  AND INSTR(ReadBy, $readToken) = 0;";
+                command.Parameters.AddWithValue("$id", noticeId);
+                command.Parameters.AddWithValue("$officerName", normalizedOfficerName);
+                command.Parameters.AddWithValue("$readToken", readToken);
+                command.ExecuteNonQuery();
+            }
+
+            transaction.Commit();
+        }
+
+        public string GetLatestLeadershipKpiTarget(string officerName)
+        {
+            if (AppPathSettings.Current.IsClientMode)
+            {
+                try
+                {
+                    var response = _lanClient.Call<LeadershipKpiTargetResponse>("leadership-kpi/latest", new LeadershipKpiTargetRequest { OfficerName = officerName });
+                    return string.IsNullOrWhiteSpace(response?.KpiTarget) ? "30" : response.KpiTarget;
+                }
+                catch (InvalidOperationException)
+                {
+                    return "30";
+                }
+            }
+
+            using var connection = OpenConnection();
+            using var command = connection.CreateCommand();
+            command.CommandText = @"
+SELECT KpiTarget
+FROM LeadershipKpiTargets
+WHERE $officerName = '' OR Scope = 'All' OR TRIM(TargetName) = $officerName
+ORDER BY CreatedAt DESC, Id DESC
+LIMIT 1;";
+            command.Parameters.AddWithValue("$officerName", (officerName ?? string.Empty).Trim());
+
+            var result = command.ExecuteScalar() as string;
+            return string.IsNullOrWhiteSpace(result) ? "30" : result;
+        }
+
+        public void SaveLeadershipKpi(string scope, string targetName, string kpiTarget)
+        {
+            if (AppPathSettings.Current.IsClientMode)
+            {
+                _lanClient.Call<bool>("leadership-kpi/save", new SaveLeadershipKpiRequest { Scope = scope, TargetName = targetName, KpiTarget = kpiTarget });
+                return;
+            }
+
+            if (!AuthContext.IsLeader)
+            {
+                throw new UnauthorizedAccessException("Chi lanh dao duoc dat KPI.");
+            }
+
+            if (!int.TryParse(kpiTarget, NumberStyles.Integer, CultureInfo.InvariantCulture, out var target) || target <= 0)
+            {
+                throw new ArgumentException("Chi tieu KPI khong hop le.", nameof(kpiTarget));
+            }
+
+            using var connection = OpenConnection();
+            using var transaction = connection.BeginTransaction();
+            using var command = connection.CreateCommand();
+            command.Transaction = transaction;
+            command.CommandText = @"
+INSERT INTO LeadershipKpiTargets (CreatedAt, SenderName, Scope, TargetName, KpiTarget)
+VALUES ($createdAt, $senderName, $scope, $targetName, $kpiTarget);";
+            command.Parameters.AddWithValue("$createdAt", DateTime.Now.ToString("O", CultureInfo.InvariantCulture));
+            command.Parameters.AddWithValue("$senderName", AuthContext.CurrentDisplayName);
+            command.Parameters.AddWithValue("$scope", string.Equals(scope, "All", StringComparison.OrdinalIgnoreCase) ? "All" : "Staff");
+            command.Parameters.AddWithValue("$targetName", NormalizeDbText(targetName));
+            command.Parameters.AddWithValue("$kpiTarget", target.ToString(CultureInfo.InvariantCulture));
+            command.ExecuteNonQuery();
+
+            WriteDatabaseLog(connection, transaction, "Theo dõi cán bộ", "Đặt KPI", targetName, $"Lãnh đạo đặt KPI {target} hồ sơ.");
+            transaction.Commit();
+        }
+
         public void SaveLeadershipNotice(string scope, string targetName, string kpiTarget, string message)
         {
             if (AppPathSettings.Current.IsClientMode)
@@ -860,9 +1141,9 @@ LIMIT 1;";
                 return;
             }
 
-            if (!AuthContext.IsLeader)
+            if (!AuthContext.IsLeader && !AuthContext.IsAdmin)
             {
-                throw new UnauthorizedAccessException("Chi lanh dao duoc gui thong bao.");
+                throw new UnauthorizedAccessException("Chi admin hoac lanh dao duoc gui thong bao.");
             }
 
             if (string.IsNullOrWhiteSpace(message))
@@ -887,6 +1168,11 @@ VALUES ($createdAt, $senderName, $scope, $targetName, $kpiTarget, $message);";
 
             WriteDatabaseLog(connection, transaction, "Theo dõi cán bộ", "Thông báo", targetName, "Lãnh đạo gửi thông báo cho cán bộ.");
             transaction.Commit();
+        }
+
+        private static string BuildNoticeReadToken(string officerName)
+        {
+            return $"|{(officerName ?? string.Empty).Trim().ToUpperInvariant()}|";
         }
 
         private static StatusStat CreateDeadlineStatusStat(string name, int count, int total, string color)
@@ -2495,7 +2781,17 @@ CREATE TABLE IF NOT EXISTS LeadershipNotices (
     Scope TEXT NOT NULL,
     TargetName TEXT NOT NULL,
     KpiTarget TEXT NOT NULL,
-    Message TEXT NOT NULL
+    Message TEXT NOT NULL,
+    ReadBy TEXT NOT NULL DEFAULT ''
+);
+
+CREATE TABLE IF NOT EXISTS LeadershipKpiTargets (
+    Id INTEGER PRIMARY KEY AUTOINCREMENT,
+    CreatedAt TEXT NOT NULL,
+    SenderName TEXT NOT NULL,
+    Scope TEXT NOT NULL,
+    TargetName TEXT NOT NULL,
+    KpiTarget TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS Users (
@@ -2510,6 +2806,7 @@ CREATE TABLE IF NOT EXISTS Users (
 );");
             TryAddColumn(connection, "Records", "SenderExpectedHandlingMethod", "TEXT NOT NULL DEFAULT ''");
             TryAddColumn(connection, "RecordAttachments", "FilePath", "TEXT NOT NULL DEFAULT ''");
+            TryAddColumn(connection, "LeadershipNotices", "ReadBy", "TEXT NOT NULL DEFAULT ''");
             CreateIndexes(connection);
         }
 
@@ -2800,6 +3097,8 @@ WHERE Title = 'Gia hạn';";
             ExecuteNonQuery(connection, "CREATE INDEX IF NOT EXISTS IX_CatalogItems_Type_Active_Order ON CatalogItems (CatalogType, IsActive, DisplayOrder);");
             ExecuteNonQuery(connection, "CREATE INDEX IF NOT EXISTS IX_SystemLogs_Id ON SystemLogs (Id);");
             ExecuteNonQuery(connection, "CREATE INDEX IF NOT EXISTS IX_Users_UserName ON Users (UserName);");
+            ExecuteNonQuery(connection, "CREATE INDEX IF NOT EXISTS IX_LeadershipNotices_Target_Created ON LeadershipNotices (Scope, TargetName, CreatedAt, Id);");
+            ExecuteNonQuery(connection, "CREATE INDEX IF NOT EXISTS IX_LeadershipKpiTargets_Target_Created ON LeadershipKpiTargets (Scope, TargetName, CreatedAt, Id);");
         }
 
         private static void SeedUsers(SqliteConnection connection)
