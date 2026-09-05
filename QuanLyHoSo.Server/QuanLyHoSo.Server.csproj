@@ -13,6 +13,7 @@
     <Content Include="..\doc\phieu_de_xuat.docx" Link="doc\phieu_de_xuat.docx" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="..\doc\phieu_huong_dan.docx" Link="doc\phieu_huong_dan.docx" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="..\doc\thong_bao.docx" Link="doc\thong_bao.docx" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\SampleData\quanlyhoso-demo.db" Link="SampleData\quanlyhoso-demo.db" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

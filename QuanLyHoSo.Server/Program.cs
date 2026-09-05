@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Threading;
 using QuanLyHoSo.Infrastructure.Configuration;
 using QuanLyHoSo.Infrastructure.Data;
@@ -18,6 +19,7 @@ namespace QuanLyHoSo.Server
             try
             {
                 var options = ServerOptions.Parse(args);
+                options.PrepareSampleDatabase();
                 AppPathSettings.UseServerMode(options.DatabasePath, options.LogFolder, options.AdminServerUrl);
                 AppDataService.Instance.Initialize();
 
@@ -49,6 +51,7 @@ namespace QuanLyHoSo.Server
             public string DatabasePath { get; private set; }
             public string LogFolder { get; private set; }
             public string AdminServerUrl { get; private set; }
+            public bool UseSampleData { get; private set; }
 
             public static ServerOptions Parse(string[] args)
             {
@@ -68,9 +71,42 @@ namespace QuanLyHoSo.Server
                     {
                         options.AdminServerUrl = args[++index];
                     }
+                    else if (string.Equals(arg, "--sample-data", StringComparison.OrdinalIgnoreCase))
+                    {
+                        options.UseSampleData = true;
+                    }
                 }
 
                 return options;
+            }
+
+            public void PrepareSampleDatabase()
+            {
+                if (!UseSampleData)
+                {
+                    return;
+                }
+
+                var sampleSourcePath = Path.Combine(
+                    AppContext.BaseDirectory,
+                    "SampleData",
+                    "quanlyhoso-demo.db");
+                if (!File.Exists(sampleSourcePath))
+                {
+                    throw new FileNotFoundException(
+                        "Không tìm thấy database mẫu đi kèm ứng dụng.",
+                        sampleSourcePath);
+                }
+
+                var sampleDataFolder = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "QuanLyHoSo",
+                    "Data");
+                Directory.CreateDirectory(sampleDataFolder);
+
+                DatabasePath = Path.Combine(sampleDataFolder, "quanlyhoso-sample.db");
+                File.Copy(sampleSourcePath, DatabasePath, true);
+                Console.WriteLine("Đã khởi tạo lại database chạy mẫu.");
             }
         }
     }

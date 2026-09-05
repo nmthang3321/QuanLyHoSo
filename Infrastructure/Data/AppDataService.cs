@@ -3258,6 +3258,8 @@ VALUES (
                 ("ProcessorName", "Trần Văn B"),
                 ("ProcessorName", "Trần Văn C"),
                 ("ProcessorName", "Lê Thị D"),
+                ("ProcessorName", "Lê Võ Mỹ Ý"),
+                ("ProcessorName", "Nguyễn Minh Thắng"),
                 ("ProcessorName", "Nguyễn Thị H"),
                 ("ProcessorName", "Phạm Văn K"),
                 ("ExpectedHandlingMethod", "Đề nghị kiểm tra, xử lý"),
@@ -3291,7 +3293,8 @@ VALUES (
                 return;
             }
 
-            var random = new Random();
+            const int recordsPerProcessor = 15;
+            var random = new Random(20260905);
             var areaNames = ReadAreaDisplayNames(connection);
             var receiveSources = ReadCatalog(connection, "ReceiveSource");
             var caseTypes = ReadCatalog(connection, "CaseType");
@@ -3306,20 +3309,32 @@ VALUES (
             };
             var methods = ReadCatalog(connection, "ExpectedHandlingMethod");
             var statuses = new[] { "Mới tiếp nhận", "Đang phân loại", "Đã phân công", "Đang xác minh", "Chờ kết quả", "Đang chờ bổ sung tài liệu", "Đã giải quyết", "Chuyển cơ quan khác" };
-            var processors = new[] { "Trần Văn B", "Trần Văn C", "Lê Thị D", "Nguyễn Thị H", "Phạm Văn K" };
+            var processors = new[]
+            {
+                "Lê Thị D",
+                "Lê Võ Mỹ Ý",
+                "Nguyễn Minh Thắng",
+                "Nguyễn Thị H",
+                "Phạm Văn K",
+                "Trần Văn B",
+                "Trần Văn C"
+            };
             var processorProfiles = new Dictionary<string, (int CompletedChance, int HighOnTimeChance, int PendingChance, int OverdueChance)>
             {
-                ["Trần Văn B"] = (8, 8, 2, 1),
-                ["Trần Văn C"] = (6, 6, 3, 2),
-                ["Lê Thị D"] = (4, 4, 5, 3),
-                ["Nguyễn Thị H"] = (7, 7, 2, 1),
-                ["Phạm Văn K"] = (3, 3, 6, 4)
+                ["Lê Thị D"] = (7, 1, 1, 1),
+                ["Lê Võ Mỹ Ý"] = (9, 1, 0, 0),
+                ["Nguyễn Minh Thắng"] = (8, 1, 1, 0),
+                ["Nguyễn Thị H"] = (6, 1, 1, 2),
+                ["Phạm Văn K"] = (5, 1, 1, 3),
+                ["Trần Văn B"] = (7, 1, 1, 1),
+                ["Trần Văn C"] = (6, 1, 1, 2)
             };
             var senders = new[] { "Nguyễn Văn A", "Trần Thị B", "Lê Văn C", "Phạm Thị D", "Võ Văn E", "Huỳnh Văn F", "Đặng Thị G", "Bùi Văn H" };
             var relatedPersons = new[] { "Trần Văn C", "Lê Thị D", "Nguyễn Văn M", "Công ty TNHH An Phú", "Hộ dân liền kề" };
 
             using var transaction = connection.BeginTransaction();
-            for (var i = 1; i <= 80; i++)
+            var totalSeedRecords = processors.Length * recordsPerProcessor;
+            for (var i = 1; i <= totalSeedRecords; i++)
             {
                 var now = DateTime.Now;
                 var receivedDate = DateTime.Today.AddDays(-random.Next(0, 90)).AddHours(random.Next(8, 17)).AddMinutes(random.Next(0, 60));
@@ -3328,9 +3343,11 @@ VALUES (
                     receivedDate = now;
                 }
 
-                var processor = processors[(i - 1) % processors.Length];
+                var processorIndex = (i - 1) % processors.Length;
+                var recordIndexForProcessor = (i - 1) / processors.Length;
+                var processor = processors[processorIndex];
                 var profile = processorProfiles[processor];
-                var profileRoll = (i + profile.CompletedChance) % 10;
+                var profileRoll = (recordIndexForProcessor * 3 + processorIndex) % 10;
                 string status;
                 if (profileRoll < profile.CompletedChance)
                 {
@@ -3360,24 +3377,23 @@ VALUES (
                     updatedAt = now;
                 }
 
-                var expectedDate = status == "Đã giải quyết"
-                    ? receivedDate.Date.AddDays(-random.Next(0, 3))
-                    : receivedDate.Date.AddDays(random.Next(3, 18) + (profile.OverdueChance > 2 ? 5 : 0));
-
-                if (status == "Đang chờ bổ sung tài liệu" || status == "Chờ kết quả")
+                DateTime expectedDate;
+                if (status == "Đã giải quyết")
                 {
-                    expectedDate = receivedDate.Date.AddDays(random.Next(1, 7));
+                    var isCompletedLate = (recordIndexForProcessor + processorIndex) % 5 == 0;
+                    expectedDate = isCompletedLate
+                        ? updatedAt.Date.AddDays(-random.Next(1, 4))
+                        : updatedAt.Date.AddDays(random.Next(1, 5));
                 }
-
-                if (status == "Mới tiếp nhận")
+                else
                 {
-                    expectedDate = receivedDate.Date.AddDays(random.Next(8, 20));
-                }
-
-                if (profile.OverdueChance >= 4 && i % 4 == 0 && status != "Đã giải quyết")
-                {
-                    expectedDate = receivedDate.Date.AddDays(-random.Next(1, 5));
-                    status = "Đang chờ bổ sung tài liệu";
+                    var deadlineBucket = (recordIndexForProcessor + processorIndex) % 3;
+                    expectedDate = deadlineBucket switch
+                    {
+                        0 => DateTime.Today.AddDays(-random.Next(1, 11)),
+                        1 => DateTime.Today.AddDays(random.Next(1, 8)),
+                        _ => DateTime.Today.AddDays(random.Next(8, 31))
+                    };
                 }
 
                 var caseType = caseTypes[random.Next(caseTypes.Count)];
