@@ -213,8 +213,10 @@ namespace QuanLyHoSo.ViewModels
 
         private void UpdateStaffNotificationBadge()
         {
-            var unreadCount = AuthContext.IsOfficer
-                ? AppDataService.Instance.CountUnreadLeadershipNotices(AuthContext.CurrentDisplayName)
+            var unreadCount = AuthContext.IsOfficer || AuthContext.IsLeader
+                ? AppDataService.Instance.CountUnreadLeadershipNotices(
+                    AuthContext.CurrentDisplayName,
+                    AuthContext.IsLeader)
                 : 0;
             SetStaffNotificationBadge(unreadCount);
         }

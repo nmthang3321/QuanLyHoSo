@@ -171,6 +171,7 @@ namespace QuanLyHoSo.Infrastructure.Network
         public string OfficerName { get; set; }
         public int Skip { get; set; }
         public int Take { get; set; }
+        public bool AdminOnly { get; set; }
     }
 
     public sealed class LeadershipNoticeResponse

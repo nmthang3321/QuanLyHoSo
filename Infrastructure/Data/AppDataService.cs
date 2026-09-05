@@ -852,7 +852,7 @@ LIMIT 1;";
             return (message, $"Nhận lúc {createdAt} từ {senderName}");
         }
 
-        public StaffNotificationPage GetLeadershipNotices(string officerName, int skip, int take)
+        public StaffNotificationPage GetLeadershipNotices(string officerName, int skip, int take, bool adminOnly = false)
         {
             if (AppPathSettings.Current.IsClientMode)
             {
@@ -862,11 +862,17 @@ LIMIT 1;";
                     {
                         OfficerName = officerName,
                         Skip = Math.Max(0, skip),
-                        Take = Math.Max(1, take)
+                        Take = Math.Max(1, take),
+                        AdminOnly = adminOnly
                     }) ?? new StaffNotificationPage { Items = Array.Empty<StaffNotification>() };
                 }
                 catch (InvalidOperationException)
                 {
+                    if (adminOnly)
+                    {
+                        return new StaffNotificationPage { Items = Array.Empty<StaffNotification>() };
+                    }
+
                     var latest = GetLatestLeadershipNotice(officerName);
                     return new StaffNotificationPage
                     {
@@ -896,9 +902,16 @@ LIMIT 1;";
 SELECT COUNT(*),
        SUM(CASE WHEN $readToken <> '||' AND INSTR(ReadBy, $readToken) = 0 THEN 1 ELSE 0 END)
 FROM LeadershipNotices
-WHERE $officerName = '' OR Scope = 'All' OR TRIM(TargetName) = $officerName;";
+WHERE ($officerName = '' OR Scope = 'All' OR TRIM(TargetName) = $officerName)
+  AND ($adminOnly = 0 OR EXISTS (
+      SELECT 1
+      FROM Users
+      WHERE TRIM(DisplayName) = TRIM(LeadershipNotices.SenderName)
+        AND Role = $adminRole));";
             countCommand.Parameters.AddWithValue("$officerName", normalizedOfficerName);
             countCommand.Parameters.AddWithValue("$readToken", readToken);
+            countCommand.Parameters.AddWithValue("$adminOnly", adminOnly ? 1 : 0);
+            countCommand.Parameters.AddWithValue("$adminRole", UserRoles.Admin);
             using var countReader = countCommand.ExecuteReader();
             var totalCount = 0;
             var unreadCount = 0;
@@ -912,10 +925,17 @@ WHERE $officerName = '' OR Scope = 'All' OR TRIM(TargetName) = $officerName;";
             command.CommandText = @"
 SELECT Id, Message, CreatedAt, SenderName, ReadBy
 FROM LeadershipNotices
-WHERE $officerName = '' OR Scope = 'All' OR TRIM(TargetName) = $officerName
+WHERE ($officerName = '' OR Scope = 'All' OR TRIM(TargetName) = $officerName)
+  AND ($adminOnly = 0 OR EXISTS (
+      SELECT 1
+      FROM Users
+      WHERE TRIM(DisplayName) = TRIM(LeadershipNotices.SenderName)
+        AND Role = $adminRole))
 ORDER BY CreatedAt DESC, Id DESC
 LIMIT $take OFFSET $skip;";
             command.Parameters.AddWithValue("$officerName", normalizedOfficerName);
+            command.Parameters.AddWithValue("$adminOnly", adminOnly ? 1 : 0);
+            command.Parameters.AddWithValue("$adminRole", UserRoles.Admin);
             command.Parameters.AddWithValue("$take", Math.Max(1, take));
             command.Parameters.AddWithValue("$skip", Math.Max(0, skip));
 
@@ -999,7 +1019,7 @@ LIMIT $take OFFSET $skip;";
         }
 
         */
-        public int CountUnreadLeadershipNotices(string officerName)
+        public int CountUnreadLeadershipNotices(string officerName, bool adminOnly = false)
         {
             if (AppPathSettings.Current.IsClientMode)
             {
@@ -1009,7 +1029,8 @@ LIMIT $take OFFSET $skip;";
                     {
                         OfficerName = officerName,
                         Skip = 0,
-                        Take = 1
+                        Take = 1,
+                        AdminOnly = adminOnly
                     });
                     return page?.UnreadCount ?? 0;
                 }
@@ -1019,7 +1040,7 @@ LIMIT $take OFFSET $skip;";
                 }
             }
 
-            return GetLeadershipNotices(officerName, 0, 1).UnreadCount;
+            return GetLeadershipNotices(officerName, 0, 1, adminOnly).UnreadCount;
         }
 
         public void MarkLeadershipNoticesAsRead(string officerName, IReadOnlyList<int> noticeIds)

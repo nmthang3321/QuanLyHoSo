@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Linq;
+using System.Windows;
 using System.Windows.Input;
 using QuanLyHoSo.Infrastructure.Data;
 using QuanLyHoSo.Infrastructure.Security;
@@ -21,7 +22,7 @@ namespace QuanLyHoSo.ViewModels
         private const string OverloadedMetricFilter = "Overloaded";
         private const string DueSoonMetricFilter = "DueSoon";
         private const string NeedsAttentionMetricFilter = "NeedsAttention";
-        private const int StaffPageSize = 7;
+        private const int StaffPageSize = 5;
         private const int NotificationPageSize = 5;
         private const int OverloadedProcessingThreshold = 10;
 
@@ -33,7 +34,10 @@ namespace QuanLyHoSo.ViewModels
         private readonly RelayCommand _nextNotificationPageCommand;
         private readonly RelayCommand _previousNotificationPageCommand;
         private readonly RelayCommand _markNotificationsReadCommand;
+        private readonly RelayCommand _openNotificationCommand;
+        private readonly RelayCommand _closeNotificationCommand;
         private StaffPerformanceRow _selectedStaff;
+        private StaffNotification _selectedNotification;
         private string _selectedLeadershipScope;
         private string _selectedMetricFilter = TotalMetricFilter;
         private int _currentStaffPage = 1;
@@ -47,6 +51,7 @@ namespace QuanLyHoSo.ViewModels
         private DateTime? _toDate;
         private string _selectedDateFilter;
         private bool _isCustomCalendarOpen;
+        private bool _isNotificationDetailOpen;
         private string _totalDeadlineRecordsText;
         private string _leadershipKpiTargetText = "30";
         private string _leadershipNoticeText;
@@ -92,6 +97,8 @@ namespace QuanLyHoSo.ViewModels
             _previousNotificationPageCommand = new RelayCommand(PreviousNotificationPage, () => CurrentNotificationPage > 1);
             _nextNotificationPageCommand = new RelayCommand(NextNotificationPage, () => CurrentNotificationPage < TotalNotificationPages);
             _markNotificationsReadCommand = new RelayCommand(MarkCurrentNotificationsAsRead, () => Notifications.Any(item => item.IsUnread));
+            _openNotificationCommand = new RelayCommand(OpenNotification, parameter => parameter is StaffNotification);
+            _closeNotificationCommand = new RelayCommand(CloseNotification);
 
             RefreshStaffData();
             LoadNotifications();
@@ -115,13 +122,30 @@ namespace QuanLyHoSo.ViewModels
         public ICommand PreviousNotificationPageCommand => _previousNotificationPageCommand;
         public ICommand NextNotificationPageCommand => _nextNotificationPageCommand;
         public ICommand MarkNotificationsReadCommand => _markNotificationsReadCommand;
+        public ICommand OpenNotificationCommand => _openNotificationCommand;
+        public ICommand CloseNotificationCommand => _closeNotificationCommand;
 
         public bool CanSendLeadershipNotice => AuthContext.IsLeader || AuthContext.IsAdmin;
         public bool CanSetLeadershipKpi => AuthContext.IsLeader;
-        public bool CanReadLeadershipNotice => AuthContext.IsOfficer;
+        public bool CanReadLeadershipNotice => AuthContext.IsOfficer || AuthContext.IsLeader;
+        public bool CanReadAdminNotifications => AuthContext.IsLeader;
+        public bool ShowStandaloneNotificationInbox => AuthContext.IsOfficer;
         public string LeadershipCardTitle => "THÔNG BÁO";
+        public int LeadershipActionTabIndex => AuthContext.IsLeader ? 0 : 1;
 
         public string SelectedOfficer { get; set; }
+
+        public StaffNotification SelectedNotification
+        {
+            get => _selectedNotification;
+            private set => SetProperty(ref _selectedNotification, value);
+        }
+
+        public bool IsNotificationDetailOpen
+        {
+            get => _isNotificationDetailOpen;
+            private set => SetProperty(ref _isNotificationDetailOpen, value);
+        }
 
         public DateTime? FromDate
         {
@@ -319,7 +343,11 @@ namespace QuanLyHoSo.ViewModels
             get => _selectedStaff;
             set
             {
-                if (SetProperty(ref _selectedStaff, value))
+                var selectedValue = AuthContext.IsOfficer
+                    ? _allStaffRows.FirstOrDefault(row => IsCurrentOfficer(row.Name)) ?? value
+                    : value;
+
+                if (SetProperty(ref _selectedStaff, selectedValue))
                 {
                     RefreshLeadershipScopes();
                     LoadLeadershipKpiTarget();
@@ -353,6 +381,7 @@ namespace QuanLyHoSo.ViewModels
             _allStaffRows.Clear();
             _allStaffRows.AddRange(staffRows);
 
+            RefreshBarStats(_allStaffRows);
             RefreshMetricCards(_allStaffRows);
             RefreshDeadlineStats(deadlineStats);
             CurrentStaffPage = 1;
@@ -426,8 +455,17 @@ namespace QuanLyHoSo.ViewModels
                 Officers.Add(officerName);
             }
 
+            SelectedOfficer = Officers.Contains(SelectedOfficer) ? SelectedOfficer : "Tất cả";
+            SelectedStaff = AuthContext.IsOfficer
+                ? _allStaffRows.FirstOrDefault(row => IsCurrentOfficer(row.Name))
+                : StaffRows.FirstOrDefault(row => row.Name == SelectedOfficer) ?? StaffRows.FirstOrDefault();
+            RaiseStaffPageCommandStates();
+        }
+
+        private void RefreshBarStats(IEnumerable<StaffPerformanceRow> staffRows)
+        {
             BarStats.Clear();
-            foreach (var row in StaffRows)
+            foreach (var row in staffRows)
             {
                 BarStats.Add(new StaffBarStat
                 {
@@ -438,10 +476,6 @@ namespace QuanLyHoSo.ViewModels
                     KpiHeight = row.KpiPercent
                 });
             }
-
-            SelectedOfficer = Officers.Contains(SelectedOfficer) ? SelectedOfficer : "Tất cả";
-            SelectedStaff = StaffRows.FirstOrDefault(row => row.Name == SelectedOfficer) ?? StaffRows.FirstOrDefault();
-            RaiseStaffPageCommandStates();
         }
 
         private void RefreshMetricCards(IReadOnlyCollection<StaffPerformanceRow> staffRows)
@@ -625,14 +659,49 @@ namespace QuanLyHoSo.ViewModels
                 ? SelectedStaff?.Name ?? "cán bộ đang chọn"
                 : "toàn bộ cán bộ";
 
+            var confirmation = MessageBox.Show(
+                $"Bạn có chắc chắn muốn đặt KPI {targetValue} hồ sơ/tháng cho {target}?",
+                "Xác nhận đặt KPI",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question);
+            if (confirmation != MessageBoxResult.Yes)
+            {
+                return;
+            }
+
             try
             {
+                var scope = IsSelectedStaffLeadershipScope() ? "Staff" : "All";
+                var targetName = IsSelectedStaffLeadershipScope() ? SelectedStaff?.Name : string.Empty;
                 AppDataService.Instance.SaveLeadershipKpi(
-                    IsSelectedStaffLeadershipScope() ? "Staff" : "All",
-                    IsSelectedStaffLeadershipScope() ? SelectedStaff?.Name : string.Empty,
+                    scope,
+                    targetName,
                     LeadershipKpiTargetText);
 
-                LeadershipKpiStatus = $"Đã đặt KPI cho {target} lúc {DateTime.Now:HH:mm}.";
+                var currentLeaderName = (AuthContext.CurrentDisplayName ?? string.Empty).Trim();
+                var leaderDisplayName = currentLeaderName.StartsWith("Lãnh đạo", StringComparison.CurrentCultureIgnoreCase)
+                    ? currentLeaderName
+                    : $"Lãnh đạo {currentLeaderName}";
+                var notificationMessage = $"{leaderDisplayName} đã đặt KPI cho bạn là {targetValue} hồ sơ/tháng.";
+                var notificationTargets = string.Equals(scope, "Staff", StringComparison.Ordinal)
+                    ? new[] { targetName }
+                    : _allStaffRows
+                        .Select(row => row.Name?.Trim())
+                        .Where(name => !string.IsNullOrWhiteSpace(name)
+                            && !string.Equals(name, "Chưa có dữ liệu", StringComparison.OrdinalIgnoreCase))
+                        .Distinct(StringComparer.CurrentCultureIgnoreCase)
+                        .ToArray();
+
+                foreach (var notificationTarget in notificationTargets)
+                {
+                    AppDataService.Instance.SaveLeadershipNotice(
+                        "Staff",
+                        notificationTarget,
+                        targetValue.ToString(CultureInfo.InvariantCulture),
+                        notificationMessage);
+                }
+
+                LeadershipKpiStatus = $"Đã đặt KPI và gửi thông báo cho {target} lúc {DateTime.Now:HH:mm}.";
             }
             catch (InvalidOperationException ex)
             {
@@ -670,7 +739,8 @@ namespace QuanLyHoSo.ViewModels
             var page = AppDataService.Instance.GetLeadershipNotices(
                 AuthContext.CurrentDisplayName,
                 (CurrentNotificationPage - 1) * NotificationPageSize,
-                NotificationPageSize);
+                NotificationPageSize,
+                AuthContext.IsLeader);
             var totalCount = page?.TotalCount ?? 0;
             TotalNotificationPages = Math.Max(1, (int)Math.Ceiling(totalCount / (double)NotificationPageSize));
             if (CurrentNotificationPage > TotalNotificationPages)
@@ -679,7 +749,8 @@ namespace QuanLyHoSo.ViewModels
                 page = AppDataService.Instance.GetLeadershipNotices(
                     AuthContext.CurrentDisplayName,
                     (CurrentNotificationPage - 1) * NotificationPageSize,
-                    NotificationPageSize);
+                    NotificationPageSize,
+                    AuthContext.IsLeader);
                 totalCount = page?.TotalCount ?? 0;
             }
 
@@ -734,11 +805,40 @@ namespace QuanLyHoSo.ViewModels
             LoadNotifications();
         }
 
+        private void OpenNotification(object parameter)
+        {
+            if (parameter is not StaffNotification notification)
+            {
+                return;
+            }
+
+            SelectedNotification = notification;
+            IsNotificationDetailOpen = true;
+
+            if (!notification.IsUnread)
+            {
+                return;
+            }
+
+            AppDataService.Instance.MarkLeadershipNoticesAsRead(
+                AuthContext.CurrentDisplayName,
+                new[] { notification.Id });
+            LoadNotifications();
+        }
+
+        private void CloseNotification()
+        {
+            IsNotificationDetailOpen = false;
+            SelectedNotification = null;
+        }
+
         private void NotifyUnreadCountChanged()
         {
-            if (AuthContext.IsOfficer)
+            if (CanReadLeadershipNotice)
             {
-                _notificationUnreadCountChanged?.Invoke(AppDataService.Instance.CountUnreadLeadershipNotices(AuthContext.CurrentDisplayName));
+                _notificationUnreadCountChanged?.Invoke(AppDataService.Instance.CountUnreadLeadershipNotices(
+                    AuthContext.CurrentDisplayName,
+                    AuthContext.IsLeader));
             }
         }
 

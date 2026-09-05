@@ -30,19 +30,22 @@
         </Style>
     </UserControl.Resources>
 
+    <Grid>
     <ScrollViewer VerticalScrollBarVisibility="Auto"
                   HorizontalScrollBarVisibility="Disabled">
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" MinWidth="700" />
+                <ColumnDefinition Width="14" />
                 <ColumnDefinition Width="300" />
             </Grid.ColumnDefinitions>
 
-            <Grid Grid.Row="0" Grid.ColumnSpan="2" Margin="0,0,0,18">
+            <Grid Grid.Row="0" Grid.ColumnSpan="3" Margin="0,0,0,18">
                 <StackPanel>
                     <TextBlock Text="THEO DÕI XỬ LÝ CÁN BỘ" Style="{StaticResource PageTitleText}" />
                     <TextBlock Text="Theo dõi tiến độ, deadline và hiệu suất xử lý hồ sơ của từng cán bộ"
@@ -126,9 +129,11 @@
                 </Grid>
             </Grid>
 
-            <Grid x:Name="LeftContentPanel" Grid.Row="1" Grid.Column="0" Margin="0,0,14,0" VerticalAlignment="Stretch" MinHeight="{Binding ActualHeight, ElementName=RightInfoCard}">
+            <Grid x:Name="LeftContentPanel"
+                  Grid.Row="1"
+                  Grid.Column="0"
+                  VerticalAlignment="Stretch">
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
@@ -161,29 +166,33 @@
                                     </Border.Style>
                                     <Grid>
                                         <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="62" />
+                                            <ColumnDefinition Width="58" />
                                             <ColumnDefinition Width="*" />
                                         </Grid.ColumnDefinitions>
-                                        <Border Width="48" Height="48" CornerRadius="8" Background="{Binding BackgroundColor}">
+                                        <Border Width="46"
+                                                Height="46"
+                                                CornerRadius="23"
+                                                Background="{Binding AccentColor}">
                                             <TextBlock Text="{Binding IconGlyph}"
                                                        FontFamily="Segoe MDL2 Assets"
-                                                       FontSize="25"
-                                                       Foreground="{Binding AccentColor}"
+                                                       FontSize="22"
+                                                       FontWeight="Bold"
+                                                       Foreground="White"
                                                        HorizontalAlignment="Center"
                                                        VerticalAlignment="Center" />
                                         </Border>
                                         <StackPanel Grid.Column="1">
                                             <TextBlock Text="{Binding Title}"
-                                                       FontSize="12"
-                                                       FontWeight="Bold"
-                                                       Foreground="{StaticResource TextBrush}" />
+                                                       FontSize="13"
+                                                       FontWeight="SemiBold"
+                                                       Foreground="{Binding AccentColor}" />
                                             <TextBlock Text="{Binding Value}"
-                                                       FontSize="27"
+                                                       FontSize="28"
                                                        FontWeight="Bold"
-                                                       Margin="0,5,0,3" />
+                                                       Margin="0,6,0,4" />
                                             <TextBlock Text="{Binding Note}"
                                                        FontSize="12"
-                                                       Foreground="{StaticResource TextBrush}"
+                                                       Style="{StaticResource MutedText}"
                                                        TextWrapping="Wrap" />
                                         </StackPanel>
                                     </Grid>
@@ -193,7 +202,7 @@
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
 
-                <Border Grid.Row="1" Style="{StaticResource CardBorder}" Padding="0" Margin="0,0,0,14">
+                <Border Grid.Row="1" Style="{StaticResource CardBorder}" Padding="0">
                     <StackPanel>
                         <TextBlock Text="HIỆU SUẤT XỬ LÝ CỦA CÁN BỘ"
                                    Style="{StaticResource SectionTitleText}"
@@ -203,7 +212,7 @@
                                   IsReadOnly="True"
                                   HeadersVisibility="Column"
                                   RowHeight="43"
-                                  Height="337"
+                                  Height="252"
                                   SelectionMode="Single"
                                   SelectionUnit="FullRow"
                                   ScrollViewer.VerticalScrollBarVisibility="Disabled"
@@ -252,7 +261,6 @@
                                                 </Border>
                                                 <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                                     <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="12" />
-                                                    <TextBlock Text="{Binding Position}" FontSize="11" Foreground="{StaticResource MutedTextBrush}" />
                                                 </StackPanel>
                                             </Grid>
                                         </DataTemplate>
@@ -358,27 +366,67 @@
                     </StackPanel>
                 </Border>
 
-                <Grid Grid.Row="2">
+            </Grid>
+
+                <Grid Grid.Row="2"
+                      Grid.ColumnSpan="3"
+                      Height="330"
+                      Margin="0,14,0,0"
+                      VerticalAlignment="Top">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="1.25*" />
-                        <ColumnDefinition Width="0.95*" />
+                        <ColumnDefinition Width="1.15*" />
+                        <ColumnDefinition Width="0.9*" />
+                        <ColumnDefinition Width="14" />
+                        <ColumnDefinition Width="300" />
                     </Grid.ColumnDefinitions>
 
                     <Border Grid.Column="0" Style="{StaticResource CardBorder}" Margin="0,0,6,0">
-                        <StackPanel>
-                            <TextBlock Text="HIỆU SUẤT XỬ LÝ THEO CÁN BỘ" Style="{StaticResource SectionTitleText}" Margin="0,0,0,12" />
-                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,12">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+                            <Grid Margin="0,0,0,10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Border Width="34" Height="34" CornerRadius="17" Background="#EAF2FF">
+                                    <TextBlock Text="&#xE9D2;"
+                                               FontFamily="Segoe MDL2 Assets"
+                                               FontSize="16"
+                                               FontWeight="Bold"
+                                               Foreground="#0B5CFF"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center" />
+                                </Border>
+                                <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
+                                    <TextBlock Text="HIỆU SUẤT XỬ LÝ THEO CÁN BỘ" Style="{StaticResource SectionTitleText}" />
+                                    <TextBlock Text="So sánh tỷ lệ đúng hạn và KPI của từng cán bộ"
+                                               Style="{StaticResource MutedText}"
+                                               FontSize="11"
+                                               Margin="0,2,0,0" />
+                                </StackPanel>
+                            </Grid>
+                            <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,4,8">
                                 <Ellipse Width="8" Height="8" Fill="#0B5CFF" VerticalAlignment="Center" />
-                                <TextBlock Text="Tỷ lệ đúng hạn (%)" FontSize="12" Margin="6,0,18,0" />
+                                <TextBlock Text="Đúng hạn" FontSize="12" Margin="6,0,16,0" />
                                 <Ellipse Width="8" Height="8" Fill="#35C47B" VerticalAlignment="Center" />
-                                <TextBlock Text="KPI (%)" FontSize="12" Margin="6,0,0,0" />
+                                <TextBlock Text="KPI" FontSize="12" Margin="6,0,0,0" />
                             </StackPanel>
-                            <Grid Height="170">
+                            <Border Grid.Row="2"
+                                    Background="#FBFCFF"
+                                    BorderBrush="#ECF1F8"
+                                    BorderThickness="1"
+                                    CornerRadius="6"
+                                    Padding="8,6,8,4">
+                            <Grid>
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="*" />
-                                    <RowDefinition Height="22" />
+                                    <RowDefinition Height="24" />
                                 </Grid.RowDefinitions>
-                                <Border Grid.Row="0" BorderBrush="#ECF1F8" BorderThickness="0,1,0,1" />
+                                <Border Grid.Row="0" BorderBrush="#E3EAF4" BorderThickness="0,0,0,1" />
                                 <ItemsControl Grid.Row="0" ItemsSource="{Binding BarStats}" VerticalAlignment="Bottom">
                                     <ItemsControl.ItemsPanel>
                                         <ItemsPanelTemplate>
@@ -388,7 +436,7 @@
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
                                             <StackPanel VerticalAlignment="Bottom" HorizontalAlignment="Center">
-                                                <Grid Height="132" Width="44">
+                                                <Grid Height="122" Width="44">
                                                     <Border Width="16"
                                                             Height="{Binding OnTimeHeight}"
                                                             Background="#0B5CFF"
@@ -423,7 +471,8 @@
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
                             </Grid>
-                        </StackPanel>
+                            </Border>
+                        </Grid>
                     </Border>
 
                     <Border Grid.Column="1" Style="{StaticResource CardBorder}" Margin="6,0,0,0">
@@ -433,13 +482,41 @@
                                 <RowDefinition Height="*" />
                                 <RowDefinition Height="Auto" />
                             </Grid.RowDefinitions>
-                            <TextBlock Text="TÌNH TRẠNG DEADLINE" Style="{StaticResource SectionTitleText}" />
-                            <Grid Grid.Row="1" Margin="0,16,0,0">
+                            <Grid>
                                 <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="150" />
+                                    <ColumnDefinition Width="Auto" />
                                     <ColumnDefinition Width="*" />
                                 </Grid.ColumnDefinitions>
-                                <Viewbox Width="132" Height="132" Stretch="Uniform">
+                                <Border Width="34" Height="34" CornerRadius="17" Background="#FFF0E8">
+                                    <TextBlock Text="&#xE823;"
+                                               FontFamily="Segoe MDL2 Assets"
+                                               FontSize="16"
+                                               FontWeight="Bold"
+                                               Foreground="#FF6B2C"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center" />
+                                </Border>
+                                <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
+                                    <TextBlock Text="TÌNH TRẠNG DEADLINE" Style="{StaticResource SectionTitleText}" />
+                                    <TextBlock Text="Phân bố hồ sơ theo thời hạn xử lý"
+                                               Style="{StaticResource MutedText}"
+                                               FontSize="11"
+                                               Margin="0,2,0,0" />
+                                </StackPanel>
+                            </Grid>
+                            <Border Grid.Row="1"
+                                    Background="#FBFCFF"
+                                    BorderBrush="#ECF1F8"
+                                    BorderThickness="1"
+                                    CornerRadius="6"
+                                    Margin="0,10,0,8"
+                                    Padding="8">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="142" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Viewbox Width="124" Height="124" Stretch="Uniform">
                                     <Grid Width="190" Height="190">
                                         <Ellipse Stroke="#ECF1F8" StrokeThickness="26" Fill="#F8FAFD" />
                                         <ItemsControl ItemsSource="{Binding DeadlineStats}"
@@ -487,23 +564,398 @@
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
                             </Grid>
+                            </Border>
                             <TextBlock Grid.Row="2"
                                        Text="Dữ liệu cập nhật đến 03/09/2026 09:30"
                                        FontSize="12"
-                                       Foreground="{StaticResource MutedTextBrush}" />
+                                       Foreground="{StaticResource MutedTextBrush}"
+                                       HorizontalAlignment="Right" />
                         </Grid>
                     </Border>
-                </Grid>
-            </Grid>
 
-            <Border x:Name="RightInfoCard" Grid.Row="1" Grid.Column="1" Style="{StaticResource CardBorder}" Padding="14" VerticalAlignment="Stretch">
-                <StackPanel>
+                    <Grid Grid.Column="3">
+                        <Border Style="{StaticResource CardBorder}"
+                                Padding="14"
+                                Visibility="{Binding CanSendLeadershipNotice, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="*" />
+                                </Grid.RowDefinitions>
+
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Border Width="34" Height="34" CornerRadius="17" Background="#EAF2FF">
+                                        <TextBlock Text="&#xE713;"
+                                                   FontFamily="Segoe MDL2 Assets"
+                                                   FontSize="16"
+                                                   FontWeight="Bold"
+                                                   Foreground="{StaticResource PrimaryBrush}"
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center" />
+                                    </Border>
+                                    <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
+                                        <TextBlock Text="THAO TÁC CÁN BỘ" Style="{StaticResource SectionTitleText}" />
+                                        <TextBlock Text="Gửi thông báo hoặc thiết lập chỉ tiêu KPI"
+                                                   Style="{StaticResource MutedText}"
+                                                   FontSize="11"
+                                                   Margin="0,2,0,0" />
+                                    </StackPanel>
+                                </Grid>
+
+                                <TabControl Grid.Row="1"
+                                            Margin="0,10,0,0"
+                                            Background="Transparent"
+                                            BorderBrush="{StaticResource LineBrush}"
+                                            SelectedIndex="{Binding LeadershipActionTabIndex, Mode=OneTime}">
+                                    <TabItem Header="Thông báo"
+                                             Visibility="{Binding CanReadAdminNotifications, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                        <Grid Margin="8">
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="*" />
+                                                <RowDefinition Height="Auto" />
+                                            </Grid.RowDefinitions>
+                                            <Grid Margin="0,0,0,7">
+                                                <TextBlock Text="Thông báo đã nhận"
+                                                           FontSize="11"
+                                                           Foreground="{StaticResource MutedTextBrush}"
+                                                           VerticalAlignment="Center" />
+                                                <Button Style="{StaticResource SecondaryButton}"
+                                                        Command="{Binding MarkNotificationsReadCommand}"
+                                                        Height="26"
+                                                        MinWidth="62"
+                                                        Padding="8,0"
+                                                        HorizontalAlignment="Right">
+                                                    <TextBlock Text="Đã đọc" FontSize="11" FontWeight="SemiBold" />
+                                                </Button>
+                                            </Grid>
+
+                                            <ScrollViewer Grid.Row="1"
+                                                          VerticalScrollBarVisibility="Auto"
+                                                          HorizontalScrollBarVisibility="Disabled">
+                                                <ItemsControl ItemsSource="{Binding Notifications}">
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <Button Style="{StaticResource MetricCardButton}"
+                                                                    Command="{Binding DataContext.OpenNotificationCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                                    CommandParameter="{Binding}"
+                                                                    Margin="0,0,0,6"
+                                                                    ToolTip="Bấm để xem toàn bộ thông báo">
+                                                                <Border Background="{Binding BackgroundColor}"
+                                                                        BorderBrush="{Binding BorderColor}"
+                                                                        BorderThickness="1"
+                                                                        CornerRadius="6"
+                                                                        Padding="8">
+                                                                    <Grid>
+                                                                        <Grid.ColumnDefinitions>
+                                                                            <ColumnDefinition Width="10" />
+                                                                            <ColumnDefinition Width="*" />
+                                                                            <ColumnDefinition Width="16" />
+                                                                        </Grid.ColumnDefinitions>
+                                                                        <Ellipse Width="7"
+                                                                                 Height="7"
+                                                                                 Fill="#E3342F"
+                                                                                 VerticalAlignment="Top"
+                                                                                 Margin="0,5,0,0"
+                                                                                 Visibility="{Binding IsUnread, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                                                        <StackPanel Grid.Column="1">
+                                                                            <TextBlock Text="{Binding Message}"
+                                                                                       MaxHeight="38"
+                                                                                       TextWrapping="Wrap"
+                                                                                       TextTrimming="CharacterEllipsis"
+                                                                                       FontWeight="{Binding FontWeightText}"
+                                                                                       Foreground="{StaticResource TextBrush}"
+                                                                                       LineHeight="19" />
+                                                                            <TextBlock Text="{Binding ReceivedText}"
+                                                                                       FontSize="10"
+                                                                                       Foreground="{StaticResource MutedTextBrush}"
+                                                                                       TextTrimming="CharacterEllipsis"
+                                                                                       Margin="0,4,0,0" />
+                                                                        </StackPanel>
+                                                                        <TextBlock Grid.Column="2"
+                                                                                   Text="&#xE76C;"
+                                                                                   FontFamily="Segoe MDL2 Assets"
+                                                                                   FontSize="10"
+                                                                                   Foreground="{StaticResource MutedTextBrush}"
+                                                                                   HorizontalAlignment="Right"
+                                                                                   VerticalAlignment="Center" />
+                                                                    </Grid>
+                                                                </Border>
+                                                            </Button>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                            </ScrollViewer>
+
+                                            <Grid Grid.Row="2" Margin="0,5,0,0">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Text="{Binding NotificationPageText}"
+                                                           Foreground="{StaticResource MutedTextBrush}"
+                                                           FontSize="10"
+                                                           VerticalAlignment="Center" />
+                                                <Button Grid.Column="1"
+                                                        Style="{StaticResource IconButton}"
+                                                        Command="{Binding PreviousNotificationPageCommand}"
+                                                        ToolTip="Trang trước"
+                                                        Margin="0,0,5,0">
+                                                    <TextBlock Text="&#xE76B;" FontFamily="Segoe MDL2 Assets" />
+                                                </Button>
+                                                <Button Grid.Column="2"
+                                                        Style="{StaticResource IconButton}"
+                                                        Command="{Binding NextNotificationPageCommand}"
+                                                        ToolTip="Trang sau">
+                                                    <TextBlock Text="&#xE76C;" FontFamily="Segoe MDL2 Assets" />
+                                                </Button>
+                                            </Grid>
+                                        </Grid>
+                                    </TabItem>
+
+                                    <TabItem Header="Nhắc nhở">
+                                        <Grid Margin="10">
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="*" />
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                            </Grid.RowDefinitions>
+                                            <TextBlock Text="Phạm vi thông báo"
+                                                       FontSize="11"
+                                                       Foreground="{StaticResource MutedTextBrush}"
+                                                       Margin="0,0,0,4" />
+                                            <ComboBox Grid.Row="1"
+                                                      ItemsSource="{Binding LeadershipScopes}"
+                                                      SelectedItem="{Binding SelectedLeadershipScope, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                      Height="32"
+                                                      Margin="0,0,0,8" />
+                                            <TextBlock Grid.Row="2"
+                                                       Text="Nội dung thông báo"
+                                                       FontSize="11"
+                                                       Foreground="{StaticResource MutedTextBrush}"
+                                                       Margin="0,0,0,4" />
+                                            <TextBox Grid.Row="3"
+                                                     MinHeight="54"
+                                                     Text="{Binding LeadershipNoticeText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                     TextWrapping="Wrap"
+                                                     AcceptsReturn="True"
+                                                     VerticalContentAlignment="Top"
+                                                     Margin="0,0,0,8" />
+                                            <Button Grid.Row="4"
+                                                    Style="{StaticResource PrimaryButton}"
+                                                    Command="{Binding SaveLeadershipDirectiveCommand}"
+                                                    HorizontalAlignment="Stretch"
+                                                    Height="34"
+                                                    Padding="8,0">
+                                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                                    <TextBlock Text="&#xE724;" FontFamily="Segoe MDL2 Assets" Margin="0,0,6,0" />
+                                                    <TextBlock Text="Gửi thông báo" />
+                                                </StackPanel>
+                                            </Button>
+                                            <TextBlock Grid.Row="5"
+                                                       Text="{Binding LeadershipActionStatus}"
+                                                       Foreground="{StaticResource PrimaryBrush}"
+                                                       FontSize="11"
+                                                       TextWrapping="Wrap"
+                                                       MaxHeight="28"
+                                                       Margin="0,6,0,0" />
+                                        </Grid>
+                                    </TabItem>
+
+                                    <TabItem Header="Đặt KPI"
+                                             Visibility="{Binding CanSetLeadershipKpi, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                        <Grid Margin="10">
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                            </Grid.RowDefinitions>
+                                            <TextBlock Text="Phạm vi áp dụng"
+                                                       FontSize="11"
+                                                       Foreground="{StaticResource MutedTextBrush}"
+                                                       Margin="0,0,0,4" />
+                                            <ComboBox Grid.Row="1"
+                                                      ItemsSource="{Binding LeadershipScopes}"
+                                                      SelectedItem="{Binding SelectedLeadershipScope, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                      Height="32"
+                                                      Margin="0,0,0,10" />
+                                            <TextBlock Grid.Row="2"
+                                                       Text="Chỉ tiêu hồ sơ"
+                                                       FontSize="11"
+                                                       Foreground="{StaticResource MutedTextBrush}"
+                                                       Margin="0,0,0,4" />
+                                            <TextBox Grid.Row="3"
+                                                     Text="{Binding LeadershipKpiTargetText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                     Height="32"
+                                                     VerticalContentAlignment="Center"
+                                                     Margin="0,0,0,10" />
+                                            <Button Grid.Row="4"
+                                                    Style="{StaticResource PrimaryButton}"
+                                                    Command="{Binding SaveLeadershipKpiCommand}"
+                                                    HorizontalAlignment="Stretch"
+                                                    Height="34"
+                                                    Padding="8,0">
+                                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                                    <TextBlock Text="&#xE9D9;" FontFamily="Segoe MDL2 Assets" Margin="0,0,6,0" />
+                                                    <TextBlock Text="Lưu KPI" />
+                                                </StackPanel>
+                                            </Button>
+                                            <TextBlock Grid.Row="5"
+                                                       Text="{Binding LeadershipKpiStatus}"
+                                                       Foreground="{StaticResource PrimaryBrush}"
+                                                       FontSize="11"
+                                                       TextWrapping="Wrap"
+                                                       MaxHeight="28"
+                                                       Margin="0,6,0,0" />
+                                        </Grid>
+                                    </TabItem>
+                                </TabControl>
+                            </Grid>
+                        </Border>
+
+                        <Border Style="{StaticResource CardBorder}"
+                                Padding="14"
+                                Visibility="{Binding ShowStandaloneNotificationInbox, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="*" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <Grid Margin="0,0,0,10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <Border Width="34" Height="34" CornerRadius="17" Background="#EAF2FF">
+                                        <TextBlock Text="&#xE8BD;"
+                                                   FontFamily="Segoe MDL2 Assets"
+                                                   FontSize="16"
+                                                   FontWeight="Bold"
+                                                   Foreground="{StaticResource PrimaryBrush}"
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center" />
+                                    </Border>
+                                    <StackPanel Grid.Column="1" Margin="10,0,8,0" VerticalAlignment="Center">
+                                        <TextBlock Text="THÔNG BÁO" Style="{StaticResource SectionTitleText}" />
+                                        <TextBlock Text="Tin nhắn từ lãnh đạo" Style="{StaticResource MutedText}" FontSize="11" Margin="0,2,0,0" />
+                                    </StackPanel>
+                                    <Button Grid.Column="2"
+                                            Style="{StaticResource SecondaryButton}"
+                                            Command="{Binding MarkNotificationsReadCommand}"
+                                            Height="28"
+                                            MinWidth="62"
+                                            Padding="8,0">
+                                        <TextBlock Text="Đã đọc" FontSize="11" FontWeight="SemiBold" />
+                                    </Button>
+                                </Grid>
+
+                                <ScrollViewer Grid.Row="1"
+                                              VerticalScrollBarVisibility="Auto"
+                                              HorizontalScrollBarVisibility="Disabled">
+                                    <ItemsControl ItemsSource="{Binding Notifications}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Button Style="{StaticResource MetricCardButton}"
+                                                        Command="{Binding DataContext.OpenNotificationCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                        CommandParameter="{Binding}"
+                                                        Margin="0,0,0,7"
+                                                        ToolTip="Bấm để xem toàn bộ thông báo">
+                                                    <Border Background="{Binding BackgroundColor}"
+                                                            BorderBrush="{Binding BorderColor}"
+                                                            BorderThickness="1"
+                                                            CornerRadius="6"
+                                                            Padding="9">
+                                                        <Grid>
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="10" />
+                                                                <ColumnDefinition Width="*" />
+                                                                <ColumnDefinition Width="16" />
+                                                            </Grid.ColumnDefinitions>
+                                                            <Ellipse Width="7"
+                                                                     Height="7"
+                                                                     Fill="#E3342F"
+                                                                     VerticalAlignment="Top"
+                                                                     Margin="0,5,0,0"
+                                                                     Visibility="{Binding IsUnread, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                                            <StackPanel Grid.Column="1">
+                                                                <TextBlock Text="{Binding Message}"
+                                                                           MaxHeight="38"
+                                                                           TextWrapping="Wrap"
+                                                                           TextTrimming="CharacterEllipsis"
+                                                                           FontWeight="{Binding FontWeightText}"
+                                                                           Foreground="{StaticResource TextBrush}"
+                                                                           LineHeight="19" />
+                                                                <TextBlock Text="{Binding ReceivedText}"
+                                                                           FontSize="11"
+                                                                           Foreground="{StaticResource MutedTextBrush}"
+                                                                           TextTrimming="CharacterEllipsis"
+                                                                           Margin="0,5,0,0" />
+                                                            </StackPanel>
+                                                            <TextBlock Grid.Column="2"
+                                                                       Text="&#xE76C;"
+                                                                       FontFamily="Segoe MDL2 Assets"
+                                                                       FontSize="10"
+                                                                       Foreground="{StaticResource MutedTextBrush}"
+                                                                       HorizontalAlignment="Right"
+                                                                       VerticalAlignment="Center" />
+                                                        </Grid>
+                                                    </Border>
+                                                </Button>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </ScrollViewer>
+
+                                <Grid Grid.Row="2" Margin="0,6,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="{Binding NotificationPageText}"
+                                               Foreground="{StaticResource MutedTextBrush}"
+                                               FontSize="11"
+                                               VerticalAlignment="Center" />
+                                    <Button Grid.Column="1"
+                                            Style="{StaticResource IconButton}"
+                                            Command="{Binding PreviousNotificationPageCommand}"
+                                            ToolTip="Trang trước"
+                                            Margin="0,0,6,0">
+                                        <TextBlock Text="&#xE76B;" FontFamily="Segoe MDL2 Assets" />
+                                    </Button>
+                                    <Button Grid.Column="2"
+                                            Style="{StaticResource IconButton}"
+                                            Command="{Binding NextNotificationPageCommand}"
+                                            ToolTip="Trang sau">
+                                        <TextBlock Text="&#xE76C;" FontFamily="Segoe MDL2 Assets" />
+                                    </Button>
+                                </Grid>
+                            </Grid>
+                        </Border>
+                    </Grid>
+                </Grid>
+
+            <Grid Grid.Row="1" Grid.Column="2" VerticalAlignment="Stretch">
+                <Border x:Name="RightInfoCard"
+                        Style="{StaticResource CardBorder}"
+                        Padding="14"
+                        VerticalAlignment="Stretch">
+                    <StackPanel>
                     <Grid Margin="0,0,0,14">
                         <TextBlock Text="Thông tin cán bộ" Style="{StaticResource SectionTitleText}" />
-                        <TextBlock Text="&#xE711;"
-                                   FontFamily="Segoe MDL2 Assets"
-                                   HorizontalAlignment="Right"
-                                   Foreground="{StaticResource MutedTextBrush}" />
                     </Grid>
 
                     <Border Width="74" Height="74" CornerRadius="37" Background="#EAF2FF" HorizontalAlignment="Center" Margin="0,2,0,10">
@@ -522,13 +974,7 @@
                                Style="{StaticResource MutedText}"
                                FontSize="13"
                                HorizontalAlignment="Center"
-                               Margin="0,4,0,0" />
-                    <Border Background="#EAF2FF" CornerRadius="10" Padding="10,4" HorizontalAlignment="Center" Margin="0,6,0,18">
-                        <TextBlock Text="Phòng Tiếp nhận và Xử lý"
-                                   FontSize="12"
-                                   Foreground="{StaticResource PrimaryBrush}"
-                                   FontWeight="SemiBold" />
-                    </Border>
+                               Margin="0,4,0,18" />
 
                     <Grid Margin="0,0,0,16">
                         <Grid.ColumnDefinitions>
@@ -554,7 +1000,7 @@
                         <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding SelectedStaff.AverageProcessingTimeText}" FontWeight="SemiBold" Margin="0,8,0,0" />
                     </Grid>
 
-                    <Border BorderBrush="{StaticResource LineBrush}" BorderThickness="1" CornerRadius="6" Padding="12" Margin="0,0,0,18">
+                    <Border BorderBrush="{StaticResource LineBrush}" BorderThickness="1" CornerRadius="6" Padding="12">
                         <StackPanel>
                             <TextBlock Text="KPI tháng 09/2026" FontWeight="Bold" Margin="0,0,0,12" />
                             <Grid Margin="0,0,0,8">
@@ -572,204 +1018,97 @@
                             <ProgressBar Height="7" Minimum="0" Maximum="100" Value="{Binding SelectedStaffTargetProgressPercent, Mode=OneWay}" Foreground="{StaticResource PrimaryBrush}" Background="#E9EEF6" />
                         </StackPanel>
                     </Border>
+                    </StackPanel>
+                </Border>
 
-                    <Border BorderBrush="{StaticResource LineBrush}"
-                            BorderThickness="1"
-                            CornerRadius="6"
-                            Padding="12"
-                            Visibility="{Binding CanSendLeadershipNotice, Converter={StaticResource BooleanToVisibilityConverter}}">
-                        <StackPanel>
-                            <TextBlock Text="{Binding LeadershipCardTitle}" Style="{StaticResource SectionTitleText}" Margin="0,0,0,12" />
 
-                            <TextBlock Text="Phạm vi thông báo" FontSize="12" Foreground="{StaticResource MutedTextBrush}" Margin="0,0,0,5" />
-                            <ComboBox ItemsSource="{Binding LeadershipScopes}"
-                                      SelectedItem="{Binding SelectedLeadershipScope, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                      Margin="0,0,0,10" />
-
-                            <TextBlock Text="Nội dung thông báo" FontSize="12" Foreground="{StaticResource MutedTextBrush}" Margin="0,0,0,5" />
-                            <TextBox Height="86"
-                                     Text="{Binding LeadershipNoticeText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                     TextWrapping="Wrap"
-                                     AcceptsReturn="True"
-                                     VerticalContentAlignment="Top"
-                                     Margin="0,0,0,12" />
-
-                            <Button Style="{StaticResource PrimaryButton}" Command="{Binding SaveLeadershipDirectiveCommand}" HorizontalAlignment="Stretch" Padding="8,0">
-                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                                    <TextBlock Text="&#xE724;" FontFamily="Segoe MDL2 Assets" Margin="0,0,6,0" />
-                                    <TextBlock Text="Gửi thông báo" />
-                                </StackPanel>
-                            </Button>
-
-                            <TextBlock Text="{Binding LeadershipActionStatus}"
-                                       Foreground="{StaticResource PrimaryBrush}"
-                                       FontSize="12"
-                                       TextWrapping="Wrap"
-                                       Margin="0,10,0,0" />
-                        </StackPanel>
-                    </Border>
-
-                    <Border BorderBrush="{StaticResource LineBrush}"
-                            BorderThickness="1"
-                            CornerRadius="6"
-                            Padding="12"
-                            Margin="0,12,0,0"
-                            Visibility="{Binding CanSetLeadershipKpi, Converter={StaticResource BooleanToVisibilityConverter}}">
-                        <StackPanel>
-                            <TextBlock Text="ĐẶT KPI" Style="{StaticResource SectionTitleText}" Margin="0,0,0,12" />
-
-                            <TextBlock Text="Phạm vi áp dụng" FontSize="12" Foreground="{StaticResource MutedTextBrush}" Margin="0,0,0,5" />
-                            <ComboBox ItemsSource="{Binding LeadershipScopes}"
-                                      SelectedItem="{Binding SelectedLeadershipScope, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                      Margin="0,0,0,10" />
-
-                            <TextBlock Text="Chỉ tiêu hồ sơ" FontSize="12" Foreground="{StaticResource MutedTextBrush}" Margin="0,0,0,5" />
-                            <TextBox Text="{Binding LeadershipKpiTargetText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                     Margin="0,0,0,12" />
-
-                            <Button Style="{StaticResource PrimaryButton}" Command="{Binding SaveLeadershipKpiCommand}" HorizontalAlignment="Stretch" Padding="8,0">
-                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                                    <TextBlock Text="&#xE9D9;" FontFamily="Segoe MDL2 Assets" Margin="0,0,6,0" />
-                                    <TextBlock Text="Lưu KPI" />
-                                </StackPanel>
-                            </Button>
-
-                            <TextBlock Text="{Binding LeadershipKpiStatus}"
-                                       Foreground="{StaticResource PrimaryBrush}"
-                                       FontSize="12"
-                                       TextWrapping="Wrap"
-                                       Margin="0,10,0,0" />
-                        </StackPanel>
-                    </Border>
-
-                    <Border BorderBrush="{StaticResource LineBrush}"
-                            BorderThickness="1"
-                            CornerRadius="6"
-                            Padding="12"
-                            Margin="0,12,0,0"
-                            Visibility="{Binding CanReadLeadershipNotice, Converter={StaticResource BooleanToVisibilityConverter}}">
-                        <StackPanel>
-                            <Grid Margin="0,0,0,10">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Text="THÔNG BÁO" Style="{StaticResource SectionTitleText}" />
-                                <Button Grid.Column="1"
-                                        Style="{StaticResource SecondaryButton}"
-                                        Command="{Binding MarkNotificationsReadCommand}"
-                                        Height="28"
-                                        MinWidth="92"
-                                        Padding="8,0">
-                                    <TextBlock Text="Đã đọc" FontSize="12" FontWeight="SemiBold" />
-                                </Button>
-                            </Grid>
-
-                            <ItemsControl ItemsSource="{Binding Notifications}">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate>
-                                        <Border Background="{Binding BackgroundColor}"
-                                                BorderBrush="{Binding BorderColor}"
-                                                BorderThickness="1"
-                                                CornerRadius="6"
-                                                Padding="10"
-                                                Margin="0,0,0,8">
-                                            <Grid>
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="10" />
-                                                    <ColumnDefinition Width="*" />
-                                                </Grid.ColumnDefinitions>
-                                                <Ellipse Width="7"
-                                                         Height="7"
-                                                         Fill="#E3342F"
-                                                         VerticalAlignment="Top"
-                                                         Margin="0,5,0,0"
-                                                         Visibility="{Binding IsUnread, Converter={StaticResource BooleanToVisibilityConverter}}" />
-                                                <StackPanel Grid.Column="1">
-                                                    <TextBlock Text="{Binding Message}"
-                                                               TextWrapping="Wrap"
-                                                               FontWeight="{Binding FontWeightText}"
-                                                               Foreground="{StaticResource TextBrush}"
-                                                               LineHeight="19" />
-                                                    <TextBlock Text="{Binding ReceivedText}"
-                                                               FontSize="11"
-                                                               Foreground="{StaticResource MutedTextBrush}"
-                                                               TextWrapping="Wrap"
-                                                               Margin="0,6,0,0" />
-                                                </StackPanel>
-                                            </Grid>
-                                        </Border>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-
-                            <Grid Margin="0,2,0,0">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Text="{Binding NotificationSummaryText}"
-                                           Foreground="{StaticResource MutedTextBrush}"
-                                           FontSize="12"
-                                           VerticalAlignment="Center" />
-                                <TextBlock Grid.Column="1"
-                                           Text="{Binding NotificationPageText}"
-                                           Foreground="{StaticResource MutedTextBrush}"
-                                           FontSize="12"
-                                           HorizontalAlignment="Right"
-                                           VerticalAlignment="Center"
-                                           Margin="0,0,8,0" />
-                                <Button Grid.Column="2"
-                                        Style="{StaticResource IconButton}"
-                                        Command="{Binding PreviousNotificationPageCommand}"
-                                        ToolTip="Trang trước"
-                                        Margin="0,0,6,0">
-                                    <TextBlock Text="&#xE76B;" FontFamily="Segoe MDL2 Assets" />
-                                </Button>
-                                <Button Grid.Column="3"
-                                        Style="{StaticResource IconButton}"
-                                        Command="{Binding NextNotificationPageCommand}"
-                                        ToolTip="Trang sau">
-                                    <TextBlock Text="&#xE76C;" FontFamily="Segoe MDL2 Assets" />
-                                </Button>
-                            </Grid>
-                        </StackPanel>
-                    </Border>
-
-                    <Border BorderBrush="{StaticResource LineBrush}"
-                            BorderThickness="1"
-                            CornerRadius="6"
-                            Padding="12"
-                            Visibility="Collapsed">
-                        <StackPanel>
-                            <TextBlock Text="THÔNG BÁO TỪ LÃNH ĐẠO" Style="{StaticResource SectionTitleText}" Margin="0,0,0,12" />
-                            <Border Background="#F8FAFD" BorderBrush="#DDE7F5" BorderThickness="1" CornerRadius="6" Padding="10">
-                                <TextBlock Text="{Binding LeadershipNoticeText}"
-                                           TextWrapping="Wrap"
-                                           Foreground="{StaticResource TextBrush}"
-                                           LineHeight="20" />
-                            </Border>
-                            <Grid Margin="0,10,0,0">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="22" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Text="&#xE787;"
-                                           FontFamily="Segoe MDL2 Assets"
-                                           Foreground="{StaticResource PrimaryBrush}"
-                                           VerticalAlignment="Center" />
-                                <TextBlock Grid.Column="1"
-                                           Text="{Binding LeadershipActionStatus}"
-                                           Foreground="{StaticResource MutedTextBrush}"
-                                           FontSize="12"
-                                           TextWrapping="Wrap" />
-                            </Grid>
-                        </StackPanel>
-                    </Border>
-                </StackPanel>
-            </Border>
+            </Grid>
         </Grid>
     </ScrollViewer>
+
+        <Border Background="#660B1633"
+                Panel.ZIndex="100"
+                Visibility="{Binding IsNotificationDetailOpen, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <Border Width="520"
+                    MaxHeight="520"
+                    Background="White"
+                    BorderBrush="#CBD8EA"
+                    BorderThickness="1"
+                    CornerRadius="10"
+                    Padding="20"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center">
+                <Border.Effect>
+                    <DropShadowEffect BlurRadius="28"
+                                      ShadowDepth="8"
+                                      Opacity="0.22"
+                                      Color="#06164A" />
+                </Border.Effect>
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <Grid Margin="0,0,0,16">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <Border Width="38" Height="38" CornerRadius="19" Background="#EAF2FF">
+                            <TextBlock Text="&#xE8BD;"
+                                       FontFamily="Segoe MDL2 Assets"
+                                       FontSize="17"
+                                       FontWeight="Bold"
+                                       Foreground="{StaticResource PrimaryBrush}"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center" />
+                        </Border>
+                        <StackPanel Grid.Column="1" Margin="12,0,12,0" VerticalAlignment="Center">
+                            <TextBlock Text="CHI TIẾT THÔNG BÁO" Style="{StaticResource SectionTitleText}" />
+                            <TextBlock Text="{Binding SelectedNotification.ReceivedText}"
+                                       Style="{StaticResource MutedText}"
+                                       FontSize="12"
+                                       Margin="0,3,0,0" />
+                        </StackPanel>
+                        <Button Grid.Column="2"
+                                Style="{StaticResource IconButton}"
+                                Command="{Binding CloseNotificationCommand}"
+                                ToolTip="Đóng">
+                            <TextBlock Text="&#xE711;"
+                                       FontFamily="Segoe MDL2 Assets"
+                                       FontSize="12" />
+                        </Button>
+                    </Grid>
+
+                    <Border Grid.Row="1"
+                            Background="#F8FAFD"
+                            BorderBrush="#DDE7F5"
+                            BorderThickness="1"
+                            CornerRadius="7"
+                            Padding="16">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                      HorizontalScrollBarVisibility="Disabled"
+                                      MaxHeight="350">
+                            <TextBlock Text="{Binding SelectedNotification.Message}"
+                                       TextWrapping="Wrap"
+                                       Foreground="{StaticResource TextBrush}"
+                                       FontSize="14"
+                                       LineHeight="22" />
+                        </ScrollViewer>
+                    </Border>
+
+                    <Button Grid.Row="2"
+                            Style="{StaticResource PrimaryButton}"
+                            Command="{Binding CloseNotificationCommand}"
+                            HorizontalAlignment="Right"
+                            MinWidth="92"
+                            Margin="0,16,0,0"
+                            Content="Đóng" />
+                </Grid>
+            </Border>
+        </Border>
+    </Grid>
 </UserControl>
