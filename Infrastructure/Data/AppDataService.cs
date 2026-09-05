@@ -1282,7 +1282,7 @@ VALUES ($createdAt, $senderName, $scope, $targetName, $kpiTarget, $message);";
         {
             if (AppPathSettings.Current.IsClientMode)
             {
-                return string.Empty;
+                return _lanClient.Call<string>("records/next-code", null) ?? string.Empty;
             }
 
             using var connection = OpenConnection();

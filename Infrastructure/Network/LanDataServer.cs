@@ -206,6 +206,8 @@ namespace QuanLyHoSo.Infrastructure.Network
                         return _dataService.CountExportRecords(exportCount.FromDate, exportCount.ToDate, exportCount.Status, exportCount.CaseType, exportCount.Field, exportCount.AreaName, exportCount.ProcessorName, exportCount.SearchText);
                     case "records/detail":
                         return _dataService.GetRecordForm(ReadData<RecordCodeRequest>(body).RecordCode);
+                    case "records/next-code":
+                        return _dataService.GetNextRecordCode();
                     case "records/similar":
                         var similar = ReadData<SimilarRecordRequest>(body);
                         return _dataService.FindSimilarRecord(similar.Record, similar.DateRangeDays);
