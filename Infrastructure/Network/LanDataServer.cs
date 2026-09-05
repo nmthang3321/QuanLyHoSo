@@ -246,10 +246,18 @@ namespace QuanLyHoSo.Infrastructure.Network
                         return new LeadershipNoticeResponse { Message = notice.Message, ReceivedText = notice.ReceivedText };
                     case "leadership-notices/list":
                         var noticeListRequest = ReadData<LeadershipNoticeRequest>(body);
-                        return _dataService.GetLeadershipNotices(noticeListRequest.OfficerName, noticeListRequest.Skip, noticeListRequest.Take, noticeListRequest.AdminOnly);
+                        return _dataService.GetLeadershipNotices(
+                            noticeListRequest.OfficerName,
+                            noticeListRequest.Skip,
+                            noticeListRequest.Take,
+                            noticeListRequest.AdminOnly,
+                            noticeListRequest.IncludeAll);
                     case "leadership-notices/mark-read":
                         var markReadRequest = ReadData<MarkLeadershipNoticesReadRequest>(body);
-                        _dataService.MarkLeadershipNoticesAsRead(markReadRequest.OfficerName, markReadRequest.NoticeIds);
+                        _dataService.MarkLeadershipNoticesAsRead(
+                            markReadRequest.OfficerName,
+                            markReadRequest.NoticeIds,
+                            markReadRequest.IncludeAll);
                         return true;
                     case "leadership-notices/save":
                         var saveNotice = ReadData<SaveLeadershipNoticeRequest>(body);

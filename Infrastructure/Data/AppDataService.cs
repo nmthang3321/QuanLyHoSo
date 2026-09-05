@@ -852,7 +852,12 @@ LIMIT 1;";
             return (message, $"Nhận lúc {createdAt} từ {senderName}");
         }
 
-        public StaffNotificationPage GetLeadershipNotices(string officerName, int skip, int take, bool adminOnly = false)
+        public StaffNotificationPage GetLeadershipNotices(
+            string officerName,
+            int skip,
+            int take,
+            bool adminOnly = false,
+            bool includeAll = false)
         {
             if (AppPathSettings.Current.IsClientMode)
             {
@@ -863,7 +868,8 @@ LIMIT 1;";
                         OfficerName = officerName,
                         Skip = Math.Max(0, skip),
                         Take = Math.Max(1, take),
-                        AdminOnly = adminOnly
+                        AdminOnly = adminOnly,
+                        IncludeAll = includeAll
                     }) ?? new StaffNotificationPage { Items = Array.Empty<StaffNotification>() };
                 }
                 catch (InvalidOperationException)
@@ -895,6 +901,7 @@ LIMIT 1;";
 
             var normalizedOfficerName = (officerName ?? string.Empty).Trim();
             var readToken = BuildNoticeReadToken(normalizedOfficerName);
+            var canIncludeAll = includeAll && AuthContext.IsAdmin;
             using var connection = OpenConnection();
 
             using var countCommand = connection.CreateCommand();
@@ -902,7 +909,7 @@ LIMIT 1;";
 SELECT COUNT(*),
        SUM(CASE WHEN $readToken <> '||' AND INSTR(ReadBy, $readToken) = 0 THEN 1 ELSE 0 END)
 FROM LeadershipNotices
-WHERE ($officerName = '' OR Scope = 'All' OR TRIM(TargetName) = $officerName)
+WHERE ($includeAll = 1 OR $officerName = '' OR Scope = 'All' OR TRIM(TargetName) = $officerName)
   AND ($adminOnly = 0 OR EXISTS (
       SELECT 1
       FROM Users
@@ -910,6 +917,7 @@ WHERE ($officerName = '' OR Scope = 'All' OR TRIM(TargetName) = $officerName)
         AND Role = $adminRole));";
             countCommand.Parameters.AddWithValue("$officerName", normalizedOfficerName);
             countCommand.Parameters.AddWithValue("$readToken", readToken);
+            countCommand.Parameters.AddWithValue("$includeAll", canIncludeAll ? 1 : 0);
             countCommand.Parameters.AddWithValue("$adminOnly", adminOnly ? 1 : 0);
             countCommand.Parameters.AddWithValue("$adminRole", UserRoles.Admin);
             using var countReader = countCommand.ExecuteReader();
@@ -925,7 +933,7 @@ WHERE ($officerName = '' OR Scope = 'All' OR TRIM(TargetName) = $officerName)
             command.CommandText = @"
 SELECT Id, Message, CreatedAt, SenderName, ReadBy
 FROM LeadershipNotices
-WHERE ($officerName = '' OR Scope = 'All' OR TRIM(TargetName) = $officerName)
+WHERE ($includeAll = 1 OR $officerName = '' OR Scope = 'All' OR TRIM(TargetName) = $officerName)
   AND ($adminOnly = 0 OR EXISTS (
       SELECT 1
       FROM Users
@@ -934,6 +942,7 @@ WHERE ($officerName = '' OR Scope = 'All' OR TRIM(TargetName) = $officerName)
 ORDER BY CreatedAt DESC, Id DESC
 LIMIT $take OFFSET $skip;";
             command.Parameters.AddWithValue("$officerName", normalizedOfficerName);
+            command.Parameters.AddWithValue("$includeAll", canIncludeAll ? 1 : 0);
             command.Parameters.AddWithValue("$adminOnly", adminOnly ? 1 : 0);
             command.Parameters.AddWithValue("$adminRole", UserRoles.Admin);
             command.Parameters.AddWithValue("$take", Math.Max(1, take));
@@ -1019,7 +1028,7 @@ LIMIT $take OFFSET $skip;";
         }
 
         */
-        public int CountUnreadLeadershipNotices(string officerName, bool adminOnly = false)
+        public int CountUnreadLeadershipNotices(string officerName, bool adminOnly = false, bool includeAll = false)
         {
             if (AppPathSettings.Current.IsClientMode)
             {
@@ -1030,7 +1039,8 @@ LIMIT $take OFFSET $skip;";
                         OfficerName = officerName,
                         Skip = 0,
                         Take = 1,
-                        AdminOnly = adminOnly
+                        AdminOnly = adminOnly,
+                        IncludeAll = includeAll
                     });
                     return page?.UnreadCount ?? 0;
                 }
@@ -1040,10 +1050,10 @@ LIMIT $take OFFSET $skip;";
                 }
             }
 
-            return GetLeadershipNotices(officerName, 0, 1, adminOnly).UnreadCount;
+            return GetLeadershipNotices(officerName, 0, 1, adminOnly, includeAll).UnreadCount;
         }
 
-        public void MarkLeadershipNoticesAsRead(string officerName, IReadOnlyList<int> noticeIds)
+        public void MarkLeadershipNoticesAsRead(string officerName, IReadOnlyList<int> noticeIds, bool includeAll = false)
         {
             if (AppPathSettings.Current.IsClientMode)
             {
@@ -1052,7 +1062,8 @@ LIMIT $take OFFSET $skip;";
                     _lanClient.Call<bool>("leadership-notices/mark-read", new MarkLeadershipNoticesReadRequest
                     {
                         OfficerName = officerName,
-                        NoticeIds = noticeIds
+                        NoticeIds = noticeIds,
+                        IncludeAll = includeAll
                     });
                 }
                 catch (InvalidOperationException)
@@ -1063,6 +1074,7 @@ LIMIT $take OFFSET $skip;";
 
             var normalizedOfficerName = (officerName ?? string.Empty).Trim();
             var readToken = BuildNoticeReadToken(normalizedOfficerName);
+            var canIncludeAll = includeAll && AuthContext.IsAdmin;
             if (readToken == "||" || noticeIds == null || noticeIds.Count == 0)
             {
                 return;
@@ -1078,10 +1090,11 @@ LIMIT $take OFFSET $skip;";
 UPDATE LeadershipNotices
 SET ReadBy = ReadBy || $readToken
 WHERE Id = $id
-  AND ($officerName = '' OR Scope = 'All' OR TRIM(TargetName) = $officerName)
+  AND ($includeAll = 1 OR $officerName = '' OR Scope = 'All' OR TRIM(TargetName) = $officerName)
   AND INSTR(ReadBy, $readToken) = 0;";
                 command.Parameters.AddWithValue("$id", noticeId);
                 command.Parameters.AddWithValue("$officerName", normalizedOfficerName);
+                command.Parameters.AddWithValue("$includeAll", canIncludeAll ? 1 : 0);
                 command.Parameters.AddWithValue("$readToken", readToken);
                 command.ExecuteNonQuery();
             }
@@ -1126,9 +1139,9 @@ LIMIT 1;";
                 return;
             }
 
-            if (!AuthContext.IsLeader)
+            if (!AuthContext.IsLeader && !AuthContext.IsAdmin)
             {
-                throw new UnauthorizedAccessException("Chi lanh dao duoc dat KPI.");
+                throw new UnauthorizedAccessException("Chi admin hoac lanh dao duoc dat KPI.");
             }
 
             if (!int.TryParse(kpiTarget, NumberStyles.Integer, CultureInfo.InvariantCulture, out var target) || target <= 0)
@@ -1150,7 +1163,7 @@ VALUES ($createdAt, $senderName, $scope, $targetName, $kpiTarget);";
             command.Parameters.AddWithValue("$kpiTarget", target.ToString(CultureInfo.InvariantCulture));
             command.ExecuteNonQuery();
 
-            WriteDatabaseLog(connection, transaction, "Theo dõi cán bộ", "Đặt KPI", targetName, $"Lãnh đạo đặt KPI {target} hồ sơ.");
+            WriteDatabaseLog(connection, transaction, "Theo dõi cán bộ", "Đặt KPI", targetName, $"Đặt KPI {target} hồ sơ.");
             transaction.Commit();
         }
 

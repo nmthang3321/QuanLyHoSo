@@ -4,6 +4,7 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using QuanLyHoSo.ViewModels;
 
 namespace QuanLyHoSo.Views.Records
@@ -122,6 +123,115 @@ namespace QuanLyHoSo.Views.Records
         {
             ResetCustomCalendarSelection();
             CustomDateRangeCalendar.SelectedDates.AddRange(fromDate, toDate);
+        }
+
+        private void KpiProgressBar_Loaded(object sender, RoutedEventArgs e)
+        {
+            if (sender is not ProgressBar progressBar)
+            {
+                return;
+            }
+
+            var row = FindAncestor<DataGridRow>(progressBar);
+            var delay = 80 + Math.Max(0, row?.GetIndex() ?? 0) * 45;
+            AnimateProgress(progressBar, 480, delay);
+        }
+
+        private void PerformanceBar_Loaded(object sender, RoutedEventArgs e)
+        {
+            if (sender is FrameworkElement element)
+            {
+                AnimateScaleY(element, 560, 100);
+            }
+        }
+
+        private void DeadlineSegment_Loaded(object sender, RoutedEventArgs e)
+        {
+            if (sender is FrameworkElement element)
+            {
+                AnimateDeadlineSegment(element, 140);
+            }
+        }
+
+        private void TargetProgressBar_Loaded(object sender, RoutedEventArgs e)
+        {
+            if (sender is ProgressBar progressBar)
+            {
+                AnimateProgress(progressBar, 560, 180);
+            }
+        }
+
+        private void TargetProgressBar_TargetUpdated(object sender, System.Windows.Data.DataTransferEventArgs e)
+        {
+            if (sender is ProgressBar progressBar && progressBar.IsLoaded)
+            {
+                AnimateProgress(progressBar, 480, 40);
+            }
+        }
+
+        private static void AnimateProgress(ProgressBar progressBar, int durationMilliseconds, int delayMilliseconds)
+        {
+            progressBar.BeginAnimation(RangeBase.ValueProperty, null);
+            var targetValue = Math.Max(progressBar.Minimum, Math.Min(progressBar.Maximum, progressBar.Value));
+            progressBar.BeginAnimation(
+                RangeBase.ValueProperty,
+                new DoubleAnimation(progressBar.Minimum, targetValue, TimeSpan.FromMilliseconds(durationMilliseconds))
+                {
+                    BeginTime = TimeSpan.FromMilliseconds(delayMilliseconds),
+                    EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut },
+                    FillBehavior = FillBehavior.Stop
+                });
+        }
+
+        private static void AnimateScaleY(FrameworkElement element, int durationMilliseconds, int delayMilliseconds)
+        {
+            var transform = element.RenderTransform as ScaleTransform;
+            if (transform == null || transform.IsFrozen)
+            {
+                transform = new ScaleTransform(1, 1);
+                element.RenderTransform = transform;
+            }
+
+            transform.BeginAnimation(ScaleTransform.ScaleYProperty, null);
+            transform.ScaleY = 0;
+            transform.BeginAnimation(
+                ScaleTransform.ScaleYProperty,
+                new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(durationMilliseconds))
+                {
+                    BeginTime = TimeSpan.FromMilliseconds(delayMilliseconds),
+                    EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+                });
+        }
+
+        private static void AnimateDeadlineSegment(FrameworkElement element, int delayMilliseconds)
+        {
+            var transform = element.RenderTransform as RotateTransform;
+            if (transform == null || transform.IsFrozen)
+            {
+                transform = new RotateTransform();
+                element.RenderTransform = transform;
+            }
+
+            element.BeginAnimation(OpacityProperty, null);
+            transform.BeginAnimation(RotateTransform.AngleProperty, null);
+            element.Opacity = 0;
+            transform.Angle = -45;
+
+            var easing = new CubicEase { EasingMode = EasingMode.EaseOut };
+            element.BeginAnimation(
+                OpacityProperty,
+                new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(360))
+                {
+                    BeginTime = TimeSpan.FromMilliseconds(delayMilliseconds),
+                    EasingFunction = easing
+                });
+            transform.BeginAnimation(
+                RotateTransform.AngleProperty,
+                new DoubleAnimation(-45, 0, TimeSpan.FromMilliseconds(520))
+                {
+                    BeginTime = TimeSpan.FromMilliseconds(delayMilliseconds),
+                    EasingFunction = easing
+                });
         }
 
         private static T FindAncestor<T>(DependencyObject current)

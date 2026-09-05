@@ -126,12 +126,12 @@ namespace QuanLyHoSo.ViewModels
         public ICommand CloseNotificationCommand => _closeNotificationCommand;
 
         public bool CanSendLeadershipNotice => AuthContext.IsLeader || AuthContext.IsAdmin;
-        public bool CanSetLeadershipKpi => AuthContext.IsLeader;
-        public bool CanReadLeadershipNotice => AuthContext.IsOfficer || AuthContext.IsLeader;
-        public bool CanReadAdminNotifications => AuthContext.IsLeader;
+        public bool CanSetLeadershipKpi => AuthContext.IsLeader || AuthContext.IsAdmin;
+        public bool CanReadLeadershipNotice => AuthContext.IsOfficer || AuthContext.IsLeader || AuthContext.IsAdmin;
+        public bool CanReadAdminNotifications => AuthContext.IsLeader || AuthContext.IsAdmin;
         public bool ShowStandaloneNotificationInbox => AuthContext.IsOfficer;
         public string LeadershipCardTitle => "THÔNG BÁO";
-        public int LeadershipActionTabIndex => AuthContext.IsLeader ? 0 : 1;
+        public int LeadershipActionTabIndex => 0;
 
         public string SelectedOfficer { get; set; }
 
@@ -678,11 +678,12 @@ namespace QuanLyHoSo.ViewModels
                     targetName,
                     LeadershipKpiTargetText);
 
-                var currentLeaderName = (AuthContext.CurrentDisplayName ?? string.Empty).Trim();
-                var leaderDisplayName = currentLeaderName.StartsWith("Lãnh đạo", StringComparison.CurrentCultureIgnoreCase)
-                    ? currentLeaderName
-                    : $"Lãnh đạo {currentLeaderName}";
-                var notificationMessage = $"{leaderDisplayName} đã đặt KPI cho bạn là {targetValue} hồ sơ/tháng.";
+                var currentSenderName = (AuthContext.CurrentDisplayName ?? string.Empty).Trim();
+                var senderRoleName = AuthContext.IsAdmin ? "Admin" : "Lãnh đạo";
+                var senderDisplayName = currentSenderName.StartsWith(senderRoleName, StringComparison.CurrentCultureIgnoreCase)
+                    ? currentSenderName
+                    : $"{senderRoleName} {currentSenderName}";
+                var notificationMessage = $"{senderDisplayName} đã đặt KPI cho bạn là {targetValue} hồ sơ/tháng.";
                 var notificationTargets = string.Equals(scope, "Staff", StringComparison.Ordinal)
                     ? new[] { targetName }
                     : _allStaffRows
@@ -740,7 +741,8 @@ namespace QuanLyHoSo.ViewModels
                 AuthContext.CurrentDisplayName,
                 (CurrentNotificationPage - 1) * NotificationPageSize,
                 NotificationPageSize,
-                AuthContext.IsLeader);
+                AuthContext.IsLeader,
+                AuthContext.IsAdmin);
             var totalCount = page?.TotalCount ?? 0;
             TotalNotificationPages = Math.Max(1, (int)Math.Ceiling(totalCount / (double)NotificationPageSize));
             if (CurrentNotificationPage > TotalNotificationPages)
@@ -750,7 +752,8 @@ namespace QuanLyHoSo.ViewModels
                     AuthContext.CurrentDisplayName,
                     (CurrentNotificationPage - 1) * NotificationPageSize,
                     NotificationPageSize,
-                    AuthContext.IsLeader);
+                    AuthContext.IsLeader,
+                    AuthContext.IsAdmin);
                 totalCount = page?.TotalCount ?? 0;
             }
 
@@ -801,7 +804,10 @@ namespace QuanLyHoSo.ViewModels
                 return;
             }
 
-            AppDataService.Instance.MarkLeadershipNoticesAsRead(AuthContext.CurrentDisplayName, unreadIds);
+            AppDataService.Instance.MarkLeadershipNoticesAsRead(
+                AuthContext.CurrentDisplayName,
+                unreadIds,
+                AuthContext.IsAdmin);
             LoadNotifications();
         }
 
@@ -822,7 +828,8 @@ namespace QuanLyHoSo.ViewModels
 
             AppDataService.Instance.MarkLeadershipNoticesAsRead(
                 AuthContext.CurrentDisplayName,
-                new[] { notification.Id });
+                new[] { notification.Id },
+                AuthContext.IsAdmin);
             LoadNotifications();
         }
 
@@ -838,7 +845,8 @@ namespace QuanLyHoSo.ViewModels
             {
                 _notificationUnreadCountChanged?.Invoke(AppDataService.Instance.CountUnreadLeadershipNotices(
                     AuthContext.CurrentDisplayName,
-                    AuthContext.IsLeader));
+                    AuthContext.IsLeader,
+                    AuthContext.IsAdmin));
             }
         }
 
