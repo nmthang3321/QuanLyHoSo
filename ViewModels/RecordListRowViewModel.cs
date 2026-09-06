@@ -4,8 +4,16 @@ using QuanLyHoSo.Models;
 
 namespace QuanLyHoSo.ViewModels
 {
-    public sealed class RecordListRowViewModel
+    public sealed class RecordListRowViewModel : ViewModelBase
     {
+        private bool _isSelected;
+
+        public bool IsSelected
+        {
+            get => _isSelected;
+            set => SetProperty(ref _isSelected, CanDelete && value);
+        }
+
         public RecordListRowViewModel(RecentRecord record, ICommand viewCommand, ICommand editCommand, ICommand classifyCommand, ICommand deleteCommand)
         {
             Index = record.Index;

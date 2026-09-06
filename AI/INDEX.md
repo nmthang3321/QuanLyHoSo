@@ -45,6 +45,7 @@ Session handoff nam tai `AI/SESSION_HANDOFF_2026-08-26.md`. Context AI chi dung 
 
 - Area selector: `AI/features/AREA_SELECTOR.md`
 - Attachments: `AI/features/ATTACHMENTS.md`
+- Thung rac / khoi phuc ho so: `AI/features/RECORD_TRASH.md`
 - Audit/system log: `AI/features/AUDIT_LOG.md`
 - Backup/restore: `AI/features/BACKUP_RESTORE.md`
 - Catalogs: `AI/features/CATALOGS.md`

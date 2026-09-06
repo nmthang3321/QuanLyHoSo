@@ -215,7 +215,17 @@ namespace QuanLyHoSo.Infrastructure.Network
                         var saveRecord = ReadData<SaveRecordFormRequest>(body);
                         return _dataService.SaveRecordForm(saveRecord.Record, saveRecord.OriginalRecordCode);
                     case "records/delete":
-                        return _dataService.DeleteRecord(ReadData<RecordCodeRequest>(body).RecordCode);
+                    case "records/trash/move":
+                        var deleteRecord = ReadData<RecordCodeRequest>(body);
+                        return _dataService.DeleteRecord(deleteRecord.RecordCode, deleteRecord.DeletionBatchId);
+                    case "records/trash":
+                        return _dataService.GetDeletedRecords();
+                    case "records/restore":
+                        var restoreRecord = ReadData<RecordCodeRequest>(body);
+                        return _dataService.RestoreRecord(restoreRecord.RecordCode, restoreRecord.DeletionBatchId);
+                    case "records/trash/delete-permanently":
+                        var permanentlyDelete = ReadData<RecordCodeRequest>(body);
+                        return _dataService.PermanentlyDeleteRecord(permanentlyDelete.RecordCode, permanentlyDelete.DeletionBatchId);
                     case "records/total":
                         var total = ReadData<DateRangeRequest>(body);
                         return _dataService.CountRecords(total.FromDate, total.ToDate);

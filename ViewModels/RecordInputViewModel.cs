@@ -343,7 +343,7 @@ namespace QuanLyHoSo.ViewModels
             }
 
             var result = MessageBox.Show(
-                $"Bạn có chắc chắn muốn xóa hồ sơ {recordCode}?",
+                $"Chuyển hồ sơ {recordCode} vào thùng rác? Bạn có thể khôi phục tại trang Danh sách hồ sơ.",
                 "Xác nhận xóa hồ sơ",
                 MessageBoxButton.YesNo,
                 MessageBoxImage.Warning);
@@ -358,7 +358,7 @@ namespace QuanLyHoSo.ViewModels
                 if (_dataService.DeleteRecord(recordCode))
                 {
                     AppLogger.Info("Records", "DeleteRecord", "Record deleted.", recordCode);
-                    MessageBox.Show("Đã xóa hồ sơ khỏi cơ sở dữ liệu.", "Xóa hồ sơ", MessageBoxButton.OK, MessageBoxImage.Information);
+                    MessageBox.Show("Đã chuyển hồ sơ vào thùng rác. Bạn có thể khôi phục tại Danh sách hồ sơ → Thùng rác.", "Xóa hồ sơ", MessageBoxButton.OK, MessageBoxImage.Information);
                     ClearForm();
                     return;
                 }

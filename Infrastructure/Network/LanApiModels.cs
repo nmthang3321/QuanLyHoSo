@@ -121,6 +121,7 @@ namespace QuanLyHoSo.Infrastructure.Network
 
     public sealed class RecordCodeRequest
     {
+        public string DeletionBatchId { get; set; }
         public string RecordCode { get; set; }
     }
 

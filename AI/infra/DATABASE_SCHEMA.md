@@ -15,6 +15,7 @@ Notes:
 - `RecordAttachments` co `FilePath` duoc add/check bang `TryAddColumn`.
 - `SystemLogs` ghi qua `WriteDatabaseLog`.
 - Index tao trong `CreateIndexes(...)`.
+- Records co DeletedAt, DeletedBy, DeletionBatchId de xoa mem/khoi phuc; doc `AI/features/RECORD_TRASH.md`.
 
 Area:
 - `Areas` chua xa/phuong/dac khu va don vi to chuc.

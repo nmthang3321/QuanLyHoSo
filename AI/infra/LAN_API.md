@@ -29,6 +29,8 @@ Routes dang co:
 - `catalog/areas`, `catalog/values`, `catalog/processors`
 - `dashboard/metrics`, `dashboard/status`, `dashboard/areas`, `dashboard/trend`, `dashboard/recent`
 - `records/list`, `records/count`, `records/export-preview`, `records/export-count`, `records/detail`, `records/similar`, `records/save`, `records/delete`, `records/total`
+- `records/trash`, `records/trash/move`, `records/restore` (admin); `records/delete` la alias xoa mem va nhan them DeletionBatchId. Client moi goi trash/move de tranh xoa cung tren server cu.
+- `records/trash/delete-permanently` (admin): RecordCode + DeletionBatchId; chi xoa ho so trong thung rac, tra bool.
 - `processing/metrics`, `processing/list`, `processing/count`, `processing/detail`, `processing/update`
 - `staff/performance`, `staff/deadlines`, `staff/active-records`
 - `leadership-notices/latest`, `leadership-notices/save`

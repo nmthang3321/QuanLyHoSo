@@ -2,6 +2,17 @@ namespace QuanLyHoSo.Models
 {
     using System.Collections.Generic;
 
+    public sealed class DeletedRecord
+    {
+        public string RecordCode { get; set; }
+        public string SenderName { get; set; }
+        public string Status { get; set; }
+        public string ProcessorName { get; set; }
+        public string DeletedAt { get; set; }
+        public string DeletedBy { get; set; }
+        public string DeletionBatchId { get; set; }
+    }
+
     public sealed class AttachmentDraft
     {
         public string FileName { get; set; }

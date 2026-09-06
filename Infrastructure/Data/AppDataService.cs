@@ -62,6 +62,7 @@ namespace QuanLyHoSo.Infrastructure.Data
             using var connection = OpenConnection();
             CreateSchema(connection);
             MigrateLegacyPriorityColumnIfNeeded(connection);
+            EnsureRecordTrashSchema(connection);
             RepairRecordForeignKeys(connection);
             SeedUsers(connection);
             SeedAreas(connection);
@@ -606,7 +607,7 @@ FROM CatalogItems
 WHERE CatalogType = 'ProcessorName' AND IsActive = 1
 UNION
 SELECT ProcessorName
-FROM Records
+FROM (SELECT * FROM Records WHERE DeletedAt = '') AS Records
 WHERE trim(ProcessorName) <> ''
 ORDER BY Name;";
             using var reader = command.ExecuteReader();
@@ -661,7 +662,7 @@ SELECT
     SUM(CASE WHEN Status = 'Đã giải quyết' AND ExpectedResultDate <> '' AND UpdatedAt <> '' AND datetime(UpdatedAt) <= datetime(ExpectedResultDate) THEN 1 ELSE 0 END) AS OnTimeCompletedCount,
     SUM(CASE WHEN ExpectedResultDate <> '' THEN 1 ELSE 0 END) AS DeadlineTrackedCount,
     AVG(CASE WHEN Status = 'Đã giải quyết' AND ReceivedDate <> '' AND UpdatedAt <> '' AND datetime(UpdatedAt) >= datetime(ReceivedDate) THEN julianday(UpdatedAt) - julianday(ReceivedDate) END) AS AverageProcessingDays
-FROM Records
+FROM (SELECT * FROM Records WHERE DeletedAt = '') AS Records
 WHERE TRIM(ProcessorName) = $processorName
     AND ($fromDate IS NULL OR ReceivedDate >= $fromDate)
     AND ($toDate IS NULL OR ReceivedDate <= $toDate);";
@@ -731,7 +732,7 @@ SELECT
     SUM(CASE WHEN ExpectedResultDate <> '' AND ((Status = 'Đã giải quyết' AND UpdatedAt <> '' AND datetime(UpdatedAt) <= datetime(ExpectedResultDate)) OR (Status <> 'Đã giải quyết' AND ExpectedResultDate > $dueSoon)) THEN 1 ELSE 0 END) AS OnTimeCount,
     SUM(CASE WHEN Status <> 'Đã giải quyết' AND ExpectedResultDate <> '' AND ExpectedResultDate >= $today AND ExpectedResultDate <= $dueSoon THEN 1 ELSE 0 END) AS DueSoonCount,
     SUM(CASE WHEN ExpectedResultDate <> '' AND ((Status <> 'Đã giải quyết' AND ExpectedResultDate < $today) OR (Status = 'Đã giải quyết' AND UpdatedAt <> '' AND datetime(UpdatedAt) > datetime(ExpectedResultDate))) THEN 1 ELSE 0 END) AS OverdueCount
-FROM Records
+FROM (SELECT * FROM Records WHERE DeletedAt = '') AS Records
 WHERE TRIM(ProcessorName) <> ''
   AND ($currentProcessorName IS NULL OR TRIM(ProcessorName) = $currentProcessorName)
   AND ($fromDate IS NULL OR ReceivedDate >= $fromDate)
@@ -788,7 +789,7 @@ WHERE TRIM(ProcessorName) <> ''
             using var command = connection.CreateCommand();
             command.CommandText = @"
 SELECT RecordCode, CaseType, ExpectedResultDate
-FROM Records
+FROM (SELECT * FROM Records WHERE DeletedAt = '') AS Records
 WHERE TRIM(ProcessorName) = $processorName
   AND Status <> 'Đã giải quyết'
   AND ($fromDate IS NULL OR ReceivedDate >= $fromDate)
@@ -1332,7 +1333,7 @@ VALUES ($createdAt, $senderName, $scope, $targetName, $kpiTarget, $message);";
 
             command.CommandText = $@"
 SELECT RecordCode, ReceivedDate, SenderName, SenderPhone, AreaName, CaseType, Status
-FROM Records
+FROM (SELECT * FROM Records WHERE DeletedAt = '') AS Records
 WHERE {string.Join(" AND ", conditions)}
 ORDER BY ReceivedDate DESC, Id DESC
 LIMIT 1;";
@@ -1406,7 +1407,7 @@ LIMIT 1;";
             using var command = connection.CreateCommand();
             command.CommandText = $@"
 SELECT Status, COUNT(*)
-FROM Records
+FROM (SELECT * FROM Records WHERE DeletedAt = '') AS Records
 {BuildScopedDateWhere(command, fromDate, toDate)}
 GROUP BY Status
 ORDER BY COUNT(*) DESC, Status;";
@@ -1468,7 +1469,7 @@ ORDER BY COUNT(*) DESC, Status;";
             using var command = connection.CreateCommand();
             command.CommandText = $@"
 SELECT AreaName, COUNT(*) AS Total
-FROM Records
+FROM (SELECT * FROM Records WHERE DeletedAt = '') AS Records
 {BuildScopedDateWhere(command, fromDate, toDate)}
 GROUP BY AreaName
 ORDER BY Total DESC, AreaName
@@ -1509,7 +1510,7 @@ LIMIT $take;";
             using var command = connection.CreateCommand();
             command.CommandText = $@"
 SELECT ReceivedDate, Status
-FROM Records
+FROM (SELECT * FROM Records WHERE DeletedAt = '') AS Records
 {BuildScopedDateWhere(command, fromDate, toDate)}
 ORDER BY ReceivedDate;";
             AddDateParameters(command, fromDate, toDate);
@@ -1547,7 +1548,7 @@ ORDER BY ReceivedDate;";
             using var command = connection.CreateCommand();
             command.CommandText = $@"
 SELECT RecordCode, SenderName, AreaName, Status, UpdatedAt, ProcessorName
-FROM Records
+FROM (SELECT * FROM Records WHERE DeletedAt = '') AS Records
 {BuildScopedDateWhere(command, fromDate, toDate)}
 ORDER BY UpdatedAt DESC, Id DESC
 LIMIT $take OFFSET $skip;";
@@ -1609,7 +1610,7 @@ LIMIT $take OFFSET $skip;";
             var whereClause = BuildExportWhere(command, fromDate, toDate, status, caseType, field, areaName, processorName, searchText, applyUserScope: true);
             command.CommandText = $@"
 SELECT RecordCode, SenderName, AreaName, CaseType, Field, ReceivedDate, Status, UpdatedAt, ProcessorName
-FROM Records
+FROM (SELECT * FROM Records WHERE DeletedAt = '') AS Records
 {whereClause}
 ORDER BY {BuildExportOrderBy(sortOption)}
 LIMIT $take OFFSET $skip;";
@@ -1644,7 +1645,7 @@ LIMIT $take OFFSET $skip;";
 SELECT Id, RecordCode, ReceivedDate, ReceiveSource, ReceiverName, SenderName, SenderPhone, ContactAddress,
        AreaName, IncidentAddress, Content, CaseType, ContentGroup, Field, RelatedPerson,
        ExpectedHandlingMethod, SenderExpectedHandlingMethod, SeverityLevel, ExpectedResultDate, Note, AdditionalNote
-FROM Records
+FROM (SELECT * FROM Records WHERE DeletedAt = '') AS Records
 ORDER BY UpdatedAt DESC, Id DESC
 LIMIT 1;";
             return ReadRecordForm(connection, command);
@@ -1668,7 +1669,7 @@ LIMIT 1;";
 SELECT Id, RecordCode, ReceivedDate, ReceiveSource, ReceiverName, SenderName, SenderPhone, ContactAddress,
        AreaName, IncidentAddress, Content, CaseType, ContentGroup, Field, RelatedPerson,
        ExpectedHandlingMethod, SenderExpectedHandlingMethod, SeverityLevel, ExpectedResultDate, Note, AdditionalNote
-FROM Records
+FROM (SELECT * FROM Records WHERE DeletedAt = '') AS Records
 WHERE RecordCode = $recordCode
 LIMIT 1;";
             command.Parameters.AddWithValue("$recordCode", recordCode);
@@ -1695,6 +1696,10 @@ LIMIT 1;";
             var recordId = string.IsNullOrWhiteSpace(originalRecordCode)
                 ? null
                 : GetRecordId(connection, transaction, originalRecordCode);
+            if (!string.IsNullOrWhiteSpace(originalRecordCode) && !recordId.HasValue)
+            {
+                throw new InvalidOperationException("Hồ sơ không còn trong danh sách làm việc. Vui lòng tải lại; nếu hồ sơ đã xóa, hãy khôi phục từ thùng rác.");
+            }
             if (recordId.HasValue)
             {
                 EnsureCanEditRecord(connection, transaction, recordId.Value);
@@ -1768,12 +1773,13 @@ SELECT last_insert_rowid();";
             return savedRecordCode;
         }
 
-        public bool DeleteRecord(string recordCode)
+        public bool DeleteRecord(string recordCode, string deletionBatchId = null)
         {
             EnsureCanDeleteRecords();
             if (AppPathSettings.Current.IsClientMode)
             {
-                return _lanClient.Call<bool>("records/delete", new RecordCodeRequest { RecordCode = recordCode });
+                // A dedicated route prevents a new client from invoking hard delete on an older server.
+                return _lanClient.Call<bool>("records/trash/move", new RecordCodeRequest { RecordCode = recordCode, DeletionBatchId = deletionBatchId });
             }
 
             if (string.IsNullOrWhiteSpace(recordCode))
@@ -1783,40 +1789,99 @@ SELECT last_insert_rowid();";
 
             using var connection = OpenConnection();
             using var transaction = connection.BeginTransaction();
-            using var selectCommand = connection.CreateCommand();
-            selectCommand.Transaction = transaction;
-            selectCommand.CommandText = "SELECT Id FROM Records WHERE RecordCode = $recordCode LIMIT 1;";
-            selectCommand.Parameters.AddWithValue("$recordCode", recordCode);
-
-            var recordIdValue = selectCommand.ExecuteScalar();
-            if (recordIdValue == null)
-            {
-                transaction.Commit();
-                return false;
-            }
-
-            var recordId = Convert.ToInt32(recordIdValue, CultureInfo.InvariantCulture);
-            using var deleteHistoriesCommand = connection.CreateCommand();
-            deleteHistoriesCommand.Transaction = transaction;
-            deleteHistoriesCommand.CommandText = "DELETE FROM ProcessHistories WHERE RecordId = $recordId;";
-            deleteHistoriesCommand.Parameters.AddWithValue("$recordId", recordId);
-            deleteHistoriesCommand.ExecuteNonQuery();
-
-            using var deleteAttachmentsCommand = connection.CreateCommand();
-            deleteAttachmentsCommand.Transaction = transaction;
-            deleteAttachmentsCommand.CommandText = "DELETE FROM RecordAttachments WHERE RecordId = $recordId;";
-            deleteAttachmentsCommand.Parameters.AddWithValue("$recordId", recordId);
-            deleteAttachmentsCommand.ExecuteNonQuery();
-
             using var deleteRecordCommand = connection.CreateCommand();
             deleteRecordCommand.Transaction = transaction;
-            deleteRecordCommand.CommandText = "DELETE FROM Records WHERE Id = $recordId;";
-            deleteRecordCommand.Parameters.AddWithValue("$recordId", recordId);
-            deleteRecordCommand.ExecuteNonQuery();
-            WriteDatabaseLog(connection, transaction, "Hồ sơ", "Xóa", recordCode, $"Xóa hồ sơ {recordCode} và dữ liệu liên quan.");
+            deleteRecordCommand.CommandText = @"
+UPDATE Records SET DeletedAt = $now, DeletedBy = $user, DeletionBatchId = $batch
+WHERE RecordCode = $code AND DeletedAt = '';";
+            deleteRecordCommand.Parameters.AddWithValue("$now", DateTime.Now.ToString("O", CultureInfo.InvariantCulture));
+            deleteRecordCommand.Parameters.AddWithValue("$user", AuthContext.CurrentDisplayName);
+            deleteRecordCommand.Parameters.AddWithValue("$batch", string.IsNullOrWhiteSpace(deletionBatchId) ? Guid.NewGuid().ToString("N") : deletionBatchId);
+            deleteRecordCommand.Parameters.AddWithValue("$code", recordCode);
+            var changed = deleteRecordCommand.ExecuteNonQuery() > 0;
+            if (changed) WriteDatabaseLog(connection, transaction, "Hồ sơ", "Chuyển vào thùng rác", recordCode, $"Chuyển hồ sơ {recordCode} vào thùng rác; giữ nguyên lịch sử và tệp đính kèm.");
 
             transaction.Commit();
+            return changed;
+        }
+
+        public IReadOnlyList<DeletedRecord> GetDeletedRecords()
+        {
+            EnsureCanDeleteRecords();
+            if (AppPathSettings.Current.IsClientMode)
+                return _lanClient.Call<IReadOnlyList<DeletedRecord>>("records/trash", null);
+            using var connection = OpenConnection();
+            using var command = connection.CreateCommand();
+            command.CommandText = @"
+SELECT RecordCode, SenderName, Status, ProcessorName, DeletedAt, DeletedBy, DeletionBatchId
+FROM Records WHERE DeletedAt <> '' ORDER BY DeletedAt DESC, Id DESC;";
+            using var reader = command.ExecuteReader();
+            var result = new List<DeletedRecord>();
+            while (reader.Read())
+            {
+                result.Add(new DeletedRecord
+                {
+                    RecordCode = reader.GetString(0), SenderName = reader.GetString(1),
+                    Status = reader.GetString(2), ProcessorName = reader.GetString(3),
+                    DeletedAt = FormatDateTime(reader.GetString(4)), DeletedBy = reader.GetString(5),
+                    DeletionBatchId = reader.GetString(6)
+                });
+            }
+            return result;
+        }
+
+        public bool PermanentlyDeleteRecord(string recordCode, string deletionBatchId)
+        {
+            EnsureCanDeleteRecords();
+            if (string.IsNullOrWhiteSpace(recordCode) || string.IsNullOrWhiteSpace(deletionBatchId)) return false;
+            if (AppPathSettings.Current.IsClientMode)
+                return _lanClient.Call<bool>("records/trash/delete-permanently", new RecordCodeRequest { RecordCode = recordCode, DeletionBatchId = deletionBatchId });
+
+            using var connection = OpenConnection();
+            using var transaction = connection.BeginTransaction();
+            using var select = connection.CreateCommand();
+            select.Transaction = transaction;
+            select.CommandText = "SELECT Id FROM Records WHERE RecordCode = $code AND DeletedAt <> '' AND DeletionBatchId = $batch;";
+            select.Parameters.AddWithValue("$code", recordCode);
+            select.Parameters.AddWithValue("$batch", deletionBatchId);
+            var recordId = select.ExecuteScalar();
+            if (recordId == null) return false;
+
+            using var delete = connection.CreateCommand();
+            delete.Transaction = transaction;
+            // Attachment paths may point to shared/user-owned files; remove database references only.
+            delete.CommandText = @"
+DELETE FROM ProcessHistories WHERE RecordId = $id;
+DELETE FROM RecordAttachments WHERE RecordId = $id;
+DELETE FROM Records WHERE Id = $id;";
+            delete.Parameters.AddWithValue("$id", recordId);
+            delete.ExecuteNonQuery();
+            WriteDatabaseLog(connection, transaction, "Hồ sơ", "Xóa vĩnh viễn", recordCode,
+                $"Xóa vĩnh viễn hồ sơ {recordCode} trong thùng rác, lịch sử xử lý và thông tin tệp đính kèm.");
+            transaction.Commit();
             return true;
+        }
+
+        public bool RestoreRecord(string recordCode, string deletionBatchId)
+        {
+            EnsureCanDeleteRecords();
+            if (string.IsNullOrWhiteSpace(recordCode) || string.IsNullOrWhiteSpace(deletionBatchId)) return false;
+            if (AppPathSettings.Current.IsClientMode)
+                return _lanClient.Call<bool>("records/restore", new RecordCodeRequest { RecordCode = recordCode, DeletionBatchId = deletionBatchId });
+            using var connection = OpenConnection();
+            using var transaction = connection.BeginTransaction();
+            using var command = connection.CreateCommand();
+            command.Transaction = transaction;
+            // Match the deletion instance so an old Undo cannot restore a later deletion.
+            command.CommandText = @"
+UPDATE Records SET DeletedAt = '', DeletedBy = '', DeletionBatchId = ''
+WHERE RecordCode = $code AND DeletedAt <> '' AND DeletionBatchId = $batch;";
+            command.Parameters.AddWithValue("$code", recordCode);
+            command.Parameters.AddWithValue("$batch", deletionBatchId);
+            var changed = command.ExecuteNonQuery() > 0;
+            if (changed) WriteDatabaseLog(connection, transaction, "Hồ sơ", "Khôi phục", recordCode, $"Khôi phục hồ sơ {recordCode} từ thùng rác.");
+            transaction.Commit();
+            return changed;
         }
 
         private static int? GetRecordId(SqliteConnection connection, SqliteTransaction transaction, string recordCode)
@@ -1828,7 +1893,7 @@ SELECT last_insert_rowid();";
 
             using var command = connection.CreateCommand();
             command.Transaction = transaction;
-            command.CommandText = "SELECT Id FROM Records WHERE RecordCode = $recordCode LIMIT 1;";
+            command.CommandText = "SELECT Id FROM (SELECT * FROM Records WHERE DeletedAt = '') AS Records WHERE RecordCode = $recordCode LIMIT 1;";
             command.Parameters.AddWithValue("$recordCode", recordCode);
             var value = command.ExecuteScalar();
             return value == null ? (int?)null : Convert.ToInt32(value, CultureInfo.InvariantCulture);
@@ -2034,7 +2099,7 @@ SELECT last_insert_rowid();";
 SELECT Id, RecordCode, ReceivedDate, ReceiveSource, ReceiverName, SenderName, SenderPhone, ContactAddress,
        AreaName, IncidentAddress, Content, CaseType, ContentGroup, Field, RelatedPerson,
        ExpectedHandlingMethod, SenderExpectedHandlingMethod, SeverityLevel, ExpectedResultDate, Note, AdditionalNote
-FROM Records
+FROM (SELECT * FROM Records WHERE DeletedAt = '') AS Records
 WHERE Id = $recordId
 LIMIT 1;";
             command.Parameters.AddWithValue("$recordId", recordId);
@@ -2057,7 +2122,7 @@ LIMIT 1;";
             ApplyUserRecordScope(command, conditions);
             command.CommandText = $@"
 SELECT Id, RecordCode, ReceivedDate, ReceiveSource, SenderName, SenderPhone, AreaName, CaseType, Field, Status, ProcessorName, UpdatedAt
-FROM Records
+FROM (SELECT * FROM Records WHERE DeletedAt = '') AS Records
 WHERE {string.Join(" AND ", conditions)}
 ORDER BY UpdatedAt DESC, Id DESC
 LIMIT 1;";
@@ -2151,8 +2216,7 @@ LIMIT 1;";
             var recordId = GetRecordId(connection, transaction, recordCode);
             if (!recordId.HasValue)
             {
-                transaction.Commit();
-                return;
+                throw new InvalidOperationException("Hồ sơ không còn trong danh sách làm việc. Vui lòng tải lại hoặc khôi phục từ thùng rác.");
             }
 
             EnsureCanEditRecord(connection, transaction, recordId.Value);
@@ -2301,7 +2365,7 @@ WHERE Id = $recordId;";
 
             command.CommandText = $@"
 SELECT RecordCode, ReceivedDate, SenderName, AreaName, CaseType, SeverityLevel, Status, UpdatedAt, ExpectedResultDate
-FROM Records
+FROM (SELECT * FROM Records WHERE DeletedAt = '') AS Records
 WHERE {string.Join(" AND ", conditions)}
 ORDER BY
   CASE
@@ -2392,7 +2456,7 @@ LIMIT $take OFFSET $skip;";
                 command.Parameters.AddWithValue("$severityLevel", severityLevel);
             }
 
-            command.CommandText = $"SELECT COUNT(*) FROM Records WHERE {string.Join(" AND ", conditions)};";
+            command.CommandText = $"SELECT COUNT(*) FROM (SELECT * FROM Records WHERE DeletedAt = '') AS Records WHERE {string.Join(" AND ", conditions)};";
             return Convert.ToInt32(command.ExecuteScalar(), CultureInfo.InvariantCulture);
         }
 
@@ -2432,7 +2496,7 @@ LIMIT $take OFFSET $skip;";
             var whereClause = BuildExportWhere(command, fromDate, toDate, status, caseType, field, areaName, processorName, searchText, applyUserScope: true);
             command.CommandText = $@"
 SELECT RecordCode, ReceivedDate, SenderName, AreaName, CaseType, Field, Status, UpdatedAt, ProcessorName
-FROM Records
+FROM (SELECT * FROM Records WHERE DeletedAt = '') AS Records
 {whereClause}
 ORDER BY {BuildExportOrderBy(sortOption)}
 LIMIT $take;";
@@ -2490,7 +2554,7 @@ LIMIT $take;";
             using var connection = OpenConnection();
             using var command = connection.CreateCommand();
             var whereClause = BuildExportWhere(command, fromDate, toDate, status, caseType, field, areaName, processorName, searchText, applyUserScope: true);
-            command.CommandText = $"SELECT COUNT(*) FROM Records {whereClause};";
+            command.CommandText = $"SELECT COUNT(*) FROM (SELECT * FROM Records WHERE DeletedAt = '') AS Records {whereClause};";
             var count = Convert.ToInt32(command.ExecuteScalar(), CultureInfo.InvariantCulture);
             LogElapsed("Database", "CountExportRecords", stopwatch, count);
             return count;
@@ -2524,7 +2588,7 @@ LIMIT $take;";
             using var connection = OpenConnection();
             using var command = connection.CreateCommand();
             var whereClause = BuildExportWhere(command, fromDate, toDate, status, caseType, field, areaName, processorName, searchText, applyUserScope: true);
-            command.CommandText = $"SELECT COUNT(*) FROM Records {whereClause};";
+            command.CommandText = $"SELECT COUNT(*) FROM (SELECT * FROM Records WHERE DeletedAt = '') AS Records {whereClause};";
             return Convert.ToInt32(command.ExecuteScalar(), CultureInfo.InvariantCulture);
         }
 
@@ -2842,6 +2906,15 @@ CREATE TABLE IF NOT EXISTS Users (
             TryAddColumn(connection, "RecordAttachments", "FilePath", "TEXT NOT NULL DEFAULT ''");
             TryAddColumn(connection, "LeadershipNotices", "ReadBy", "TEXT NOT NULL DEFAULT ''");
             CreateIndexes(connection);
+            EnsureRecordTrashSchema(connection);
+        }
+
+        private static void EnsureRecordTrashSchema(SqliteConnection connection)
+        {
+            TryAddColumn(connection, "Records", "DeletedAt", "TEXT NOT NULL DEFAULT ''");
+            TryAddColumn(connection, "Records", "DeletedBy", "TEXT NOT NULL DEFAULT ''");
+            TryAddColumn(connection, "Records", "DeletionBatchId", "TEXT NOT NULL DEFAULT ''");
+            ExecuteNonQuery(connection, "CREATE INDEX IF NOT EXISTS IX_Records_DeletedAt ON Records(DeletedAt);");
         }
 
         private static void MigrateLegacyPriorityColumnIfNeeded(SqliteConnection connection)
@@ -3936,7 +4009,7 @@ WHERE CatalogType = $catalogType
         private static int CountRecords(SqliteConnection connection, DateTime? fromDate = null, DateTime? toDate = null)
         {
             using var command = connection.CreateCommand();
-            command.CommandText = $"SELECT COUNT(*) FROM Records {BuildScopedDateWhere(command, fromDate, toDate)};";
+            command.CommandText = $"SELECT COUNT(*) FROM (SELECT * FROM Records WHERE DeletedAt = '') AS Records {BuildScopedDateWhere(command, fromDate, toDate)};";
             AddDateParameters(command, fromDate, toDate);
             return Convert.ToInt32(command.ExecuteScalar(), CultureInfo.InvariantCulture);
         }
@@ -4170,7 +4243,7 @@ WHERE RecordCode LIKE $prefixLike;";
 
             using var command = connection.CreateCommand();
             command.Transaction = transaction;
-            command.CommandText = "SELECT ProcessorName FROM Records WHERE Id = $recordId LIMIT 1;";
+            command.CommandText = "SELECT ProcessorName FROM (SELECT * FROM Records WHERE DeletedAt = '') AS Records WHERE Id = $recordId LIMIT 1;";
             command.Parameters.AddWithValue("$recordId", recordId);
             var processorName = command.ExecuteScalar()?.ToString();
             if (!AuthContext.CanEditRecord(processorName))
@@ -4187,7 +4260,7 @@ WHERE RecordCode LIKE $prefixLike;";
             }
 
             using var command = connection.CreateCommand();
-            command.CommandText = "SELECT ProcessorName FROM Records WHERE RecordCode = $recordCode LIMIT 1;";
+            command.CommandText = "SELECT ProcessorName FROM (SELECT * FROM Records WHERE DeletedAt = '') AS Records WHERE RecordCode = $recordCode LIMIT 1;";
             command.Parameters.AddWithValue("$recordCode", recordCode);
             return command.ExecuteScalar()?.ToString() ?? string.Empty;
         }
@@ -4373,7 +4446,7 @@ AreaName IN (
         private static int CountOpenProcessingRecords(SqliteConnection connection)
         {
             using var command = connection.CreateCommand();
-            command.CommandText = $"SELECT COUNT(*) FROM Records WHERE Status <> 'Đã giải quyết'{BuildUserRecordCondition(command)};";
+            command.CommandText = $"SELECT COUNT(*) FROM (SELECT * FROM Records WHERE DeletedAt = '') AS Records WHERE Status <> 'Đã giải quyết'{BuildUserRecordCondition(command)};";
             return Convert.ToInt32(command.ExecuteScalar(), CultureInfo.InvariantCulture);
         }
 
@@ -4382,7 +4455,7 @@ AreaName IN (
             using var command = connection.CreateCommand();
             command.CommandText = @"
 SELECT COUNT(*)
-FROM Records
+FROM (SELECT * FROM Records WHERE DeletedAt = '') AS Records
 WHERE Status <> 'Đã giải quyết'
   AND ExpectedResultDate <> ''
   AND ExpectedResultDate >= $today
@@ -4397,7 +4470,7 @@ WHERE Status <> 'Đã giải quyết'
             using var command = connection.CreateCommand();
             command.CommandText = @"
 SELECT COUNT(*)
-FROM Records
+FROM (SELECT * FROM Records WHERE DeletedAt = '') AS Records
 WHERE Status <> 'Đã giải quyết'
   AND SeverityLevel IN ('Nghiêm trọng', 'Rất nghiêm trọng', 'Đặc biệt nghiêm trọng')" + BuildUserRecordCondition(command) + ";";
             return Convert.ToInt32(command.ExecuteScalar(), CultureInfo.InvariantCulture);
@@ -4414,7 +4487,7 @@ WHERE Status <> 'Đã giải quyết'
                 command.Parameters.AddWithValue(parameterName, statuses[i]);
             }
 
-            command.CommandText = $"SELECT COUNT(*) FROM Records WHERE Status IN ({string.Join(",", parameters)}){BuildScopedDateCondition(command, fromDate, toDate)};";
+            command.CommandText = $"SELECT COUNT(*) FROM (SELECT * FROM Records WHERE DeletedAt = '') AS Records WHERE Status IN ({string.Join(",", parameters)}){BuildScopedDateCondition(command, fromDate, toDate)};";
             AddDateParameters(command, fromDate, toDate);
             return Convert.ToInt32(command.ExecuteScalar(), CultureInfo.InvariantCulture);
         }
@@ -4424,7 +4497,7 @@ WHERE Status <> 'Đã giải quyết'
             using var command = connection.CreateCommand();
             command.CommandText = @"
 SELECT COUNT(*)
-FROM Records
+FROM (SELECT * FROM Records WHERE DeletedAt = '') AS Records
 WHERE Status <> 'Đã giải quyết'
   AND ExpectedResultDate <> ''
   AND ExpectedResultDate < $today" + BuildUserRecordCondition(command) + ";";

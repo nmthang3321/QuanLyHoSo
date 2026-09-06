@@ -17,6 +17,7 @@ using System.Xml;
 using Microsoft.Win32;
 using QuanLyHoSo.Infrastructure.Data;
 using QuanLyHoSo.Infrastructure.Logging;
+using QuanLyHoSo.Infrastructure.Security;
 using QuanLyHoSo.Models;
 
 namespace QuanLyHoSo.ViewModels
@@ -34,6 +35,15 @@ namespace QuanLyHoSo.ViewModels
         private readonly RelayCommand _nextPageCommand;
         private readonly RelayCommand _previousPageCommand;
         private readonly RelayCommand _refreshCommand;
+        private readonly RelayCommand _deleteSelectedCommand;
+        private readonly RelayCommand _clearSelectionCommand;
+        private readonly HashSet<string> _selectedRecordCodes = new(StringComparer.Ordinal);
+        private bool _isSelectionMode;
+        private bool _isSelectionBusy;
+        private int _totalRecordCount;
+        private int _selectionVersion;
+        private string _selectionProgress;
+        private bool _isTrashOpen;
         private readonly DispatcherTimer _searchDebounceTimer;
         private readonly Dictionary<string, RecordListColumnOption> _columnOptionsByKey = new();
         private string _areaSearchText;
@@ -119,6 +129,12 @@ namespace QuanLyHoSo.ViewModels
             ExportCommand = new RelayCommand(async () => await ExportExcelAsync(), () => !_isExporting);
             BackCommand = new RelayCommand(_goBack);
             CloseDetailCommand = new RelayCommand(CloseDetail);
+            _deleteSelectedCommand = new RelayCommand(async () => await DeleteSelectedRecordsAsync(), () => CanDeleteRecords && !IsSelectionBusy && SelectedCount > 0);
+            _clearSelectionCommand = new RelayCommand(ClearSelection, () => !IsSelectionBusy && SelectedCount > 0);
+            ToggleSelectionCommand = new RelayCommand(() => IsSelectionMode = !IsSelectionMode);
+            SelectAllCommand = new RelayCommand(async () => await SelectAllRecordsAsync());
+            Trash = new RecordTrashViewModel(CloseTrash);
+            OpenTrashCommand = new RelayCommand(async () => await OpenTrashAsync(), () => CanDeleteRecords);
 
             ResetFilters();
         }
@@ -140,6 +156,149 @@ namespace QuanLyHoSo.ViewModels
         public ICommand ExportCommand { get; }
         public ICommand BackCommand { get; }
         public ICommand CloseDetailCommand { get; }
+        public ICommand DeleteSelectedCommand => _deleteSelectedCommand;
+        public ICommand ClearSelectionCommand => _clearSelectionCommand;
+        public ICommand ToggleSelectionCommand { get; }
+        public ICommand SelectAllCommand { get; }
+        public ICommand OpenTrashCommand { get; }
+        public RecordTrashViewModel Trash { get; }
+        public bool IsTrashOpen
+        {
+            get => _isTrashOpen;
+            private set
+            {
+                if (SetProperty(ref _isTrashOpen, value)) OnPropertyChanged(nameof(IsRecordListEnabled));
+            }
+        }
+        public bool IsRecordListEnabled => !IsTrashOpen;
+
+        private async Task OpenTrashAsync()
+        {
+            if (!CanDeleteRecords || IsSelectionBusy || IsTrashOpen) return;
+            _searchDebounceTimer.Stop();
+            IsTrashOpen = true;
+            Trash.SearchText = string.Empty;
+            await Trash.LoadAsync();
+        }
+
+        private void CloseTrash()
+        {
+            if (Trash.IsBusy) return;
+            IsTrashOpen = false;
+            try { Reload(); }
+            catch (Exception ex)
+            {
+                AppLogger.Error("Records", "ReloadAfterTrash", ex, "Failed to reload list.");
+                MessageBox.Show("Không thể tải lại danh sách hồ sơ. Vui lòng bấm Làm mới.", "Lỗi tải danh sách", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
+        public bool CanDeleteRecords => AuthContext.CanDeleteRecord;
+        public bool IsSelectionMode
+        {
+            get => _isSelectionMode;
+            private set
+            {
+                if (IsSelectionBusy || !SetProperty(ref _isSelectionMode, CanDeleteRecords && value)) return;
+                if (!_isSelectionMode) ClearSelection();
+            }
+        }
+        public bool IsSelectionBusy
+        {
+            get => _isSelectionBusy;
+            private set
+            {
+                SetProperty(ref _isSelectionBusy, value);
+                OnPropertyChanged(nameof(IsSelectionIdle));
+                NotifySelectionChanged();
+            }
+        }
+        public bool IsSelectionIdle => !IsSelectionBusy;
+        public bool HasSelectableRecords => CanDeleteRecords && !IsSelectionBusy && Records.Any(row => row.CanDelete);
+        public int SelectedCount => _selectedRecordCodes.Count;
+        public string SelectionText => IsSelectionBusy ? _selectionProgress : $"Đã chọn {SelectedCount:N0}/{_totalRecordCount:N0} hồ sơ • Tất cả các trang";
+
+        public bool? AreAllRecordsSelected
+        {
+            get => !Records.Any(row => row.IsSelected) ? false : Records.Where(row => row.CanDelete).All(row => row.IsSelected) ? true : (bool?)null;
+            set
+            {
+                if (IsSelectionBusy) return;
+                foreach (var row in Records)
+                {
+                    row.IsSelected = value == true;
+                }
+                NotifySelectionChanged();
+            }
+        }
+
+        private void RowSelectionChanged(object sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(RecordListRowViewModel.IsSelected))
+            {
+                var row = (RecordListRowViewModel)sender;
+                if (row.IsSelected) _selectedRecordCodes.Add(row.RecordCode);
+                else _selectedRecordCodes.Remove(row.RecordCode);
+                NotifySelectionChanged();
+            }
+        }
+
+        private void ClearSelection()
+        {
+            _selectionVersion++;
+            _selectedRecordCodes.Clear();
+            foreach (var row in Records) row.IsSelected = false;
+            NotifySelectionChanged();
+        }
+
+        private async Task SelectAllRecordsAsync()
+        {
+            if (!CanDeleteRecords || IsSelectionBusy) return;
+            // Apply pending search before taking a snapshot of all matching record codes.
+            if (_searchDebounceTimer.IsEnabled) ReloadFromFirstPage();
+            IsSelectionMode = true;
+            var version = _selectionVersion;
+            var from = FromDate;
+            var to = ToDate;
+            var status = SelectedStatus;
+            var caseType = SelectedCaseType;
+            var field = SelectedField;
+            var area = SelectedArea;
+            var processor = SelectedProcessor;
+            var search = SearchText;
+            var sort = SelectedSortOption;
+            _selectionProgress = "Đang chọn tất cả hồ sơ theo bộ lọc…";
+            IsSelectionBusy = true;
+            try
+            {
+                var records = await Task.Run(() => _dataService.GetFilteredRecords(
+                    from, to, status, caseType, field, area, processor, search, sort, int.MaxValue, 0));
+                if (version != _selectionVersion || !CanDeleteRecords) return;
+                _selectedRecordCodes.Clear();
+                foreach (var record in records) _selectedRecordCodes.Add(record.RecordCode);
+                _totalRecordCount = records.Count;
+                foreach (var row in Records) row.IsSelected = _selectedRecordCodes.Contains(row.RecordCode);
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Error("Records", "SelectAllRecords", ex, "Failed to select filtered records.");
+                MessageBox.Show($"Không thể chọn tất cả hồ sơ.\n\n{ex.Message}", "Chọn hồ sơ", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            finally
+            {
+                IsSelectionBusy = false;
+            }
+        }
+
+        private void NotifySelectionChanged()
+        {
+            OnPropertyChanged(nameof(SelectedCount));
+            OnPropertyChanged(nameof(SelectionText));
+            OnPropertyChanged(nameof(AreAllRecordsSelected));
+            OnPropertyChanged(nameof(HasSelectableRecords));
+            _deleteSelectedCommand.RaiseCanExecuteChanged();
+            _clearSelectionCommand.RaiseCanExecuteChanged();
+        }
 
         public bool IsFilterPanelOpen
         {
@@ -423,6 +582,7 @@ namespace QuanLyHoSo.ViewModels
 
         public void Reload()
         {
+            ClearSelection();
             var totalRecords = _dataService.CountFilteredRecords(
                 FromDate,
                 ToDate,
@@ -433,6 +593,7 @@ namespace QuanLyHoSo.ViewModels
                 SelectedProcessor,
                 SearchText);
             TotalRecordsText = $"{totalRecords:N0} hồ sơ";
+            _totalRecordCount = totalRecords;
             TotalPages = Math.Max(1, (int)Math.Ceiling(totalRecords / (double)_pageSize));
             if (CurrentPage > TotalPages)
             {
@@ -509,12 +670,19 @@ namespace QuanLyHoSo.ViewModels
                     new RelayCommand(() => DeleteRecord(record.RecordCode))));
             }
 
+            foreach (var row in Records)
+            {
+                row.PropertyChanged -= RowSelectionChanged;
+            }
             Records.Clear();
             foreach (var row in rows)
             {
+                row.IsSelected = _selectedRecordCodes.Contains(row.RecordCode);
+                row.PropertyChanged += RowSelectionChanged;
                 Records.Add(row);
             }
 
+            NotifySelectionChanged();
             RaisePageCommandStates();
         }
 
@@ -896,13 +1064,96 @@ namespace QuanLyHoSo.ViewModels
             _classifyRecord(recordCode);
         }
 
+        private async Task DeleteSelectedRecordsAsync()
+        {
+            if (!CanDeleteRecords || IsSelectionBusy)
+            {
+                return;
+            }
+
+            if (_searchDebounceTimer.IsEnabled)
+            {
+                ReloadFromFirstPage();
+                return;
+            }
+            var selected = _selectedRecordCodes.OrderBy(code => code).ToList();
+            if (selected.Count == 0)
+            {
+                return;
+            }
+
+            _searchDebounceTimer.Stop();
+            var result = MessageBox.Show(
+                $"Bạn có chắc chắn muốn xóa {selected.Count:N0} hồ sơ đã chọn trên tất cả các trang?\n\n" +
+                string.Join(", ", selected.Take(10)) + (selected.Count > 10 ? $" … và {selected.Count - 10:N0} hồ sơ khác." : "") +
+                "\n\nHồ sơ sẽ được chuyển vào thùng rác. Bạn có thể khôi phục lại cùng lịch sử và tệp đính kèm.",
+                "Xác nhận xóa nhiều hồ sơ", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No);
+            if (result != MessageBoxResult.Yes)
+            {
+                return;
+            }
+
+            var deletedCount = 0;
+            var batchId = Guid.NewGuid().ToString("N");
+            var failedCodes = new List<string>();
+            _selectionProgress = $"Đang xóa {selected.Count:N0} hồ sơ…";
+            IsSelectionBusy = true;
+            try
+            {
+                await Task.Run(() =>
+                {
+                    foreach (var recordCode in selected)
+                    {
+                        try
+                        {
+                            if (_dataService.DeleteRecord(recordCode, batchId))
+                            {
+                                deletedCount++;
+                                AppLogger.Info("Records", "DeleteSelectedRecords", "Record deleted.", recordCode);
+                            }
+                            else failedCodes.Add(recordCode);
+                        }
+                        catch (Exception ex)
+                        {
+                            failedCodes.Add(recordCode);
+                            AppLogger.Error("Records", "DeleteSelectedRecords", ex, "Failed to delete selected record.", recordCode);
+                        }
+                    }
+                });
+            }
+            finally
+            {
+                IsSelectionBusy = false;
+            }
+
+            var message = $"Đã chuyển {deletedCount}/{selected.Count} hồ sơ vào thùng rác.";
+            var hasError = failedCodes.Count > 0;
+            if (failedCodes.Count > 0)
+            {
+                message += $"\n\nChưa xóa được {failedCodes.Count:N0} hồ sơ: " + string.Join(", ", failedCodes.Take(10)) +
+                    (failedCodes.Count > 10 ? " …" : "") + ". Vui lòng tải lại danh sách để kiểm tra trước khi thử lại.";
+            }
+            try
+            {
+                Reload();
+            }
+            catch (Exception ex)
+            {
+                ClearSelection();
+                hasError = true;
+                AppLogger.Error("Records", "ReloadAfterBulkDelete", ex, "Failed to reload records after deletion.");
+                message += "\n\nKhông thể tải lại danh sách. Vui lòng bấm Làm mới.";
+            }
+            if (hasError) MessageBox.Show(message, "Kết quả xóa hồ sơ", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+
         private void DeleteRecord(string recordCode)
         {
             var result = MessageBox.Show(
-                $"Bạn có chắc chắn muốn xóa hồ sơ {recordCode}?",
+                $"Chuyển hồ sơ {recordCode} vào thùng rác?\n\nBạn có thể khôi phục lại cùng lịch sử và tệp đính kèm.",
                 "Xác nhận xóa hồ sơ",
                 MessageBoxButton.YesNo,
-                MessageBoxImage.Warning);
+                MessageBoxImage.Warning, MessageBoxResult.No);
 
             if (result != MessageBoxResult.Yes)
             {
@@ -911,12 +1162,13 @@ namespace QuanLyHoSo.ViewModels
 
             try
             {
-                if (_dataService.DeleteRecord(recordCode))
+                var batchId = Guid.NewGuid().ToString("N");
+                if (_dataService.DeleteRecord(recordCode, batchId))
                 {
                     AppLogger.Info("Records", "DeleteRecordFromList", "Record deleted.", recordCode);
-                    MessageBox.Show("Đã xóa hồ sơ khỏi cơ sở dữ liệu.", "Xóa hồ sơ", MessageBoxButton.OK, MessageBoxImage.Information);
                     Reload();
                 }
+                else MessageBox.Show("Hồ sơ đã thay đổi hoặc đã nằm trong thùng rác. Vui lòng làm mới danh sách.", "Xóa hồ sơ", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
             catch (Exception ex)
             {
