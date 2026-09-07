@@ -23,4 +23,6 @@ Methods:
 - `ShellViewModel.ClassifyRecordFromList(...)`
 - `RecordProcessingViewModel.OpenRecord(recordCode, returnToPreviousPage: true)`
 - `RecordProcessingViewModel.BackToQueue()`
+- `RecordProcessingViewModel.PrepareQueue()`
 
+Khi bam sidebar Phan loai & Xu ly (`NavigateTo("Processing")` khong co selectedNavigationKey), luon goi `PrepareQueue()` de dong chi tiet/popup va xoa co quay ve trang nguon, sau do reload queue. Mo Phan loai tu Danh sach ho so van giu chi tiet va Back ve Danh sach ho so; neu da bam sidebar thi Back tu chi tiet mo trong queue chi ve queue, sidebar van chon Phan loai & Xu ly.

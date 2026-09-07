@@ -96,9 +96,13 @@ namespace QuanLyHoSo.Infrastructure.Network
 
                 var route = context.Request.Url.AbsolutePath.Trim('/').Replace("api/", string.Empty);
                 var result = Dispatch(route, await ReadBodyAsync(context.Request));
-                if (string.Equals(route, "settings/update/download", StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(route, "settings/update/download", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(route, "settings/backup/download", StringComparison.OrdinalIgnoreCase))
                 {
-                    await WriteFileAsync(context, result as string);
+                    var contentType = string.Equals(route, "settings/backup/download", StringComparison.OrdinalIgnoreCase)
+                        ? "application/x-sqlite3"
+                        : "application/zip";
+                    await WriteFileAsync(context, result as string, contentType);
                     return;
                 }
 
@@ -173,6 +177,11 @@ namespace QuanLyHoSo.Infrastructure.Network
                         return _dataService.ChangeCurrentUserPassword(changePassword?.CurrentPassword, changePassword?.NewPassword);
                     case "settings/backup/create":
                         return _dataService.CreateBackupFile(ReadData<CreateBackupRequest>(body).FileName);
+                    case "settings/backup/download":
+                        return _dataService.GetBackupFilePath(ReadData<CreateBackupRequest>(body).FileName);
+                    case "settings/backup/restore":
+                        var restoreBackup = ReadData<RestoreBackupRequest>(body);
+                        return _dataService.RestoreDatabaseFromUpload(restoreBackup.FileName, restoreBackup.Content);
                     case "settings/update/latest":
                         return _dataService.GetInternalUpdatePackageInfo();
                     case "settings/update/download":
@@ -327,7 +336,7 @@ namespace QuanLyHoSo.Infrastructure.Network
             context.Response.OutputStream.Close();
         }
 
-        private static async Task WriteFileAsync(HttpListenerContext context, string filePath)
+        private static async Task WriteFileAsync(HttpListenerContext context, string filePath, string contentType)
         {
             if (string.IsNullOrWhiteSpace(filePath) || !File.Exists(filePath))
             {
@@ -337,7 +346,7 @@ namespace QuanLyHoSo.Infrastructure.Network
 
             var fileInfo = new FileInfo(filePath);
             context.Response.StatusCode = 200;
-            context.Response.ContentType = "application/zip";
+            context.Response.ContentType = contentType;
             context.Response.ContentLength64 = fileInfo.Length;
             context.Response.AddHeader("Content-Disposition", $"attachment; filename=\"{fileInfo.Name}\"");
             using var fileStream = File.OpenRead(filePath);

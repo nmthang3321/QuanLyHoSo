@@ -19,6 +19,7 @@ namespace QuanLyHoSo.ViewModels
         private RecordProcessingViewModel _recordProcessingViewModel;
         private StaffTrackingViewModel _staffTrackingViewModel;
         private SettingsViewModel _settingsViewModel;
+        private SettingsGuideViewModel _settingsGuideViewModel;
 
         private ViewModelBase _currentViewModel;
         private string _currentPageKey;
@@ -100,6 +101,11 @@ namespace QuanLyHoSo.ViewModels
                 RecordInputViewModel.PrepareNewRecord();
             }
 
+            if (key == "Processing" && selectedNavigationKey == null)
+            {
+                RecordProcessingViewModel.PrepareQueue();
+            }
+
             CurrentPageKey = key;
             CurrentViewModel = key switch
             {
@@ -176,7 +182,22 @@ namespace QuanLyHoSo.ViewModels
 
         private StaffTrackingViewModel StaffTrackingViewModel => _staffTrackingViewModel ??= new StaffTrackingViewModel(SetStaffNotificationBadge);
 
-        private SettingsViewModel SettingsViewModel => _settingsViewModel ??= new SettingsViewModel();
+        private SettingsViewModel SettingsViewModel => _settingsViewModel ??= new SettingsViewModel(OpenSettingsGuide);
+
+        private SettingsGuideViewModel SettingsGuideViewModel => _settingsGuideViewModel ??= new SettingsGuideViewModel(
+            () => NavigateTo("Settings"));
+
+        private void OpenSettingsGuide()
+        {
+            if (!IsAuthenticated)
+            {
+                return;
+            }
+
+            CurrentPageKey = "SettingsGuide";
+            CurrentViewModel = SettingsGuideViewModel;
+            UpdateNavigationSelection("Settings");
+        }
 
         private void SignIn(AppUser user)
         {
@@ -201,6 +222,7 @@ namespace QuanLyHoSo.ViewModels
             _recordProcessingViewModel = null;
             _staffTrackingViewModel = null;
             _settingsViewModel = null;
+            _settingsGuideViewModel = null;
             CurrentPageKey = null;
             UpdateNavigationSelection(null);
             CurrentViewModel = new LoginViewModel(SignIn);

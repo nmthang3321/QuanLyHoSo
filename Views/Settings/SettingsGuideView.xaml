@@ -1,0 +1,226 @@
+<UserControl x:Class="QuanLyHoSo.Views.Settings.SettingsGuideView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <ScrollViewer VerticalScrollBarVisibility="Auto"
+                  HorizontalScrollBarVisibility="Disabled">
+        <StackPanel>
+            <Grid Margin="0,0,0,20">
+                <StackPanel>
+                    <TextBlock Text="HƯỚNG DẪN SỬ DỤNG"
+                               Style="{StaticResource PageTitleText}" />
+                    <TextBlock Text="Hướng dẫn nhanh theo đúng quyền của tài khoản đang đăng nhập"
+                               Style="{StaticResource MutedText}"
+                               Margin="0,4,0,0" />
+                </StackPanel>
+                <Button Command="{Binding BackCommand}"
+                        Style="{StaticResource SecondaryButton}"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Center"
+                        MinWidth="112">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#xE72B;"
+                                   FontFamily="Segoe MDL2 Assets"
+                                   Margin="0,0,8,0" />
+                        <TextBlock Text="Quay lại" FontWeight="SemiBold" />
+                    </StackPanel>
+                </Button>
+            </Grid>
+
+            <Border Style="{StaticResource CardBorder}"
+                    Background="#F5F9FF"
+                    BorderBrush="#CFE0FF"
+                    Margin="0,0,0,18">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="58" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <Border Width="46" Height="46" CornerRadius="23" Background="#EAF2FF">
+                        <TextBlock Text="&#xE77B;"
+                                   FontFamily="Segoe MDL2 Assets"
+                                   FontSize="21"
+                                   Foreground="{StaticResource PrimaryBrush}"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center" />
+                    </Border>
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock FontSize="16" FontWeight="Bold" Foreground="{StaticResource TextBrush}">
+                            <Run Text="Xin chào, " />
+                            <Run Text="{Binding UserDisplayName, Mode=OneWay}" />
+                        </TextBlock>
+                        <TextBlock Text="{Binding IntroText}"
+                                   Foreground="{StaticResource MutedTextBrush}"
+                                   TextWrapping="Wrap"
+                                   Margin="0,5,12,0" />
+                    </StackPanel>
+                    <Border Grid.Column="2"
+                            Background="{StaticResource PrimaryBrush}"
+                            CornerRadius="12"
+                            Padding="14,5"
+                            VerticalAlignment="Center">
+                        <TextBlock Text="{Binding RoleText}"
+                                   Foreground="White"
+                                   FontWeight="SemiBold" />
+                    </Border>
+                </Grid>
+            </Border>
+
+            <TextBlock Text="DÙNG NHANH"
+                       Style="{StaticResource SectionTitleText}"
+                       Foreground="{StaticResource PrimaryBrush}"
+                       Margin="0,0,0,10" />
+
+            <ItemsControl ItemsSource="{Binding Steps}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <UniformGrid Columns="2" />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Border Style="{StaticResource CardBorder}" Margin="0,0,12,12">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="52" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <Border Width="40" Height="40" CornerRadius="20" Background="#EAF2FF" VerticalAlignment="Top">
+                                    <TextBlock Text="{Binding Number}"
+                                               Foreground="{StaticResource PrimaryBrush}"
+                                               FontWeight="Bold"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center" />
+                                </Border>
+                                <StackPanel Grid.Column="1">
+                                    <TextBlock Text="{Binding Title}"
+                                               FontSize="15"
+                                               FontWeight="Bold"
+                                               Foreground="{StaticResource TextBrush}" />
+                                    <TextBlock Text="{Binding Description}"
+                                               Foreground="{StaticResource MutedTextBrush}"
+                                               TextWrapping="Wrap"
+                                               LineHeight="20"
+                                               Margin="0,5,10,0" />
+                                </StackPanel>
+                                <TextBlock Grid.Column="2"
+                                           Text="{Binding IconGlyph}"
+                                           FontFamily="Segoe MDL2 Assets"
+                                           FontSize="19"
+                                           Foreground="{StaticResource PrimaryBrush}"
+                                           VerticalAlignment="Top" />
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <TextBlock Text="NHỮNG ĐIỀU CẦN BIẾT"
+                       Style="{StaticResource SectionTitleText}"
+                       Foreground="{StaticResource PrimaryBrush}"
+                       Margin="0,8,0,10" />
+
+            <ItemsControl ItemsSource="{Binding Topics}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Border Style="{StaticResource CardBorder}" Margin="0,0,12,12">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="5" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Border Background="{StaticResource PrimaryBrush}" CornerRadius="3" />
+                                <StackPanel Grid.Column="1" Margin="16,0,0,0">
+                                    <TextBlock Text="{Binding Eyebrow}"
+                                               FontSize="11"
+                                               FontWeight="Bold"
+                                               Foreground="{StaticResource PrimaryBrush}" />
+                                    <TextBlock Text="{Binding Title}"
+                                               FontSize="17"
+                                               FontWeight="Bold"
+                                               Foreground="{StaticResource TextBrush}"
+                                               Margin="0,4,0,0" />
+                                    <TextBlock Text="{Binding Description}"
+                                               Foreground="{StaticResource MutedTextBrush}"
+                                               TextWrapping="Wrap"
+                                               LineHeight="20"
+                                               Margin="0,5,0,13" />
+                                    <ItemsControl ItemsSource="{Binding Items}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Grid Margin="0,0,0,9">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="24" />
+                                                        <ColumnDefinition Width="*" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <Border Width="16"
+                                                            Height="16"
+                                                            CornerRadius="8"
+                                                            Background="#EAF2FF"
+                                                            VerticalAlignment="Top"
+                                                            Margin="0,2,0,0">
+                                                        <TextBlock Text="&#xE73E;"
+                                                                   FontFamily="Segoe MDL2 Assets"
+                                                                   FontSize="9"
+                                                                   Foreground="{StaticResource PrimaryBrush}"
+                                                                   HorizontalAlignment="Center"
+                                                                   VerticalAlignment="Center" />
+                                                    </Border>
+                                                    <TextBlock Grid.Column="1"
+                                                               Text="{Binding}"
+                                                               Foreground="{StaticResource TextBrush}"
+                                                               TextWrapping="Wrap"
+                                                               LineHeight="20" />
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <Border Style="{StaticResource CardBorder}" Margin="0,6,12,0">
+                <StackPanel>
+                    <TextBlock Text="GHI NHỚ"
+                               Style="{StaticResource SectionTitleText}"
+                               Foreground="{StaticResource PrimaryBrush}"
+                               Margin="0,0,0,12" />
+                    <ItemsControl ItemsSource="{Binding Tips}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Grid Margin="0,0,0,9">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="26" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Border Width="18" Height="18" CornerRadius="9" Background="#EAF8F0" VerticalAlignment="Top">
+                                        <TextBlock Text="&#xE73E;"
+                                                   FontFamily="Segoe MDL2 Assets"
+                                                   FontSize="10"
+                                                   Foreground="#0FA958"
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center" />
+                                    </Border>
+                                    <TextBlock Grid.Column="1"
+                                               Text="{Binding}"
+                                               Foreground="{StaticResource TextBrush}"
+                                               TextWrapping="Wrap" />
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Border>
+
+            <Button Command="{Binding BackCommand}"
+                    Style="{StaticResource PrimaryButton}"
+                    Content="Quay lại Cài đặt"
+                    HorizontalAlignment="Left"
+                    Margin="0,18,0,8" />
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

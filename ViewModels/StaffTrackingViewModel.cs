@@ -23,16 +23,14 @@ namespace QuanLyHoSo.ViewModels
         private const string DueSoonMetricFilter = "DueSoon";
         private const string NeedsAttentionMetricFilter = "NeedsAttention";
         private const int StaffPageSize = 5;
-        private const int NotificationPageSize = 5;
         private const int OverloadedProcessingThreshold = 10;
+        private const int PerformanceChartHeight = 120;
 
         private readonly Action<int> _notificationUnreadCountChanged;
         private readonly List<StaffPerformanceRow> _allStaffRows = new();
         private readonly List<StaffPerformanceRow> _filteredStaffRows = new();
         private readonly RelayCommand _nextStaffPageCommand;
         private readonly RelayCommand _previousStaffPageCommand;
-        private readonly RelayCommand _nextNotificationPageCommand;
-        private readonly RelayCommand _previousNotificationPageCommand;
         private readonly RelayCommand _markNotificationsReadCommand;
         private readonly RelayCommand _openNotificationCommand;
         private readonly RelayCommand _closeNotificationCommand;
@@ -42,11 +40,8 @@ namespace QuanLyHoSo.ViewModels
         private string _selectedMetricFilter = TotalMetricFilter;
         private int _currentStaffPage = 1;
         private int _totalStaffPages = 1;
-        private int _currentNotificationPage = 1;
-        private int _totalNotificationPages = 1;
         private int _unreadNotificationCount;
         private string _staffRowsSummaryText;
-        private string _notificationSummaryText;
         private DateTime? _fromDate;
         private DateTime? _toDate;
         private string _selectedDateFilter;
@@ -94,8 +89,6 @@ namespace QuanLyHoSo.ViewModels
             SelectMetricCommand = new RelayCommand(SelectMetric);
             _previousStaffPageCommand = new RelayCommand(PreviousStaffPage, () => CurrentStaffPage > 1);
             _nextStaffPageCommand = new RelayCommand(NextStaffPage, () => CurrentStaffPage < TotalStaffPages);
-            _previousNotificationPageCommand = new RelayCommand(PreviousNotificationPage, () => CurrentNotificationPage > 1);
-            _nextNotificationPageCommand = new RelayCommand(NextNotificationPage, () => CurrentNotificationPage < TotalNotificationPages);
             _markNotificationsReadCommand = new RelayCommand(MarkCurrentNotificationsAsRead, () => Notifications.Any(item => item.IsUnread));
             _openNotificationCommand = new RelayCommand(OpenNotification, parameter => parameter is StaffNotification);
             _closeNotificationCommand = new RelayCommand(CloseNotification);
@@ -119,8 +112,6 @@ namespace QuanLyHoSo.ViewModels
         public ICommand SelectMetricCommand { get; }
         public ICommand PreviousStaffPageCommand => _previousStaffPageCommand;
         public ICommand NextStaffPageCommand => _nextStaffPageCommand;
-        public ICommand PreviousNotificationPageCommand => _previousNotificationPageCommand;
-        public ICommand NextNotificationPageCommand => _nextNotificationPageCommand;
         public ICommand MarkNotificationsReadCommand => _markNotificationsReadCommand;
         public ICommand OpenNotificationCommand => _openNotificationCommand;
         public ICommand CloseNotificationCommand => _closeNotificationCommand;
@@ -240,40 +231,6 @@ namespace QuanLyHoSo.ViewModels
         {
             get => _staffRowsSummaryText;
             private set => SetProperty(ref _staffRowsSummaryText, value);
-        }
-
-        public int CurrentNotificationPage
-        {
-            get => _currentNotificationPage;
-            private set
-            {
-                if (SetProperty(ref _currentNotificationPage, value))
-                {
-                    OnPropertyChanged(nameof(NotificationPageText));
-                    RaiseNotificationCommandStates();
-                }
-            }
-        }
-
-        public int TotalNotificationPages
-        {
-            get => _totalNotificationPages;
-            private set
-            {
-                if (SetProperty(ref _totalNotificationPages, value))
-                {
-                    OnPropertyChanged(nameof(NotificationPageText));
-                    RaiseNotificationCommandStates();
-                }
-            }
-        }
-
-        public string NotificationPageText => $"Trang {CurrentNotificationPage}/{TotalNotificationPages}";
-
-        public string NotificationSummaryText
-        {
-            get => _notificationSummaryText;
-            private set => SetProperty(ref _notificationSummaryText, value);
         }
 
         public int UnreadNotificationCount
@@ -411,13 +368,17 @@ namespace QuanLyHoSo.ViewModels
             switch (_selectedMetricFilter)
             {
                 case OverloadedMetricFilter:
-                    staffRows = staffRows.Where(IsOverloadedStaff);
+                    staffRows = AuthContext.IsOfficer
+                        ? staffRows.Where(row => row.ProcessingCount > 0)
+                        : staffRows.Where(IsOverloadedStaff);
                     break;
                 case DueSoonMetricFilter:
                     staffRows = staffRows.Where(row => row.DueSoonCount > 0);
                     break;
                 case NeedsAttentionMetricFilter:
-                    staffRows = staffRows.Where(NeedsAttention);
+                    staffRows = AuthContext.IsOfficer
+                        ? staffRows.Where(row => row.OverdueCount > 0)
+                        : staffRows.Where(NeedsAttention);
                     break;
             }
 
@@ -467,15 +428,21 @@ namespace QuanLyHoSo.ViewModels
             BarStats.Clear();
             foreach (var row in staffRows)
             {
+                var onTimePercent = int.Parse(row.OnTimeRateText.TrimEnd('%'), CultureInfo.InvariantCulture);
                 BarStats.Add(new StaffBarStat
                 {
                     StaffName = row.Name,
-                    OnTimePercent = int.Parse(row.OnTimeRateText.TrimEnd('%'), CultureInfo.InvariantCulture),
+                    OnTimePercent = onTimePercent,
                     KpiPercent = row.KpiPercent,
-                    OnTimeHeight = row.KpiPercent > 0 ? int.Parse(row.OnTimeRateText.TrimEnd('%'), CultureInfo.InvariantCulture) : 0,
-                    KpiHeight = row.KpiPercent
+                    OnTimeHeight = ScalePerformanceBar(onTimePercent),
+                    KpiHeight = ScalePerformanceBar(row.KpiPercent)
                 });
             }
+        }
+
+        private static int ScalePerformanceBar(int percentage)
+        {
+            return (int)Math.Round(Math.Max(0, Math.Min(100, percentage)) * PerformanceChartHeight / 100d);
         }
 
         private void RefreshMetricCards(IReadOnlyCollection<StaffPerformanceRow> staffRows)
@@ -564,8 +531,6 @@ namespace QuanLyHoSo.ViewModels
 
         private void RaiseNotificationCommandStates()
         {
-            _previousNotificationPageCommand?.RaiseCanExecuteChanged();
-            _nextNotificationPageCommand?.RaiseCanExecuteChanged();
             _markNotificationsReadCommand?.RaiseCanExecuteChanged();
         }
 
@@ -731,7 +696,6 @@ namespace QuanLyHoSo.ViewModels
             if (!CanReadLeadershipNotice)
             {
                 Notifications.Clear();
-                NotificationSummaryText = string.Empty;
                 UnreadNotificationCount = 0;
                 _notificationUnreadCountChanged?.Invoke(0);
                 return;
@@ -739,23 +703,10 @@ namespace QuanLyHoSo.ViewModels
 
             var page = AppDataService.Instance.GetLeadershipNotices(
                 AuthContext.CurrentDisplayName,
-                (CurrentNotificationPage - 1) * NotificationPageSize,
-                NotificationPageSize,
+                0,
+                int.MaxValue,
                 AuthContext.IsLeader,
                 AuthContext.IsAdmin);
-            var totalCount = page?.TotalCount ?? 0;
-            TotalNotificationPages = Math.Max(1, (int)Math.Ceiling(totalCount / (double)NotificationPageSize));
-            if (CurrentNotificationPage > TotalNotificationPages)
-            {
-                CurrentNotificationPage = TotalNotificationPages;
-                page = AppDataService.Instance.GetLeadershipNotices(
-                    AuthContext.CurrentDisplayName,
-                    (CurrentNotificationPage - 1) * NotificationPageSize,
-                    NotificationPageSize,
-                    AuthContext.IsLeader,
-                    AuthContext.IsAdmin);
-                totalCount = page?.TotalCount ?? 0;
-            }
 
             Notifications.Clear();
             foreach (var notification in page?.Items ?? Array.Empty<StaffNotification>())
@@ -763,37 +714,9 @@ namespace QuanLyHoSo.ViewModels
                 Notifications.Add(notification);
             }
 
-            var skip = (CurrentNotificationPage - 1) * NotificationPageSize;
-            var fromRow = totalCount == 0 ? 0 : skip + 1;
-            var toRow = Math.Min(skip + NotificationPageSize, totalCount);
             UnreadNotificationCount = page?.UnreadCount ?? 0;
-            NotificationSummaryText = totalCount == 0
-                ? "Chưa có thông báo."
-                : $"Hiển thị {fromRow} - {toRow} / {totalCount} thông báo";
             _notificationUnreadCountChanged?.Invoke(UnreadNotificationCount);
             RaiseNotificationCommandStates();
-        }
-
-        private void NextNotificationPage()
-        {
-            if (CurrentNotificationPage >= TotalNotificationPages)
-            {
-                return;
-            }
-
-            CurrentNotificationPage++;
-            LoadNotifications();
-        }
-
-        private void PreviousNotificationPage()
-        {
-            if (CurrentNotificationPage <= 1)
-            {
-                return;
-            }
-
-            CurrentNotificationPage--;
-            LoadNotifications();
         }
 
         private void MarkCurrentNotificationsAsRead()

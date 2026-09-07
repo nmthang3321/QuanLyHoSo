@@ -31,7 +31,8 @@
     </UserControl.Resources>
 
     <Grid>
-    <ScrollViewer VerticalScrollBarVisibility="Auto"
+    <ScrollViewer x:Name="PageScrollViewer"
+                  VerticalScrollBarVisibility="Auto"
                   HorizontalScrollBarVisibility="Disabled">
         <Grid>
             <Grid.RowDefinitions>
@@ -204,8 +205,9 @@
 
                 <Border Grid.Row="1" Style="{StaticResource CardBorder}" Padding="0">
                     <StackPanel>
-                        <TextBlock Text="HIỆU SUẤT XỬ LÝ CỦA CÁN BỘ"
+                        <TextBlock Text="DANH SÁCH CÁN BỘ"
                                    Style="{StaticResource SectionTitleText}"
+                                   Foreground="{StaticResource PrimaryBrush}"
                                    Margin="16,14,16,10" />
                         <DataGrid ItemsSource="{Binding StaffRows}"
                                   SelectedItem="{Binding SelectedStaff, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
@@ -213,8 +215,10 @@
                                   HeadersVisibility="Column"
                                   RowHeight="43"
                                   Height="252"
+                                  Background="White"
                                   SelectionMode="Single"
                                   SelectionUnit="FullRow"
+                                  PreviewMouseWheel="StaffGrid_PreviewMouseWheel"
                                   ScrollViewer.VerticalScrollBarVisibility="Disabled"
                                   ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                                   CanUserAddRows="False"
@@ -394,16 +398,18 @@
                                     <ColumnDefinition Width="*" />
                                 </Grid.ColumnDefinitions>
                                 <Border Width="34" Height="34" CornerRadius="17" Background="#EAF2FF">
-                                    <TextBlock Text="&#xE9D2;"
-                                               FontFamily="Segoe MDL2 Assets"
-                                               FontSize="16"
-                                               FontWeight="Bold"
-                                               Foreground="#0B5CFF"
-                                               HorizontalAlignment="Center"
-                                               VerticalAlignment="Center" />
+                                    <Path Width="18"
+                                          Height="18"
+                                          Data="M280,-280 H360 V-480 H280 V-280 Z M600,-280 H680 V-680 H600 V-280 Z M440,-280 H520 V-400 H440 V-280 Z M440,-480 H520 V-560 H440 V-480 Z M200,-120 Q167,-120 143.5,-143.5 T120,-200 V-760 Q120,-793 143.5,-816.5 T200,-840 H760 Q793,-840 816.5,-816.5 T840,-760 V-200 Q840,-167 816.5,-143.5 T760,-120 H200 Z M200,-200 H760 V-760 H200 V-200 Z"
+                                          Fill="#0B5CFF"
+                                          Stretch="Uniform"
+                                          HorizontalAlignment="Center"
+                                          VerticalAlignment="Center" />
                                 </Border>
                                 <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
-                                    <TextBlock Text="HIỆU SUẤT XỬ LÝ THEO CÁN BỘ" Style="{StaticResource SectionTitleText}" />
+                                    <TextBlock Text="HIỆU SUẤT XỬ LÝ THEO CÁN BỘ"
+                                               Style="{StaticResource SectionTitleText}"
+                                               Foreground="{StaticResource PrimaryBrush}" />
                                     <TextBlock Text="So sánh tỷ lệ đúng hạn và KPI của từng cán bộ"
                                                Style="{StaticResource MutedText}"
                                                FontSize="11"
@@ -427,47 +433,102 @@
                                     <RowDefinition Height="*" />
                                     <RowDefinition Height="24" />
                                 </Grid.RowDefinitions>
-                                <Border Grid.Row="0" BorderBrush="#E3EAF4" BorderThickness="0,0,0,1" />
-                                <ItemsControl Grid.Row="0" ItemsSource="{Binding BarStats}" VerticalAlignment="Bottom">
-                                    <ItemsControl.ItemsPanel>
-                                        <ItemsPanelTemplate>
-                                            <UniformGrid Rows="1" />
-                                        </ItemsPanelTemplate>
-                                    </ItemsControl.ItemsPanel>
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate>
-                                            <StackPanel VerticalAlignment="Bottom" HorizontalAlignment="Center">
-                                                <Grid Height="122" Width="44">
-                                                     <Border Width="16"
-                                                             Height="{Binding OnTimeHeight}"
-                                                             Background="#0B5CFF"
-                                                             CornerRadius="4,4,0,0"
-                                                             HorizontalAlignment="Left"
-                                                             VerticalAlignment="Bottom"
-                                                             RenderTransformOrigin="0.5,1"
-                                                             Loaded="PerformanceBar_Loaded">
-                                                         <Border.RenderTransform>
-                                                             <ScaleTransform ScaleY="1" />
-                                                         </Border.RenderTransform>
-                                                     </Border>
-                                                     <Border Width="16"
-                                                             Height="{Binding KpiHeight}"
-                                                             Background="#35C47B"
-                                                             CornerRadius="4,4,0,0"
-                                                             HorizontalAlignment="Right"
-                                                             VerticalAlignment="Bottom"
-                                                             RenderTransformOrigin="0.5,1"
-                                                             Loaded="PerformanceBar_Loaded">
-                                                         <Border.RenderTransform>
-                                                             <ScaleTransform ScaleY="1" />
-                                                         </Border.RenderTransform>
-                                                     </Border>
-                                                </Grid>
-                                            </StackPanel>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
-                                <ItemsControl Grid.Row="1" ItemsSource="{Binding BarStats}">
+                                <Grid Grid.Row="0" Margin="0,8,0,2" VerticalAlignment="Bottom">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="30" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <Canvas Width="28" Height="120" HorizontalAlignment="Left">
+                                        <TextBlock Text="100" FontSize="9" Foreground="{StaticResource MutedTextBrush}" Canvas.Top="-7" />
+                                        <TextBlock Text="75" FontSize="9" Foreground="{StaticResource MutedTextBrush}" Canvas.Top="23" Canvas.Left="6" />
+                                        <TextBlock Text="50" FontSize="9" Foreground="{StaticResource MutedTextBrush}" Canvas.Top="53" Canvas.Left="6" />
+                                        <TextBlock Text="25" FontSize="9" Foreground="{StaticResource MutedTextBrush}" Canvas.Top="83" Canvas.Left="6" />
+                                        <TextBlock Text="0" FontSize="9" Foreground="{StaticResource MutedTextBrush}" Canvas.Top="107" Canvas.Left="12" />
+                                    </Canvas>
+
+                                    <Grid Grid.Column="1" Height="120" Margin="4,0,0,0" VerticalAlignment="Bottom">
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="*" />
+                                            <RowDefinition Height="*" />
+                                            <RowDefinition Height="*" />
+                                            <RowDefinition Height="*" />
+                                        </Grid.RowDefinitions>
+                                        <Border Grid.Row="0" BorderBrush="#DCE5F1" BorderThickness="0,1,0,0" />
+                                        <Border Grid.Row="1" BorderBrush="#DCE5F1" BorderThickness="0,1,0,0" />
+                                        <Border Grid.Row="2" BorderBrush="#DCE5F1" BorderThickness="0,1,0,0" />
+                                        <Border Grid.Row="3" BorderBrush="#DCE5F1" BorderThickness="0,1,0,1" />
+
+                                        <ItemsControl Grid.RowSpan="4" ItemsSource="{Binding BarStats}" VerticalAlignment="Bottom">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <UniformGrid Rows="1" />
+                                                </ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <StackPanel VerticalAlignment="Bottom" HorizontalAlignment="Center">
+                                                        <Grid Height="120" Width="44">
+                                                             <Border Width="16"
+                                                                     Height="{Binding OnTimeHeight}"
+                                                                     Background="#0B5CFF"
+                                                                     CornerRadius="4,4,0,0"
+                                                                     HorizontalAlignment="Left"
+                                                                     VerticalAlignment="Bottom"
+                                                                     RenderTransformOrigin="0.5,1"
+                                                                     Loaded="PerformanceBar_Loaded"
+                                                                     ToolTipService.InitialShowDelay="80"
+                                                                     ToolTipService.ShowDuration="10000">
+                                                                 <Border.RenderTransform>
+                                                                     <ScaleTransform ScaleY="1" />
+                                                                 </Border.RenderTransform>
+                                                                 <Border.ToolTip>
+                                                                     <ToolTip Placement="Mouse" HorizontalOffset="10" VerticalOffset="8">
+                                                                         <StackPanel>
+                                                                             <TextBlock Text="{Binding StaffName}" FontWeight="SemiBold" />
+                                                                             <TextBlock Margin="0,3,0,0">
+                                                                                 <Run Text="Đúng hạn: " />
+                                                                                 <Run Text="{Binding OnTimePercent, Mode=OneWay}" FontWeight="Bold" />
+                                                                                 <Run Text="%" />
+                                                                             </TextBlock>
+                                                                         </StackPanel>
+                                                                     </ToolTip>
+                                                                 </Border.ToolTip>
+                                                             </Border>
+                                                             <Border Width="16"
+                                                                     Height="{Binding KpiHeight}"
+                                                                     Background="#35C47B"
+                                                                     CornerRadius="4,4,0,0"
+                                                                     HorizontalAlignment="Right"
+                                                                     VerticalAlignment="Bottom"
+                                                                     RenderTransformOrigin="0.5,1"
+                                                                     Loaded="PerformanceBar_Loaded"
+                                                                     ToolTipService.InitialShowDelay="80"
+                                                                     ToolTipService.ShowDuration="10000">
+                                                                 <Border.RenderTransform>
+                                                                     <ScaleTransform ScaleY="1" />
+                                                                 </Border.RenderTransform>
+                                                                 <Border.ToolTip>
+                                                                     <ToolTip Placement="Mouse" HorizontalOffset="10" VerticalOffset="8">
+                                                                         <StackPanel>
+                                                                             <TextBlock Text="{Binding StaffName}" FontWeight="SemiBold" />
+                                                                             <TextBlock Margin="0,3,0,0">
+                                                                                 <Run Text="KPI: " />
+                                                                                 <Run Text="{Binding KpiPercent, Mode=OneWay}" FontWeight="Bold" />
+                                                                                 <Run Text="%" />
+                                                                             </TextBlock>
+                                                                         </StackPanel>
+                                                                     </ToolTip>
+                                                                 </Border.ToolTip>
+                                                             </Border>
+                                                        </Grid>
+                                                    </StackPanel>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </Grid>
+                                </Grid>
+                                <ItemsControl Grid.Row="1" Margin="34,0,0,0" ItemsSource="{Binding BarStats}">
                                     <ItemsControl.ItemsPanel>
                                         <ItemsPanelTemplate>
                                             <UniformGrid Rows="1" />
@@ -636,7 +697,6 @@
                                             <Grid.RowDefinitions>
                                                 <RowDefinition Height="Auto" />
                                                 <RowDefinition Height="*" />
-                                                <RowDefinition Height="Auto" />
                                             </Grid.RowDefinitions>
                                             <Grid Margin="0,0,0,7">
                                                 <TextBlock Text="Thông báo đã nhận"
@@ -710,30 +770,6 @@
                                                 </ItemsControl>
                                             </ScrollViewer>
 
-                                            <Grid Grid.Row="2" Margin="0,5,0,0">
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="*" />
-                                                    <ColumnDefinition Width="Auto" />
-                                                    <ColumnDefinition Width="Auto" />
-                                                </Grid.ColumnDefinitions>
-                                                <TextBlock Text="{Binding NotificationPageText}"
-                                                           Foreground="{StaticResource MutedTextBrush}"
-                                                           FontSize="10"
-                                                           VerticalAlignment="Center" />
-                                                <Button Grid.Column="1"
-                                                        Style="{StaticResource IconButton}"
-                                                        Command="{Binding PreviousNotificationPageCommand}"
-                                                        ToolTip="Trang trước"
-                                                        Margin="0,0,5,0">
-                                                    <TextBlock Text="&#xE76B;" FontFamily="Segoe MDL2 Assets" />
-                                                </Button>
-                                                <Button Grid.Column="2"
-                                                        Style="{StaticResource IconButton}"
-                                                        Command="{Binding NextNotificationPageCommand}"
-                                                        ToolTip="Trang sau">
-                                                    <TextBlock Text="&#xE76C;" FontFamily="Segoe MDL2 Assets" />
-                                                </Button>
-                                            </Grid>
                                         </Grid>
                                     </TabItem>
 
@@ -850,7 +886,6 @@
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="*" />
-                                    <RowDefinition Height="Auto" />
                                 </Grid.RowDefinitions>
                                 <Grid Margin="0,0,0,10">
                                     <Grid.ColumnDefinitions>
@@ -868,7 +903,9 @@
                                                    VerticalAlignment="Center" />
                                     </Border>
                                     <StackPanel Grid.Column="1" Margin="10,0,8,0" VerticalAlignment="Center">
-                                        <TextBlock Text="THÔNG BÁO" Style="{StaticResource SectionTitleText}" />
+                                        <TextBlock Text="THÔNG BÁO"
+                                                   Style="{StaticResource SectionTitleText}"
+                                                   Foreground="{StaticResource PrimaryBrush}" />
                                         <TextBlock Text="Tin nhắn từ lãnh đạo" Style="{StaticResource MutedText}" FontSize="11" Margin="0,2,0,0" />
                                     </StackPanel>
                                     <Button Grid.Column="2"
@@ -938,30 +975,6 @@
                                     </ItemsControl>
                                 </ScrollViewer>
 
-                                <Grid Grid.Row="2" Margin="0,6,0,0">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock Text="{Binding NotificationPageText}"
-                                               Foreground="{StaticResource MutedTextBrush}"
-                                               FontSize="11"
-                                               VerticalAlignment="Center" />
-                                    <Button Grid.Column="1"
-                                            Style="{StaticResource IconButton}"
-                                            Command="{Binding PreviousNotificationPageCommand}"
-                                            ToolTip="Trang trước"
-                                            Margin="0,0,6,0">
-                                        <TextBlock Text="&#xE76B;" FontFamily="Segoe MDL2 Assets" />
-                                    </Button>
-                                    <Button Grid.Column="2"
-                                            Style="{StaticResource IconButton}"
-                                            Command="{Binding NextNotificationPageCommand}"
-                                            ToolTip="Trang sau">
-                                        <TextBlock Text="&#xE76C;" FontFamily="Segoe MDL2 Assets" />
-                                    </Button>
-                                </Grid>
                             </Grid>
                         </Border>
                     </Grid>
@@ -988,12 +1001,8 @@
                     <TextBlock Text="{Binding SelectedStaff.Name}"
                                FontSize="16"
                                FontWeight="Bold"
-                               HorizontalAlignment="Center" />
-                    <TextBlock Text="{Binding SelectedStaff.Position}"
-                               Style="{StaticResource MutedText}"
-                               FontSize="13"
                                HorizontalAlignment="Center"
-                               Margin="0,4,0,18" />
+                               Margin="0,0,0,18" />
 
                     <Grid Margin="0,0,0,16">
                         <Grid.ColumnDefinitions>

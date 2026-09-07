@@ -6,16 +6,22 @@ Files:
 - `Views\Settings\SettingsView.xaml`
 - `ViewModels\SettingsViewModel.cs`
 - `Infrastructure\Data\AppDataService.cs`
+- `Infrastructure\Network\LanApiModels.cs`
+- `Infrastructure\Network\LanDataServer.cs`
 - `Infrastructure\Configuration\AppPathSettings.cs`
 
 Service methods:
 - `BackupDatabase`
 - `CreateBackupFile`
+- `DownloadBackupFile`
+- `GetBackupFilePath`
+- `RestoreDatabaseFromUpload`
 - `RestoreDatabaseFromFile`
 - `ValidateDatabaseFile`
 
 Notes:
 - Backup dung SQLite `BackupDatabase` API thay vi `File.Copy` DB song.
-- WPF Settings hien chi co backup server-side: admin bam Sao luu ngay -> client goi `settings/backup/create` -> server tao file trong `%LocalAppData%\QuanLyHoSo\Backup` tren may server.
-- Restore DB khong con hien tren WPF client. Neu can restore, thuc hien tren server/bao tri de server doc duoc file backup.
-- `RestoreDatabaseFromFile` van con trong service cho ky thuat/bao tri: tao safety backup truoc, restore bang SQLite backup API, sau do `PRAGMA quick_check`.
+- Card `Sao luu du lieu` chi hien voi Admin. Admin co the chon thu muc luu tren may dang chay WPF va chon file `.db` de khoi phuc.
+- Luong sao luu: client goi `settings/backup/create` de server tao backup an toan, sau do tai file qua `settings/backup/download` ve thu muc Admin da chon.
+- Luong khoi phuc: client doc file `.db`, gui noi dung qua `settings/backup/restore`; server luu file tam, kiem tra database, tao safety backup, restore bang SQLite backup API, chay `PRAGMA quick_check`, roi xoa file tam.
+- Safety backup truoc khi khoi phuc nam trong `%LocalAppData%\QuanLyHoSo\Backup` tren may server.

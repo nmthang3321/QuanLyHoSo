@@ -31,6 +31,7 @@ namespace QuanLyHoSo.ViewModels
         private const int CatalogDialogPageSize = 6;
 
         private readonly AppDataService _dataService;
+        private readonly Action _openGuide;
         private readonly List<CatalogValueSetting> _allCatalogValues;
         private CatalogGroupSetting _selectedCatalogGroup;
         private CatalogValueSetting _selectedCatalogValue;
@@ -38,6 +39,7 @@ namespace QuanLyHoSo.ViewModels
         private string _catalogSearchText;
         private string _selectedCatalogStatusFilter;
         private string _backupFolder;
+        private string _restoreFilePath;
         private string _backupStatus;
         private string _updateStatus;
         private string _lastBackupText;
@@ -50,7 +52,6 @@ namespace QuanLyHoSo.ViewModels
         private bool _isCatalogDialogOpen;
         private bool _isSystemLogDialogOpen;
         private bool _isGeneralSettingsDialogOpen;
-        private bool _isGuideDialogOpen;
         private bool _isUserManagementDialogOpen;
         private bool _isChangePasswordDialogOpen;
         private string _databasePathText;
@@ -72,9 +73,10 @@ namespace QuanLyHoSo.ViewModels
         private int _catalogCurrentPage = 1;
         private int _catalogFilteredCount;
 
-        public SettingsViewModel()
+        public SettingsViewModel(Action openGuide = null)
         {
             _dataService = AppDataService.Instance;
+            _openGuide = openGuide;
 
             CatalogGroups = new ObservableCollection<CatalogGroupSetting>
             {
@@ -113,8 +115,7 @@ namespace QuanLyHoSo.ViewModels
             RefreshSystemLogsCommand = new RelayCommand(RefreshSystemLogs);
             OpenGeneralSettingsDialogCommand = new RelayCommand(OpenGeneralSettingsDialog);
             CloseGeneralSettingsDialogCommand = new RelayCommand(() => IsGeneralSettingsDialogOpen = false);
-            OpenGuideDialogCommand = new RelayCommand(() => IsGuideDialogOpen = true);
-            CloseGuideDialogCommand = new RelayCommand(() => IsGuideDialogOpen = false);
+            OpenGuideCommand = new RelayCommand(() => _openGuide?.Invoke(), () => _openGuide != null);
             OpenUserManagementDialogCommand = new RelayCommand(OpenUserManagementDialog, () => AuthContext.CanManageUsers);
             CloseUserManagementDialogCommand = new RelayCommand(() => IsUserManagementDialogOpen = false);
             OpenChangePasswordDialogCommand = new RelayCommand(OpenChangePasswordDialog);
@@ -133,9 +134,10 @@ namespace QuanLyHoSo.ViewModels
             AddCatalogValueCommand = new RelayCommand(AddCatalogValue, () => CanEditSettings);
             UpdateCatalogValueCommand = new RelayCommand(UpdateCatalogValue, () => CanEditSettings && SelectedCatalogValue != null);
             DeleteCatalogValueCommand = new RelayCommand(DeleteCatalogValue, () => CanEditSettings && SelectedCatalogValue != null);
-            ChooseBackupFolderCommand = new RelayCommand(ChooseBackupFolder);
+            ChooseBackupFolderCommand = new RelayCommand(ChooseBackupFolder, () => CanEditSettings);
+            ChooseRestoreFileCommand = new RelayCommand(ChooseRestoreFile, () => CanEditSettings);
             BackupNowCommand = new RelayCommand(async () => await BackupNowAsync(), () => CanEditSettings);
-            RestoreDataCommand = new RelayCommand(async () => await RestoreDataAsync());
+            RestoreDataCommand = new RelayCommand(async () => await RestoreDataAsync(), () => CanEditSettings);
             CheckUpdateCommand = new RelayCommand(async () => await CheckUpdateAsync(), () => !IsCheckingUpdate);
             UpdateSoftwareCommand = new RelayCommand(async () => await UpdateSoftwareAsync(), () => HasAvailableUpdate && !IsCheckingUpdate);
 
@@ -183,8 +185,7 @@ namespace QuanLyHoSo.ViewModels
         public ICommand RefreshSystemLogsCommand { get; }
         public ICommand OpenGeneralSettingsDialogCommand { get; }
         public ICommand CloseGeneralSettingsDialogCommand { get; }
-        public ICommand OpenGuideDialogCommand { get; }
-        public ICommand CloseGuideDialogCommand { get; }
+        public ICommand OpenGuideCommand { get; }
         public ICommand OpenUserManagementDialogCommand { get; }
         public ICommand CloseUserManagementDialogCommand { get; }
         public ICommand OpenChangePasswordDialogCommand { get; }
@@ -204,6 +205,7 @@ namespace QuanLyHoSo.ViewModels
         public ICommand UpdateCatalogValueCommand { get; }
         public ICommand DeleteCatalogValueCommand { get; }
         public ICommand ChooseBackupFolderCommand { get; }
+        public ICommand ChooseRestoreFileCommand { get; }
         public ICommand BackupNowCommand { get; }
         public ICommand RestoreDataCommand { get; }
         public ICommand CheckUpdateCommand { get; }
@@ -284,12 +286,6 @@ namespace QuanLyHoSo.ViewModels
         {
             get => _isGeneralSettingsDialogOpen;
             set => SetProperty(ref _isGeneralSettingsDialogOpen, value);
-        }
-
-        public bool IsGuideDialogOpen
-        {
-            get => _isGuideDialogOpen;
-            set => SetProperty(ref _isGuideDialogOpen, value);
         }
 
         public bool IsUserManagementDialogOpen
@@ -471,6 +467,12 @@ namespace QuanLyHoSo.ViewModels
         {
             get => _backupFolder;
             set => SetProperty(ref _backupFolder, value);
+        }
+
+        public string RestoreFilePath
+        {
+            get => _restoreFilePath;
+            set => SetProperty(ref _restoreFilePath, value);
         }
 
         public string BackupStatus
@@ -1174,7 +1176,7 @@ namespace QuanLyHoSo.ViewModels
         {
             using var dialog = new Forms.FolderBrowserDialog
             {
-                Description = "Chá»n thÆ° má»¥c sao lÆ°u dá»¯ liá»‡u",
+                Description = "Chọn thư mục lưu bản sao dữ liệu trên máy này",
                 SelectedPath = Directory.Exists(BackupFolder) ? BackupFolder : Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
                 ShowNewFolderButton = true
             };
@@ -1182,7 +1184,26 @@ namespace QuanLyHoSo.ViewModels
             if (dialog.ShowDialog() == Forms.DialogResult.OK)
             {
                 BackupFolder = dialog.SelectedPath;
-                BackupStatus = "ÄÃ£ chá»n thÆ° má»¥c sao lÆ°u";
+                BackupStatus = "Đã chọn thư mục lưu bản sao";
+            }
+        }
+
+        private void ChooseRestoreFile()
+        {
+            using var dialog = new Forms.OpenFileDialog
+            {
+                Title = "Chọn file sao lưu để khôi phục",
+                Filter = "SQLite database (*.db)|*.db|All files (*.*)|*.*",
+                Multiselect = false,
+                InitialDirectory = Directory.Exists(BackupFolder)
+                    ? BackupFolder
+                    : Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments)
+            };
+
+            if (dialog.ShowDialog() == Forms.DialogResult.OK)
+            {
+                RestoreFilePath = dialog.FileName;
+                BackupStatus = $"Đã chọn file khôi phục: {Path.GetFileName(dialog.FileName)}";
             }
         }
 
@@ -1216,11 +1237,22 @@ namespace QuanLyHoSo.ViewModels
 
             try
             {
+                if (string.IsNullOrWhiteSpace(BackupFolder))
+                {
+                    throw new InvalidOperationException("Vui lòng chọn thư mục lưu bản sao.");
+                }
+
+                Directory.CreateDirectory(BackupFolder);
                 var fileName = $"quanlyhoso_backup_{DateTime.Now:yyyyMMdd_HHmmss}.db";
-                var destinationPath = await Task.Run(() => _dataService.CreateBackupFile(fileName));
+                var localPath = Path.Combine(BackupFolder, fileName);
+                await Task.Run(() =>
+                {
+                    _dataService.CreateBackupFile(fileName);
+                    _dataService.DownloadBackupFile(fileName, localPath);
+                });
                 LastBackupText = DateTime.Now.ToString("dd/MM/yyyy HH:mm");
-                BackupStatus = $"Đã sao lưu: {fileName}";
-                MessageBox.Show($"Đã sao lưu dữ liệu trên máy server:\n{destinationPath}", "Sao lưu dữ liệu", MessageBoxButton.OK, MessageBoxImage.Information);
+                BackupStatus = $"Đã sao lưu: {localPath}";
+                MessageBox.Show($"Đã sao lưu dữ liệu tại:\n{localPath}", "Sao lưu dữ liệu", MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception ex)
             {
@@ -1232,24 +1264,20 @@ namespace QuanLyHoSo.ViewModels
 
         private async Task RestoreDataAsync()
         {
-            using var dialog = new Forms.OpenFileDialog
-            {
-                Title = "Chá»n file sao lÆ°u Ä‘á»ƒ khÃ´i phá»¥c",
-                Filter = "SQLite database (*.db)|*.db|All files (*.*)|*.*",
-                Multiselect = false,
-                InitialDirectory = Directory.Exists(BackupFolder)
-                    ? BackupFolder
-                    : Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments)
-            };
-
-            if (dialog.ShowDialog() != Forms.DialogResult.OK)
+            if (!CanEditSettings)
             {
                 return;
             }
 
+            if (string.IsNullOrWhiteSpace(RestoreFilePath) || !File.Exists(RestoreFilePath))
+            {
+                MessageBox.Show("Vui lòng chọn file sao lưu hợp lệ trước khi khôi phục.", "Khôi phục dữ liệu", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
             var confirm = MessageBox.Show(
-                "KhÃ´i phá»¥c sáº½ thay tháº¿ cÆ¡ sá»Ÿ dá»¯ liá»‡u hiá»‡n táº¡i báº±ng file Ä‘Ã£ chá»n. Há»‡ thá»‘ng sáº½ táº¡o má»™t báº£n sao lÆ°u an toÃ n trÆ°á»›c khi khÃ´i phá»¥c.\n\nBáº¡n cÃ³ muá»‘n tiáº¿p tá»¥c khÃ´ng?",
-                "KhÃ´i phá»¥c dá»¯ liá»‡u",
+                $"Khôi phục sẽ thay thế cơ sở dữ liệu hiện tại bằng file:\n{RestoreFilePath}\n\nHệ thống sẽ tự tạo một bản sao an toàn trên máy server trước khi khôi phục. Bạn có muốn tiếp tục không?",
+                "Khôi phục dữ liệu",
                 MessageBoxButton.YesNo,
                 MessageBoxImage.Warning);
             if (confirm != MessageBoxResult.Yes)
@@ -1259,21 +1287,20 @@ namespace QuanLyHoSo.ViewModels
 
             try
             {
-                Directory.CreateDirectory(BackupFolder);
-                var safetyBackupPath = Path.Combine(BackupFolder, $"quanlyhoso_before_restore_{DateTime.Now:yyyyMMdd_HHmmss}.db");
-                var restorePath = dialog.FileName;
-                await Task.Run(() => _dataService.RestoreDatabaseFromFile(restorePath, safetyBackupPath));
+                var restorePath = RestoreFilePath;
+                var content = await Task.Run(() => File.ReadAllBytes(restorePath));
+                var safetyBackupPath = await Task.Run(() => _dataService.RestoreDatabaseFromUpload(Path.GetFileName(restorePath), content));
                 LastBackupText = DateTime.Now.ToString("dd/MM/yyyy HH:mm");
-                BackupStatus = "ÄÃ£ khÃ´i phá»¥c dá»¯ liá»‡u";
+                BackupStatus = $"Đã khôi phục từ: {Path.GetFileName(restorePath)}";
                 RefreshSoftwareInfos();
                 RefreshCatalogGroupCounts();
-                MessageBox.Show($"ÄÃ£ khÃ´i phá»¥c dá»¯ liá»‡u.\nBáº£n sao lÆ°u an toÃ n Ä‘Æ°á»£c lÆ°u táº¡i:\n{safetyBackupPath}", "KhÃ´i phá»¥c dá»¯ liá»‡u", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show($"Đã khôi phục dữ liệu.\nBản sao an toàn được lưu trên máy server tại:\n{safetyBackupPath}", "Khôi phục dữ liệu", MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception ex)
             {
                 AppLogger.Error("Settings", "RestoreData", ex, "Failed to restore database.");
-                BackupStatus = "KhÃ´i phá»¥c khÃ´ng thÃ nh cÃ´ng";
-                MessageBox.Show($"KhÃ´ng thá»ƒ khÃ´i phá»¥c dá»¯ liá»‡u.\n{ex.Message}", "KhÃ´i phá»¥c dá»¯ liá»‡u", MessageBoxButton.OK, MessageBoxImage.Error);
+                BackupStatus = "Khôi phục không thành công";
+                MessageBox.Show($"Không thể khôi phục dữ liệu.\n{ex.Message}", "Khôi phục dữ liệu", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 

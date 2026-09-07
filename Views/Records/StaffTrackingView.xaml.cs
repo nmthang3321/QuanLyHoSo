@@ -137,6 +137,12 @@ namespace QuanLyHoSo.Views.Records
             AnimateProgress(progressBar, 480, delay);
         }
 
+        private void StaffGrid_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+        {
+            PageScrollViewer.ScrollToVerticalOffset(PageScrollViewer.VerticalOffset - e.Delta);
+            e.Handled = true;
+        }
+
         private void PerformanceBar_Loaded(object sender, RoutedEventArgs e)
         {
             if (sender is FrameworkElement element)

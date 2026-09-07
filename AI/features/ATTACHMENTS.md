@@ -26,5 +26,5 @@ DB:
 Notes:
 - Ho tro dinh kem: PDF, Word `.doc/.docx`, JPG/JPEG, PNG; toi da 10MB/file.
 - Hien chi luu path file goc, chua copy vao managed app storage.
-- Khi cap nhat quy trinh den buoc ket qua xu ly ban dau, app hoi co tao 3 file Word tu template `doc\phieu_de_xuat.docx`, `doc\phieu_huong_dan.docx`, `doc\thong_bao.docx` khong. Neu chon Yes, hien progress, tao file, refresh chi tiet va them vao `RecordAttachments`.
+- Chi khi cap nhat o buoc 5 (ket qua xu ly ban dau) va chua du phieu, app moi hoi tao file Word tu template `doc\phieu_de_xuat.docx`, `doc\phieu_huong_dan.docx`, `doc\thong_bao.docx`. Neu chon Yes, chi tao file con thieu, refresh chi tiet va them vao `RecordAttachments`, khong hien progress. Nhan dien file theo ten attachment (ke ca hau to timestamp do generator tao), khong kiem tra path tren may client vi file co the nam tren server.
 - Client LAN da luu duoc metadata attachment khi save/update ho so qua API, nhung chua co upload/copy file vat ly tu client len server. Neu path file nam tren may client, may khac/server co the khong mo duoc file do.

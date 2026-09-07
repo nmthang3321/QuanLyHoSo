@@ -892,39 +892,6 @@
             </StackPanel>
         </ScrollViewer>
 
-        <Grid Background="#6606164A"
-              Visibility="{Binding IsGeneratingInitialResultDocuments, Converter={StaticResource BooleanToVisibilityConverter}}">
-            <Border Background="White"
-                    BorderBrush="{StaticResource LineBrush}"
-                    BorderThickness="1"
-                    CornerRadius="6"
-                    Width="420"
-                    Padding="22"
-                    HorizontalAlignment="Center"
-                    VerticalAlignment="Center">
-                <Border.Effect>
-                    <DropShadowEffect BlurRadius="24" ShadowDepth="6" Opacity="0.22" Color="#06164A" />
-                </Border.Effect>
-                <StackPanel>
-                    <TextBlock Text="Đang tạo tài liệu"
-                               Style="{StaticResource SectionTitleText}"
-                               Foreground="{StaticResource PrimaryBrush}"
-                               HorizontalAlignment="Center" />
-                    <TextBlock Text="{Binding InitialResultProgressText}"
-                               Style="{StaticResource MutedText}"
-                               TextWrapping="Wrap"
-                               TextAlignment="Center"
-                               Margin="0,8,0,14" />
-                    <ProgressBar Height="8"
-                                 Minimum="0"
-                                 Maximum="100"
-                                 IsIndeterminate="True"
-                                 Foreground="{StaticResource PrimaryBrush}"
-                                 Background="#E9EEF6" />
-                </StackPanel>
-            </Border>
-        </Grid>
-
         <Grid Background="#9906164A"
               Visibility="{Binding IsDetailOpen, Converter={StaticResource BooleanToVisibilityConverter}}">
             <Border Background="White"

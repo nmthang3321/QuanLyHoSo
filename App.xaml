@@ -205,5 +205,8 @@
         <DataTemplate DataType="{x:Type viewModels:SettingsViewModel}">
             <settings:SettingsView />
         </DataTemplate>
+        <DataTemplate DataType="{x:Type viewModels:SettingsGuideViewModel}">
+            <settings:SettingsGuideView />
+        </DataTemplate>
     </Application.Resources>
 </Application>

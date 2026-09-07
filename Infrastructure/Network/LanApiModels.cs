@@ -76,6 +76,12 @@ namespace QuanLyHoSo.Infrastructure.Network
         public string FileName { get; set; }
     }
 
+    public sealed class RestoreBackupRequest
+    {
+        public string FileName { get; set; }
+        public byte[] Content { get; set; }
+    }
+
     public sealed class InternalUpdateDownloadRequest
     {
         public string FileName { get; set; }

@@ -26,7 +26,7 @@ Thanh phan UI chinh:
 - Panel thong tin can bo ben phai.
 - Danh sach ho so dang xu ly cua can bo dang chon.
 - Panel theo role: `Admin` co card gui thong bao; `Leader` co card gui thong bao va card dat KPI rieng; `Officer` nhan thong bao.
-- Thong bao hien theo inbox: moi nhat o tren cung, 5 thong bao/trang, chua doc in dam va co badge do unread o sidebar muc Theo doi can bo.
+- Thong bao hien theo inbox: moi nhat o tren cung, tai toan bo va cuon trong card, khong phan trang; thong bao chua doc in dam va co badge do unread o sidebar muc Theo doi can bo.
 - KPI cua lanh dao luu rieng trong bang `LeadershipKpiTargets`, khong tron vao inbox thong bao.
 - Bieu do cot hieu suat va donut tinh trang deadline.
 

@@ -17,7 +17,7 @@ UI hien co:
 - Page title: `THEO DOI XU LY CAN BO`.
 - Top filters: period, department, officer, status, filter button, refresh button.
 - Metric cards dung `StaffTrackingMetric`.
-- Bang can bo dung `StaffPerformanceRow`.
+- Bang can bo dung `StaffPerformanceRow`, tieu de UI la `DANH SACH CAN BO`.
 - Right panel bind `SelectedStaff`.
 - Active record cards dung `StaffWorkRecord`.
 - Neu dang nhap role `Officer`, trang chi hien thong tin cua `AuthContext.CurrentDisplayName`.
@@ -26,11 +26,12 @@ UI hien co:
 - Badge thong bao chua doc o sidebar hien cho ca `Officer` va `Leader`; badge cua `Leader` chi dem tin tu `Admin`.
 - Luu KPI cua `Leader` co xac nhan Yes/No; khi xac nhan se gui rieng thong bao KPI den tung can bo trong pham vi ap dung, khong gui nguoc cho `Leader`.
 - Bang can bo hien 5 dong moi trang cho moi role; danh sach dai dung phan trang va khong cuon ben trong bang.
-- Danh sach thong bao cua can bo sap xep moi nhat truoc, 5 dong/trang, co nut trang truoc/sau va nut danh dau da doc.
+- Danh sach thong bao sap xep moi nhat truoc, tai toan bo noi dung va cuon trong card; khong dung phan trang, van co nut danh dau da doc.
 - Thong bao chua doc in dam; sidebar item `StaffTracking` co badge do bang so thong bao chua doc.
 - Card thong bao nam o hang cuoi cung voi hai card bieu do, co cung chieu cao. Noi dung dai chi hien tom tat; bam vao mot thong bao se mo popup xem day du va tu dong danh dau da doc.
 - KPI dat boi lanh dao dung route/bang rieng `leadership-kpi/*` va `LeadershipKpiTargets`, khong tao item thong bao moi.
-- Bar chart dung `StaffBarStat`.
+- Bar chart dung `StaffBarStat`, co truc Y 0-100% theo buoc 25%, duong luoi ngang va tooltip tai con tro cho tung cot Dung han/KPI.
+- Khi dang nhap `Officer`, card `Dang xu ly` loc can bo co `ProcessingCount > 0` va card `Qua han` loc `OverdueCount > 0`; khong dung nguong qua tai/don doc cua man hinh tong hop.
 - Bar chart luon dung toan bo danh sach can bo trong ky, khong thay doi theo trang hien tai cua bang.
 - Deadline donut dung `StatusStat` va converter `StatusDonutSegmentConverter`.
 

@@ -17,4 +17,4 @@ Notes:
 - Navigation/back/sidebar highlight lien quan `ShellViewModel`.
 - Role: Officer chi sua ho so minh phu trach, Leader chi xem.
 - Rule quy trinh: Officer khong duoc chon/cap nhat ve `Moi tiep nhan` hoac `Dang phan loai`; sau `Da phan cong` co the quan ly cac buoc 3-7. Admin khong bi gioi han buoc.
-- Tai lieu lien quan ho tro PDF/Word/anh. Khi save den step 5 tro di va user chon Yes trong popup, `InitialResultDocumentGenerator` copy template Word `.docx` trong `doc\` roi thay cac vung highlight bang du lieu ho so, luu thanh `.docx`, append vao attachment va refresh detail sau progress.
+- Tai lieu lien quan ho tro PDF/Word/anh. Chi khi save o step 5 va attachment chua du 3 phieu moi hoi tao file. Neu chon Yes, `InitialResultDocumentGenerator` chi tao phieu con thieu tu template Word trong `doc\`, append vao attachment va refresh detail; khong hien progress. Kiem tra ten file khong phan biet hoa/thuong, ke ca hau to timestamp do generator tao.

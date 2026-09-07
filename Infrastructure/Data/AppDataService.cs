@@ -1961,7 +1961,7 @@ WHERE RecordCode = $code AND DeletedAt <> '' AND DeletionBatchId = $batch;";
             IReadOnlyList<AttachmentDraft> attachments)
         {
             var result = new List<AttachmentDraft>(attachments ?? Array.Empty<AttachmentDraft>());
-            foreach (var attachment in BuildInitialResultDocuments(connection, transaction, recordId, recordCode, processedAt.ToString("O", CultureInfo.InvariantCulture)))
+            foreach (var attachment in BuildInitialResultDocuments(connection, transaction, recordId, recordCode, processedAt.ToString("O", CultureInfo.InvariantCulture), result))
             {
                 var existingIndex = result.FindIndex(item => string.Equals(item.FileName, attachment.FileName, StringComparison.OrdinalIgnoreCase));
                 if (existingIndex >= 0)
@@ -1985,12 +1985,12 @@ WHERE RecordCode = $code AND DeletedAt <> '' AND DeletionBatchId = $batch;";
             }
         }
 
-        private IReadOnlyList<AttachmentDraft> BuildInitialResultDocuments(SqliteConnection connection, SqliteTransaction transaction, int recordId, string recordCode, string processingDate)
+        private IReadOnlyList<AttachmentDraft> BuildInitialResultDocuments(SqliteConnection connection, SqliteTransaction transaction, int recordId, string recordCode, string processingDate, IReadOnlyList<AttachmentDraft> existingAttachments = null)
         {
             try
             {
                 var record = ReadRecordFormById(connection, transaction, recordId);
-                return InitialResultDocumentGenerator.Generate(record, recordCode, processingDate, GetGeneratedDocumentsRoot());
+                return InitialResultDocumentGenerator.Generate(record, recordCode, processingDate, GetGeneratedDocumentsRoot(), existingAttachments);
             }
             catch (Exception ex)
             {
@@ -2239,7 +2239,7 @@ WHERE Id = $recordId;";
             updateCommand.Parameters.AddWithValue("$note", NormalizeDbText(note));
             updateCommand.Parameters.AddWithValue("$updatedAt", processedAt.ToString("O", CultureInfo.InvariantCulture));
             updateCommand.ExecuteNonQuery();
-            var attachmentsToSave = generateInitialResultDocuments && GetProcessStepNumber(status) >= 5
+            var attachmentsToSave = generateInitialResultDocuments && GetProcessStepNumber(status) == 5
                 ? MergeInitialResultDocuments(connection, transaction, recordId.Value, recordCode, processedAt, attachments)
                 : attachments;
             ReplaceAttachments(connection, transaction, recordId.Value, attachmentsToSave);
@@ -2641,6 +2641,92 @@ LIMIT $take;";
             var destinationPath = Path.Combine(GetDefaultBackupFolder(), safeFileName);
             BackupDatabase(destinationPath);
             return destinationPath;
+        }
+
+        public void DownloadBackupFile(string fileName, string destinationPath)
+        {
+            if (string.IsNullOrWhiteSpace(destinationPath))
+            {
+                throw new ArgumentException("Destination path is required.", nameof(destinationPath));
+            }
+
+            var destinationFolder = Path.GetDirectoryName(destinationPath);
+            if (!string.IsNullOrWhiteSpace(destinationFolder))
+            {
+                Directory.CreateDirectory(destinationFolder);
+            }
+
+            if (AppPathSettings.Current.IsClientMode)
+            {
+                _lanClient.DownloadFile("settings/backup/download", new CreateBackupRequest { FileName = fileName }, destinationPath);
+                return;
+            }
+
+            var sourcePath = GetBackupFilePath(fileName);
+            if (!string.Equals(Path.GetFullPath(sourcePath), Path.GetFullPath(destinationPath), StringComparison.OrdinalIgnoreCase))
+            {
+                File.Copy(sourcePath, destinationPath, true);
+            }
+        }
+
+        public string GetBackupFilePath(string fileName)
+        {
+            if (AppPathSettings.Current.IsClientMode)
+            {
+                throw new InvalidOperationException("Client must download backup files through the LAN API.");
+            }
+
+            EnsureAdmin();
+            var safeFileName = Path.GetFileName(fileName ?? string.Empty);
+            if (string.IsNullOrWhiteSpace(safeFileName))
+            {
+                throw new FileNotFoundException("Backup database file was not found.");
+            }
+
+            var backupPath = Path.Combine(GetDefaultBackupFolder(), safeFileName);
+            if (!File.Exists(backupPath))
+            {
+                throw new FileNotFoundException("Backup database file was not found.", backupPath);
+            }
+
+            return backupPath;
+        }
+
+        public string RestoreDatabaseFromUpload(string fileName, byte[] content)
+        {
+            if (AppPathSettings.Current.IsClientMode)
+            {
+                return _lanClient.Call<string>("settings/backup/restore", new RestoreBackupRequest
+                {
+                    FileName = Path.GetFileName(fileName ?? string.Empty),
+                    Content = content
+                });
+            }
+
+            EnsureAdmin();
+            if (content == null || content.Length == 0)
+            {
+                throw new InvalidDataException("Backup database file is empty.");
+            }
+
+            var backupFolder = GetDefaultBackupFolder();
+            Directory.CreateDirectory(backupFolder);
+            var uploadPath = Path.Combine(backupFolder, $".restore_upload_{Guid.NewGuid():N}.db");
+            var safetyBackupPath = Path.Combine(backupFolder, $"quanlyhoso_before_restore_{DateTime.Now:yyyyMMdd_HHmmss}.db");
+
+            try
+            {
+                File.WriteAllBytes(uploadPath, content);
+                RestoreDatabaseFromFile(uploadPath, safetyBackupPath);
+                return safetyBackupPath;
+            }
+            finally
+            {
+                if (File.Exists(uploadPath))
+                {
+                    File.Delete(uploadPath);
+                }
+            }
         }
 
         public InternalUpdatePackageInfo GetInternalUpdatePackageInfo()

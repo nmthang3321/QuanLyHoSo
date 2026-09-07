@@ -25,7 +25,27 @@ namespace QuanLyHoSo.Infrastructure.Documents
             new DocumentTemplateDefinition("thong_bao.docx", "thong_bao.docx", TemplateKind.Notice)
         };
 
-        public static IReadOnlyList<AttachmentDraft> Generate(RecordFormDraft record, string recordCode, string processingDate, string outputRoot)
+        public static bool HasDocument(IEnumerable<AttachmentDraft> attachments, string documentFileName)
+        {
+            var stem = Path.GetFileNameWithoutExtension(documentFileName);
+            return (attachments ?? Array.Empty<AttachmentDraft>()).Any(attachment =>
+            {
+                var name = attachment.FileName;
+                if (string.Equals(name, documentFileName, StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+
+                var prefix = stem + "_";
+                return name != null
+                    && name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
+                    && name.EndsWith(".docx", StringComparison.OrdinalIgnoreCase)
+                    && DateTime.TryParseExact(name.Substring(prefix.Length, name.Length - prefix.Length - 5),
+                        "yyyyMMddHHmmss", CultureInfo.InvariantCulture, DateTimeStyles.None, out _);
+            });
+        }
+
+        public static IReadOnlyList<AttachmentDraft> Generate(RecordFormDraft record, string recordCode, string processingDate, string outputRoot, IReadOnlyList<AttachmentDraft> existingAttachments = null)
         {
             if (record == null || string.IsNullOrWhiteSpace(recordCode))
             {
@@ -44,6 +64,11 @@ namespace QuanLyHoSo.Infrastructure.Documents
             var generated = new List<AttachmentDraft>();
             foreach (var template in Templates)
             {
+                if (HasDocument(existingAttachments ?? record.Attachments, template.OutputFileName))
+                {
+                    continue;
+                }
+
                 var templatePath = Path.Combine(templateRoot, template.FileName);
                 if (!File.Exists(templatePath))
                 {

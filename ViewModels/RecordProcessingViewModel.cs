@@ -10,6 +10,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Win32;
 using QuanLyHoSo.Infrastructure.Data;
+using QuanLyHoSo.Infrastructure.Documents;
 using QuanLyHoSo.Infrastructure.Logging;
 using QuanLyHoSo.Infrastructure.Security;
 using QuanLyHoSo.Models;
@@ -48,8 +49,6 @@ namespace QuanLyHoSo.ViewModels
         private string _selectedStatus;
         private bool _shouldReturnToPreviousPage;
         private bool _isProcessingUpdateBusy;
-        private bool _isGeneratingInitialResultDocuments;
-        private string _initialResultProgressText;
         private int _totalPages = 1;
         private string _totalRecordsText;
 
@@ -163,18 +162,6 @@ namespace QuanLyHoSo.ViewModels
                     (SaveProcessingCommand as RelayCommand)?.RaiseCanExecuteChanged();
                 }
             }
-        }
-
-        public bool IsGeneratingInitialResultDocuments
-        {
-            get => _isGeneratingInitialResultDocuments;
-            private set => SetProperty(ref _isGeneratingInitialResultDocuments, value);
-        }
-
-        public string InitialResultProgressText
-        {
-            get => _initialResultProgressText;
-            private set => SetProperty(ref _initialResultProgressText, value);
         }
 
         public int CurrentPage
@@ -546,14 +533,23 @@ namespace QuanLyHoSo.ViewModels
             SelectedRecordDetail = null;
         }
 
-        private void BackToQueue()
+        public void PrepareQueue()
         {
+            _shouldReturnToPreviousPage = false;
+            SelectedRecordDetail = null;
             SelectedProcessingDetail = null;
             ProcessSteps.Clear();
             History.Clear();
-            if (_shouldReturnToPreviousPage)
+            Attachments.Clear();
+            OnPropertyChanged(nameof(HasAttachments));
+        }
+
+        private void BackToQueue()
+        {
+            var returnToPreviousPage = _shouldReturnToPreviousPage;
+            PrepareQueue();
+            if (returnToPreviousPage)
             {
-                _shouldReturnToPreviousPage = false;
                 _goBackToPreviousPage();
                 return;
             }
@@ -615,7 +611,7 @@ namespace QuanLyHoSo.ViewModels
             var recordCode = SelectedProcessingDetail.RecordCode;
             var generateInitialResultDocuments = ShouldOfferInitialResultDocuments()
                 && MessageBox.Show(
-                    "Bạn có muốn tạo phiếu đề xuất, phiếu hướng dẫn và thông báo không?",
+                    "Hồ sơ chưa có đủ phiếu đề xuất, phiếu hướng dẫn và thông báo. Bạn có muốn tạo các file còn thiếu không?",
                     "Tạo tài liệu kết quả xử lý ban đầu",
                     MessageBoxButton.YesNo,
                     MessageBoxImage.Question) == MessageBoxResult.Yes;
@@ -623,12 +619,6 @@ namespace QuanLyHoSo.ViewModels
             try
             {
                 IsProcessingUpdateBusy = true;
-                if (generateInitialResultDocuments)
-                {
-                    InitialResultProgressText = "Đang tạo phiếu đề xuất, phiếu hướng dẫn và thông báo...";
-                    IsGeneratingInitialResultDocuments = true;
-                }
-
                 ProcessingRecordDetail refreshedDetail = null;
                 await Task.Run(() =>
                 {
@@ -648,8 +638,6 @@ namespace QuanLyHoSo.ViewModels
 
                 AppLogger.Info("Processing", "UpdateProcessingRecord", "Processing record updated.", recordCode);
                 ApplyProcessingDetail(refreshedDetail);
-                IsGeneratingInitialResultDocuments = false;
-                InitialResultProgressText = null;
                 MessageBox.Show(
                     generateInitialResultDocuments ? "Đã cập nhật xử lý hồ sơ và tạo tài liệu liên quan." : "Đã cập nhật xử lý hồ sơ.",
                     "Cập nhật xử lý",
@@ -663,8 +651,6 @@ namespace QuanLyHoSo.ViewModels
             }
             finally
             {
-                IsGeneratingInitialResultDocuments = false;
-                InitialResultProgressText = null;
                 IsProcessingUpdateBusy = false;
             }
         }
@@ -824,20 +810,15 @@ namespace QuanLyHoSo.ViewModels
 
         private bool ShouldOfferInitialResultDocuments()
         {
-            return GetProcessStepNumber(ProcessingStatus) >= 5
+            return GetProcessStepNumber(ProcessingStatus) == 5
                 && !HasAllInitialResultDocuments();
         }
 
         private bool HasAllInitialResultDocuments()
         {
-            var fileNames = Attachments
-                .Select(attachment => attachment.FileName)
-                .Where(fileName => !string.IsNullOrWhiteSpace(fileName))
-                .ToList();
-
-            return fileNames.Any(fileName => string.Equals(fileName, "phieu_de_xuat.docx", StringComparison.OrdinalIgnoreCase))
-                && fileNames.Any(fileName => string.Equals(fileName, "phieu_huong_dan.docx", StringComparison.OrdinalIgnoreCase))
-                && fileNames.Any(fileName => string.Equals(fileName, "thong_bao.docx", StringComparison.OrdinalIgnoreCase));
+            return InitialResultDocumentGenerator.HasDocument(Attachments, "phieu_de_xuat.docx")
+                && InitialResultDocumentGenerator.HasDocument(Attachments, "phieu_huong_dan.docx")
+                && InitialResultDocumentGenerator.HasDocument(Attachments, "thong_bao.docx");
         }
 
         private static IReadOnlyList<string> GetAllowedProcessingStatuses()
