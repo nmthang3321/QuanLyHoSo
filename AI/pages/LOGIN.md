@@ -13,5 +13,5 @@ Files:
 Behavior:
 - User mac dinh seed: `admin/admin123`.
 - Sau login, `ShellViewModel` tao page VM va set role/current user.
-- Loi ket noi LAN client co the hien MessageBox tu `ShellViewModel`.
-
+- Client khong ping server khi mo app; chi ket noi khi nguoi dung dang nhap.
+- Loi dang nhap/ket noi server hien qua `ErrorMessage`/`HasError` trong form, khong hien MessageBox. Quen mat khau van giu thong bao huong dan cu.

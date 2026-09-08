@@ -1,11 +1,9 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics;
-using System.Windows;
 using System.Windows.Input;
 using QuanLyHoSo.Infrastructure.Configuration;
 using QuanLyHoSo.Infrastructure.Data;
 using QuanLyHoSo.Infrastructure.Logging;
-using QuanLyHoSo.Infrastructure.Network;
 using QuanLyHoSo.Infrastructure.Security;
 using QuanLyHoSo.Models;
 
@@ -28,15 +26,10 @@ namespace QuanLyHoSo.ViewModels
         public ShellViewModel()
         {
             var stopwatch = Stopwatch.StartNew();
-            try
+            if (!AppPathSettings.Current.IsClientMode)
             {
                 AppDataService.Instance.Initialize();
                 LogElapsed("InitializeDatabase", stopwatch);
-            }
-            catch (LanServerUnavailableException ex)
-            {
-                AppLogger.Error("Shell", "InitializeDatabase", ex, "Cannot connect to admin LAN server.");
-                MessageBox.Show(ex.Message, "Không kết nối được máy server", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
 
             NavigationItems = new ObservableCollection<NavigationItem>

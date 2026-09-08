@@ -94,9 +94,8 @@ namespace QuanLyHoSo.ViewModels
             {
                 AppLogger.Error("Auth", "SignIn", ex, "Failed to sign in.");
                 ErrorMessage = ex is LanServerUnavailableException
-                    ? "Kh\u00F4ng k\u1EBFt n\u1ED1i \u0111\u01B0\u1EE3c m\u00E1y server/admin."
+                    ? "Không kết nối được máy server. Vui lòng kiểm tra server đã bật và kết nối mạng, rồi thử đăng nhập lại."
                     : "Kh\u00F4ng th\u1EC3 \u0111\u0103ng nh\u1EADp. Vui l\u00F2ng th\u1EED l\u1EA1i.";
-                MessageBox.Show(ex.Message, "L\u1ED7i \u0111\u0103ng nh\u1EADp", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 

@@ -1,6 +1,9 @@
+using System;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Media.Animation;
 using QuanLyHoSo.ViewModels;
 
 namespace QuanLyHoSo.Views.Auth
@@ -9,6 +12,7 @@ namespace QuanLyHoSo.Views.Auth
     {
         private bool _isPasswordVisible;
         private bool _isSyncingPassword;
+        private bool _hasPlayedEntrance;
 
         public LoginView()
         {
@@ -18,6 +22,16 @@ namespace QuanLyHoSo.Views.Auth
 
         private void LoginView_Loaded(object sender, RoutedEventArgs e)
         {
+            if (!_hasPlayedEntrance)
+            {
+                _hasPlayedEntrance = true;
+                if (SystemParameters.ClientAreaAnimation)
+                {
+                    AnimateEntrance(LoginIntroduction);
+                    AnimateEntrance(LoginForm);
+                }
+            }
+
             if (DataContext is LoginViewModel viewModel && !string.IsNullOrEmpty(viewModel.Password))
             {
                 _isSyncingPassword = true;
@@ -28,6 +42,57 @@ namespace QuanLyHoSo.Views.Auth
             }
 
             UpdateUserNamePlaceholder();
+        }
+
+        private static void AnimateEntrance(FrameworkElement element)
+        {
+            var duration = TimeSpan.FromMilliseconds(320);
+            element.BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, duration)
+            {
+                FillBehavior = FillBehavior.Stop
+            });
+            ((TranslateTransform)element.RenderTransform).BeginAnimation(TranslateTransform.YProperty,
+                new DoubleAnimation(12, 0, duration)
+                {
+                    EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut },
+                    FillBehavior = FillBehavior.Stop
+                });
+        }
+
+        private void LoginField_MouseChanged(object sender, MouseEventArgs e)
+        {
+            UpdateLoginFieldAppearance((Border)sender);
+        }
+
+        private void LoginField_FocusChanged(object sender, DependencyPropertyChangedEventArgs e)
+        {
+            UpdateLoginFieldAppearance((Border)sender);
+        }
+
+        private static void UpdateLoginFieldAppearance(Border field)
+        {
+            var borderColor = field.IsKeyboardFocusWithin
+                ? Color.FromRgb(11, 92, 255)
+                : field.IsMouseOver ? Color.FromRgb(164, 183, 212) : Color.FromRgb(213, 222, 235);
+            var backgroundColor = field.IsKeyboardFocusWithin ? Colors.White : Color.FromRgb(248, 250, 253);
+            AnimateFieldBrush(field, Border.BorderBrushProperty, borderColor);
+            AnimateFieldBrush(field, Border.BackgroundProperty, backgroundColor);
+        }
+
+        private static void AnimateFieldBrush(Border field, DependencyProperty property, Color targetColor)
+        {
+            var currentColor = (field.GetValue(property) as SolidColorBrush)?.Color ?? targetColor;
+            // Each field owns its brush so animations never modify shared style resources.
+            var brush = new SolidColorBrush(targetColor);
+            field.SetValue(property, brush);
+            if (SystemParameters.ClientAreaAnimation && currentColor != targetColor)
+            {
+                brush.BeginAnimation(SolidColorBrush.ColorProperty,
+                    new ColorAnimation(currentColor, targetColor, TimeSpan.FromMilliseconds(140))
+                    {
+                        FillBehavior = FillBehavior.Stop
+                    });
+            }
         }
 
         private void UserNameInput_TextChanged(object sender, TextChangedEventArgs e)
