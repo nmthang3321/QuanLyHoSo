@@ -850,39 +850,12 @@
                                 </Border>
                             </Grid>
                             <Grid>
-                                <Button Style="{StaticResource DangerButton}" Content="Hủy xử lý" HorizontalAlignment="Left" Command="{Binding BackToQueueCommand}" />
-                                <Button HorizontalAlignment="Right" Command="{Binding SaveProcessingCommand}">
-                                    <Button.Style>
-                                        <Style TargetType="Button" BasedOn="{StaticResource PrimaryButton}">
-                                            <Setter Property="Background" Value="{StaticResource PrimaryBrush}" />
-                                            <Setter Property="BorderBrush" Value="{StaticResource PrimaryBrush}" />
-                                            <Setter Property="Foreground" Value="White" />
-                                            <Setter Property="Template">
-                                                <Setter.Value>
-                                                    <ControlTemplate TargetType="Button">
-                                                        <Border x:Name="ButtonBorder"
-                                                                Background="{TemplateBinding Background}"
-                                                                BorderBrush="{TemplateBinding BorderBrush}"
-                                                                BorderThickness="{TemplateBinding BorderThickness}"
-                                                                CornerRadius="6">
-                                                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
-                                                                              VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
-                                                        </Border>
-                                                        <ControlTemplate.Triggers>
-                                                            <Trigger Property="IsMouseOver" Value="True">
-                                                                <Setter TargetName="ButtonBorder" Property="Background" Value="#0051E8" />
-                                                                <Setter TargetName="ButtonBorder" Property="BorderBrush" Value="#0051E8" />
-                                                            </Trigger>
-                                                            <Trigger Property="IsPressed" Value="True">
-                                                                <Setter TargetName="ButtonBorder" Property="Background" Value="#0045C7" />
-                                                                <Setter TargetName="ButtonBorder" Property="BorderBrush" Value="#0045C7" />
-                                                            </Trigger>
-                                                        </ControlTemplate.Triggers>
-                                                    </ControlTemplate>
-                                                </Setter.Value>
-                                            </Setter>
-                                        </Style>
-                                    </Button.Style>
+                                <Button Style="{StaticResource DangerButton}" HorizontalAlignment="Left" Command="{Binding BackToQueueCommand}">
+                                    <TextBlock Text="Hủy xử lý" Foreground="#E11414" />
+                                </Button>
+                                <Button HorizontalAlignment="Right"
+                                        Command="{Binding SaveProcessingCommand}"
+                                        Style="{StaticResource PrimaryButton}">
                                     <TextBlock Text="Cập nhật" Foreground="White" />
                                 </Button>
                             </Grid>

@@ -79,11 +79,12 @@
                             </Border.Effect>
                             <StackPanel>
                                 <Grid Margin="0,0,0,10">
-                                    <Button Content="Áp dụng"
-                                            Style="{StaticResource PrimaryButton}"
+                                    <Button Style="{StaticResource PrimaryButton}"
                                             HorizontalAlignment="Right"
                                             MinWidth="86"
-                                            Click="ApplyCustomDateRangeButton_Click" />
+                                            Click="ApplyCustomDateRangeButton_Click">
+                                        <TextBlock Text="Áp dụng" Foreground="White" />
+                                    </Button>
                                 </Grid>
                                 <Calendar x:Name="CustomDateRangeCalendar"
                                           SelectionMode="SingleRange"

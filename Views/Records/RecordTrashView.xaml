@@ -57,7 +57,9 @@
                         ToolTip="Xóa vĩnh viễn các hồ sơ đã chọn trong thùng rác">
                     <TextBlock Text="Xóa vĩnh viễn" Foreground="#E11414" />
                 </Button>
-                <Button Content="Khôi phục đã chọn" Command="{Binding RestoreCommand}" Style="{StaticResource PrimaryButton}" Margin="0,0,8,0" />
+                <Button Command="{Binding RestoreCommand}" Style="{StaticResource PrimaryButton}" Margin="0,0,8,0">
+                    <TextBlock Text="Khôi phục đã chọn" Foreground="White" />
+                </Button>
                 <Button Content="Đóng" Command="{Binding CloseCommand}" Style="{StaticResource SecondaryButton}" />
             </StackPanel>
         </Grid>

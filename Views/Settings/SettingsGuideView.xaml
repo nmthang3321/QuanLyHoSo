@@ -218,9 +218,10 @@
 
             <Button Command="{Binding BackCommand}"
                     Style="{StaticResource PrimaryButton}"
-                    Content="Quay lại Cài đặt"
                     HorizontalAlignment="Left"
-                    Margin="0,18,0,8" />
+                    Margin="0,18,0,8">
+                <TextBlock Text="Quay lại Cài đặt" Foreground="White" />
+            </Button>
         </StackPanel>
     </ScrollViewer>
 </UserControl>

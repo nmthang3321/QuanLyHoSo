@@ -40,6 +40,48 @@
             <Setter Property="FontSize" Value="13" />
         </Style>
 
+        <Style x:Key="UserActionIconButton" TargetType="Button">
+            <Setter Property="Width" Value="30" />
+            <Setter Property="MinWidth" Value="30" />
+            <Setter Property="Height" Value="30" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Margin" Value="0,0,6,0" />
+            <Setter Property="FontFamily" Value="Segoe MDL2 Assets" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontWeight" Value="Normal" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Root"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="4">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Root" Property="Background" Value="#F0F6FF" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Root" Property="Background" Value="#E4EEFF" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.45" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <Style x:Key="CatalogCardButton" TargetType="Button">
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="BorderThickness" Value="0" />
@@ -631,7 +673,9 @@
                                    VerticalAlignment="Center" />
                     </Grid>
                     <Grid Grid.Row="4" Margin="0,14,0,0">
-                        <Button Content="Đóng" Style="{StaticResource PrimaryButton}" HorizontalAlignment="Right" Command="{Binding CloseCatalogDialogCommand}" />
+                        <Button Style="{StaticResource PrimaryButton}" HorizontalAlignment="Right" Command="{Binding CloseCatalogDialogCommand}">
+                            <TextBlock Text="Đóng" Foreground="White" />
+                        </Button>
                     </Grid>
                 </Grid>
             </Border>
@@ -676,7 +720,11 @@
                     <DataGrid Grid.Row="2"
                               ItemsSource="{Binding SystemLogs}"
                               Height="420"
+                              FontWeight="Normal"
                               IsReadOnly="True"
+                              FrozenColumnCount="3"
+                              ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                              ScrollViewer.VerticalScrollBarVisibility="Auto"
                               CanUserSortColumns="False"
                               CanUserResizeRows="False">
                         <DataGrid.Columns>
@@ -685,8 +733,8 @@
                             <DataGridTextColumn Header="Người dùng" Binding="{Binding UserName}" Width="110" />
                             <DataGridTextColumn Header="Phân hệ" Binding="{Binding Module}" Width="120" />
                             <DataGridTextColumn Header="Thao tác" Binding="{Binding Action}" Width="92" />
-                            <DataGridTextColumn Header="Đối tượng" Binding="{Binding Target}" Width="150" />
-                            <DataGridTextColumn Header="Nội dung" Binding="{Binding Detail}" Width="*" MinWidth="220" />
+                            <DataGridTextColumn Header="Đối tượng" Binding="{Binding Target}" Width="320" />
+                            <DataGridTextColumn Header="Nội dung" Binding="{Binding Detail}" Width="620" />
                         </DataGrid.Columns>
                     </DataGrid>
                 </Grid>
@@ -736,7 +784,9 @@
 
                     <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,18,0,0">
                         <Button Content="Hủy" Style="{StaticResource SecondaryButton}" Command="{Binding CloseChangePasswordDialogCommand}" Margin="0,0,10,0" />
-                        <Button Content="Đổi mật khẩu" Style="{StaticResource PrimaryButton}" Command="{Binding ChangePasswordCommand}" />
+                        <Button Style="{StaticResource PrimaryButton}" Command="{Binding ChangePasswordCommand}">
+                            <TextBlock Text="Đổi mật khẩu" Foreground="White" />
+                        </Button>
                     </StackPanel>
                 </Grid>
             </Border>
@@ -777,6 +827,7 @@
                         <DataGrid ItemsSource="{Binding Users}"
                                   SelectedItem="{Binding SelectedUser, Mode=TwoWay}"
                                   Height="360"
+                                  FontWeight="Normal"
                                   IsReadOnly="True"
                                   SelectionMode="Single"
                                   SelectionUnit="FullRow"
@@ -792,19 +843,20 @@
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
                                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                                                <Button Style="{StaticResource PopupIconButton}"
-                                                        Foreground="{StaticResource PrimaryBrush}"
+                                                <Button Style="{StaticResource UserActionIconButton}"
+                                                        Foreground="#F28C18"
                                                         Command="{Binding DataContext.EditUserCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
                                                         CommandParameter="{Binding}"
-                                                        ToolTip="Sửa">
-                                                    <TextBlock Text="&#xE70F;" FontFamily="Segoe MDL2 Assets" />
+                                                        ToolTip="Chỉnh sửa">
+                                                    <TextBlock Text="&#xE70F;" FontFamily="Segoe MDL2 Assets" Foreground="#F28C18" />
                                                 </Button>
-                                                <Button Style="{StaticResource PopupIconButton}"
+                                                <Button Style="{StaticResource UserActionIconButton}"
                                                         Foreground="#E11414"
                                                         Command="{Binding DataContext.DeleteUserCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
                                                         CommandParameter="{Binding}"
-                                                        ToolTip="Khóa">
-                                                    <TextBlock Text="&#xE74D;" FontFamily="Segoe MDL2 Assets" />
+                                                        ToolTip="Khóa"
+                                                        Margin="0">
+                                                    <TextBlock Text="&#xE74D;" FontFamily="Segoe MDL2 Assets" Foreground="#E11414" />
                                                 </Button>
                                             </StackPanel>
                                         </DataTemplate>
@@ -835,20 +887,22 @@
                                     <TextBlock Text="{Binding UserSubmitButtonText}" Foreground="White" />
                                 </Button>
                                 <Button Content="Tạo mới" Style="{StaticResource SecondaryButton}" Command="{Binding NewUserCommand}" HorizontalAlignment="Stretch" Margin="0,0,0,10" />
-                                <Button Content="Khóa tài khoản"
-                                        Style="{StaticResource DangerButton}"
+                                <Button Style="{StaticResource DangerButton}"
                                         Command="{Binding DeleteUserCommand}"
                                         CommandParameter="{Binding SelectedUser}"
-                                        HorizontalAlignment="Stretch" />
+                                        HorizontalAlignment="Stretch">
+                                    <TextBlock Text="Khóa tài khoản" Foreground="#E11414" />
+                                </Button>
                             </StackPanel>
                         </Border>
                     </Grid>
 
                     <Button Grid.Row="2"
-                            Content="Đóng"
                             Style="{StaticResource PrimaryButton}"
                             HorizontalAlignment="Right"
-                            Command="{Binding CloseUserManagementDialogCommand}" />
+                            Command="{Binding CloseUserManagementDialogCommand}">
+                        <TextBlock Text="Đóng" Foreground="White" />
+                    </Button>
                 </Grid>
             </Border>
         </Grid>

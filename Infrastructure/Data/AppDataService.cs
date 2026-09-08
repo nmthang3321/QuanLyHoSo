@@ -204,7 +204,14 @@ GROUP BY CatalogType;";
         {
             if (AppPathSettings.Current.IsClientMode)
             {
-                return _lanClient.Call<IReadOnlyList<SystemLogEntry>>("settings/system-logs", new SystemLogsRequest { Take = take });
+                var remoteLogs = _lanClient.Call<IReadOnlyList<SystemLogEntry>>("settings/system-logs", new SystemLogsRequest { Take = take })
+                    ?? Array.Empty<SystemLogEntry>();
+                foreach (var log in remoteLogs)
+                {
+                    NormalizeSystemLogEntry(log);
+                }
+
+                return remoteLogs;
             }
 
             using var connection = OpenConnection();
@@ -232,10 +239,10 @@ LIMIT $take;";
                     Index = index++,
                     CreatedAt = FormatDateTime(reader.GetString(0)),
                     UserName = reader.GetString(1),
-                    Module = reader.GetString(2),
-                    Action = reader.GetString(3),
+                    Module = NormalizeSystemLogText(reader.GetString(2)),
+                    Action = NormalizeSystemLogText(reader.GetString(3)),
                     Target = reader.GetString(4),
-                    Detail = reader.GetString(5)
+                    Detail = NormalizeSystemLogText(reader.GetString(5))
                 });
             }
 
@@ -2055,6 +2062,26 @@ WHERE RecordCode = $code AND DeletedAt <> '' AND DeletionBatchId = $batch;";
             return value?.Trim() ?? string.Empty;
         }
 
+        private static string NormalizeSystemLogText(string value)
+        {
+            return (value ?? string.Empty)
+                .Replace("Sao lÆ°u", "Sao lưu")
+                .Replace("KhÃ´i phá»¥c", "Khôi phục")
+                .Replace("dá»¯ liá»‡u tá»«", "dữ liệu từ");
+        }
+
+        private static void NormalizeSystemLogEntry(SystemLogEntry log)
+        {
+            if (log == null)
+            {
+                return;
+            }
+
+            log.Module = NormalizeSystemLogText(log.Module);
+            log.Action = NormalizeSystemLogText(log.Action);
+            log.Detail = NormalizeSystemLogText(log.Detail);
+        }
+
         private RecordFormDraft ReadRecordForm(SqliteConnection connection, SqliteCommand command)
         {
 
@@ -2799,7 +2826,7 @@ LIMIT $take;";
             using var destination = OpenConnection();
             source.BackupDatabase(destination);
             ValidateDatabaseConnection(destination);
-            WriteDatabaseLog(destination, null, "Sao lÆ°u", "KhÃ´i phá»¥c", DatabasePath, $"KhÃ´i phá»¥c dá»¯ liá»‡u tá»« {sourcePath}.");
+            WriteDatabaseLog(destination, null, "Sao lưu", "Khôi phục", DatabasePath, $"Khôi phục dữ liệu từ {sourcePath}.");
         }
 
         public static void ValidateDatabaseFile(string databasePath)
