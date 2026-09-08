@@ -72,7 +72,7 @@ namespace QuanLyHoSo.Views.Auth
         private static void UpdateLoginFieldAppearance(Border field)
         {
             var borderColor = field.IsKeyboardFocusWithin
-                ? Color.FromRgb(11, 92, 255)
+                ? ((SolidColorBrush)field.FindResource("LoginAccentBrush")).Color
                 : field.IsMouseOver ? Color.FromRgb(164, 183, 212) : Color.FromRgb(213, 222, 235);
             var backgroundColor = field.IsKeyboardFocusWithin ? Colors.White : Color.FromRgb(248, 250, 253);
             AnimateFieldBrush(field, Border.BorderBrushProperty, borderColor);

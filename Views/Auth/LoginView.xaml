@@ -6,6 +6,9 @@
              SnapsToDevicePixels="True"
              Loaded="LoginView_Loaded">
     <UserControl.Resources>
+        <SolidColorBrush x:Key="LoginAccentBrush" Color="#2173B8" />
+        <SolidColorBrush x:Key="LoginAccentHoverBrush" Color="#1A619D" />
+        <SolidColorBrush x:Key="LoginAccentPressedBrush" Color="#144C7D" />
         <Style x:Key="LoginFieldBorder" TargetType="Border">
             <Setter Property="Height" Value="52" />
             <Setter Property="Background" Value="#F8FAFD" />
@@ -21,13 +24,14 @@
             <Setter Property="BorderThickness" Value="0" />
             <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
             <Setter Property="Background" Value="Transparent" />
-            <Setter Property="CaretBrush" Value="{StaticResource PrimaryBrush}" />
+            <Setter Property="CaretBrush" Value="{StaticResource LoginAccentBrush}" />
             <Setter Property="TextAlignment" Value="Left" />
             <Setter Property="HorizontalContentAlignment" Value="Left" />
             <Setter Property="VerticalContentAlignment" Value="Center" />
         </Style>
 
         <Style x:Key="LoginPasswordBox" TargetType="PasswordBox">
+            <Setter Property="CaretBrush" Value="{StaticResource LoginAccentBrush}" />
             <Setter Property="Height" Value="50" />
             <Setter Property="FontSize" Value="15" />
             <Setter Property="Padding" Value="0" />
@@ -55,11 +59,12 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="ButtonBorder" Property="Background" Value="#EEF4FF" />
-                                <Setter Property="Foreground" Value="{StaticResource PrimaryBrush}" />
+                                <Setter TargetName="ButtonBorder" Property="Background" Value="#EDF5FB" />
+                                <Setter Property="Foreground" Value="{StaticResource LoginAccentBrush}" />
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="ButtonBorder" Property="Background" Value="#DFEAFF" />
+                                <Setter TargetName="ButtonBorder" Property="Background" Value="#DCEBF7" />
+                                <Setter Property="Foreground" Value="{StaticResource LoginAccentPressedBrush}" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -71,7 +76,7 @@
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="BorderThickness" Value="0" />
             <Setter Property="Padding" Value="0" />
-            <Setter Property="Foreground" Value="{StaticResource PrimaryBrush}" />
+            <Setter Property="Foreground" Value="{StaticResource LoginAccentBrush}" />
             <Setter Property="Cursor" Value="Hand" />
             <Setter Property="FontSize" Value="14" />
             <Setter Property="FontWeight" Value="SemiBold" />
@@ -85,10 +90,10 @@
             </Setter>
             <Style.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Foreground" Value="#0051E8" />
+                    <Setter Property="Foreground" Value="{StaticResource LoginAccentHoverBrush}" />
                 </Trigger>
                 <Trigger Property="IsPressed" Value="True">
-                    <Setter Property="Foreground" Value="#0045C7" />
+                    <Setter Property="Foreground" Value="{StaticResource LoginAccentPressedBrush}" />
                 </Trigger>
             </Style.Triggers>
         </Style>
@@ -96,6 +101,87 @@
         <Style x:Key="LoginPrimaryButton" TargetType="Button" BasedOn="{StaticResource PrimaryButton}">
             <Setter Property="Height" Value="52" />
             <Setter Property="FontSize" Value="17" />
+            <Setter Property="Background" Value="{StaticResource LoginAccentBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource LoginAccentBrush}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="ButtonBorder" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="0">
+                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                              VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                              TextElement.Foreground="{TemplateBinding Foreground}" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ButtonBorder" Property="Background" Value="{StaticResource LoginAccentHoverBrush}" />
+                                <Setter TargetName="ButtonBorder" Property="BorderBrush" Value="{StaticResource LoginAccentHoverBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="ButtonBorder" Property="Background" Value="{StaticResource LoginAccentPressedBrush}" />
+                                <Setter TargetName="ButtonBorder" Property="BorderBrush" Value="{StaticResource LoginAccentPressedBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.55" />
+                                <Setter Property="Cursor" Value="Arrow" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="LoginRememberCheckBox" TargetType="CheckBox">
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="CheckBox">
+                        <Grid Background="Transparent">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Border x:Name="CheckBorder" Width="18" Height="18" Margin="0,0,8,0"
+                                    VerticalAlignment="Center" Background="White" BorderBrush="#9BAFC1"
+                                    BorderThickness="1" CornerRadius="0">
+                                <Path x:Name="CheckMark" Data="M 3,8 L 6,11 L 13,4" Stroke="White"
+                                      StrokeThickness="2" Visibility="Collapsed" />
+                            </Border>
+                            <ContentPresenter Grid.Column="1" VerticalAlignment="Center" RecognizesAccessKey="True"
+                                              TextElement.Foreground="{TemplateBinding Foreground}" />
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="CheckBorder" Property="Background" Value="{StaticResource LoginAccentBrush}" />
+                                <Setter TargetName="CheckBorder" Property="BorderBrush" Value="{StaticResource LoginAccentBrush}" />
+                                <Setter TargetName="CheckMark" Property="Visibility" Value="Visible" />
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="CheckBorder" Property="BorderBrush" Value="{StaticResource LoginAccentHoverBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="CheckBorder" Property="BorderBrush" Value="{StaticResource LoginAccentBrush}" />
+                            </Trigger>
+                            <MultiTrigger>
+                                <MultiTrigger.Conditions>
+                                    <Condition Property="IsChecked" Value="True" />
+                                    <Condition Property="IsMouseOver" Value="True" />
+                                </MultiTrigger.Conditions>
+                                <Setter TargetName="CheckBorder" Property="Background" Value="{StaticResource LoginAccentHoverBrush}" />
+                            </MultiTrigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="CheckBorder" Property="Background" Value="{StaticResource LoginAccentPressedBrush}" />
+                                <Setter TargetName="CheckBorder" Property="BorderBrush" Value="{StaticResource LoginAccentPressedBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.55" />
+                                <Setter Property="Cursor" Value="Arrow" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
     </UserControl.Resources>
 
@@ -348,6 +434,7 @@
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <CheckBox Content="Ghi nh&#x1EDB; &#x0111;&#x0103;ng nh&#x1EAD;p"
+                                  Style="{StaticResource LoginRememberCheckBox}"
                                   IsChecked="{Binding RememberMe, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                   Foreground="#172B4D"
                                   FontSize="13"
@@ -389,7 +476,7 @@
                                 </Grid.ColumnDefinitions>
                                 <!-- Google Material Symbols Outlined: verified_user, 24px / weight 400 / fill 0.
                                      https://github.com/google/material-design-icons (Apache-2.0) -->
-                                <Path Width="26" Height="32" Stretch="Uniform" Fill="#2173B8"
+                                <Path Width="26" Height="32" Stretch="Uniform" Fill="{StaticResource LoginAccentBrush}"
                                       HorizontalAlignment="Left" VerticalAlignment="Center"
                                       Data="m438-338 226-226-57-57-169 169-84-84-57 57 141 141Zm42 258q-139-35-229.5-159.5T160-516v-244l320-120 320 120v244q0 152-90.5 276.5T480-80Zm0-84q104-33 172-132t68-220v-189l-240-90-240 90v189q0 121 68 220t172 132Zm0-316Z" />
                                 <StackPanel Grid.Column="1">
