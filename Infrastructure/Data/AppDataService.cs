@@ -46,6 +46,25 @@ namespace QuanLyHoSo.Infrastructure.Data
 
         public string DatabasePath { get; }
 
+        public bool IsLanServerRunning => _lanServer?.IsRunning == true;
+
+        public int ConnectedClientCount => _lanServer?.ConnectedClientCount ?? 0;
+
+        public void StartLanServer()
+        {
+            if (_lanServer == null)
+            {
+                throw new InvalidOperationException("LAN server is not available in client mode.");
+            }
+
+            _lanServer.Start();
+        }
+
+        public void StopLanServer()
+        {
+            _lanServer?.Stop();
+        }
+
         public void Initialize()
         {
             var stopwatch = Stopwatch.StartNew();
@@ -2662,6 +2681,21 @@ LIMIT $take;";
             }
 
             EnsureAdmin();
+            return CreateBackupFileCore(fileName);
+        }
+
+        public string CreateServerBackupFile(string fileName)
+        {
+            if (AppPathSettings.Current.IsClientMode)
+            {
+                throw new InvalidOperationException("Server backup is not available in client mode.");
+            }
+
+            return CreateBackupFileCore(fileName);
+        }
+
+        private string CreateBackupFileCore(string fileName)
+        {
             var safeFileName = Path.GetFileName(string.IsNullOrWhiteSpace(fileName)
                 ? $"quanlyhoso_backup_{DateTime.Now:yyyyMMdd_HHmmss}.db"
                 : fileName);

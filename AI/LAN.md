@@ -2,10 +2,12 @@
 
 Chi tiet hon: `AI/infra/LAN_API.md`.
 
-Da co server console rieng: 1 may server giu DB va chay API LAN, client khong mo SQLite truc tiep. App WPF mac dinh la `Client`; `AdminHost` chi con la mode tuong thich/ky thuat neu can chay don may.
+Da co server WPF rieng: 1 may server giu DB va chay API LAN, client khong mo SQLite truc tiep. App WPF mac dinh la `Client`; `AdminHost` chi con la mode tuong thich/ky thuat neu can chay don may.
 
 File chinh:
 - `QuanLyHoSo.Server\Program.cs`
+- `QuanLyHoSo.Server\ServerWindow.xaml`
+- `QuanLyHoSo.Server\ServerWindow.xaml.cs`
 - `QuanLyHoSo.Server\QuanLyHoSo.Server.csproj`
 - `QuanLyHoSo.Core\QuanLyHoSo.Core.csproj`
 - `QuanLyHoSo.Shared\QuanLyHoSo.Shared.csproj`
@@ -22,7 +24,7 @@ Mode:
 - `Client`: khong tao/mo SQLite, chi goi HTTP API toi may admin.
 - Default config khi thieu `DataAccessMode` la `Client`. Muon chay WPF don may moi can ghi ro `AdminHost`.
 
-Chay server console rieng:
+Chay server rieng (mo giao dien quan tri):
 
 ```powershell
 dotnet run --project QuanLyHoSo.Server\QuanLyHoSo.Server.csproj -- --url http://0.0.0.0:5055
@@ -86,3 +88,11 @@ Chua lam day du:
 - restore DB tu WPF client. Restore nen lam o server/bao tri de server doc duoc file backup.
 - dong goi `QuanLyHoSo.Server` thanh Windows Service chay nen/start cung Windows.
 - dong bo nhieu admin host. Khuyen nghi hien tai: 1 server giu DB, cac may WPF deu chay `Client`; admin dang nhap role `Admin`.
+
+Server UI hien tai:
+- Giao dien compact, chi hien mot URL ket noi client dung duoc, machine name, uptime va so client dang ket noi; khong hien URL lang nghe/database path/noi dung log ky thuat.
+- Cham xanh trang thai pulse cham khi listener dang chay.
+- Client heartbeat moi 30 giay. Server dem unique machine header `X-QuanLyHoSo-Client` trong cua so active 90 giay; request thu cong khong co header khong duoc dem.
+- Co start/stop server, backup ngay khong can login tai may server, mo thu muc data/log, copy client URL.
+- Dong/thu nho se an xuong system tray; thoat ro rang moi dung server.
+- Van phu thuoc user session, khong thay the Windows Service trong ban production.

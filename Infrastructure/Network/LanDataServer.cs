@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.IO;
 using System.Net;
 using System.Text;
@@ -15,8 +16,10 @@ namespace QuanLyHoSo.Infrastructure.Network
 {
     public sealed class LanDataServer
     {
+        private static readonly TimeSpan ClientActiveWindow = TimeSpan.FromSeconds(90);
         private readonly AppDataService _dataService;
         private readonly HttpListener _listener = new HttpListener();
+        private readonly ConcurrentDictionary<string, DateTime> _activeClients = new ConcurrentDictionary<string, DateTime>(StringComparer.OrdinalIgnoreCase);
         private readonly JsonSerializerOptions _jsonOptions = new JsonSerializerOptions
         {
             PropertyNameCaseInsensitive = true
@@ -28,6 +31,30 @@ namespace QuanLyHoSo.Infrastructure.Network
             _dataService = dataService ?? throw new ArgumentNullException(nameof(dataService));
             var prefix = BuildListenerPrefix(AppPathSettings.Current.AdminServerUrl);
             _listener.Prefixes.Add(prefix);
+        }
+
+        public bool IsRunning => _listener.IsListening;
+
+        public int ConnectedClientCount
+        {
+            get
+            {
+                if (!IsRunning)
+                {
+                    return 0;
+                }
+
+                var cutoff = DateTime.UtcNow.Subtract(ClientActiveWindow);
+                foreach (var client in _activeClients)
+                {
+                    if (client.Value < cutoff)
+                    {
+                        _activeClients.TryRemove(client.Key, out _);
+                    }
+                }
+
+                return _activeClients.Count;
+            }
         }
 
         public void Start()
@@ -47,6 +74,27 @@ namespace QuanLyHoSo.Infrastructure.Network
             catch (Exception ex)
             {
                 AppLogger.Error("LAN", "StartServer", ex, "Cannot start admin LAN server.");
+                throw;
+            }
+        }
+
+        public void Stop()
+        {
+            if (!_listener.IsListening)
+            {
+                return;
+            }
+
+            try
+            {
+                _cancellationTokenSource?.Cancel();
+                _listener.Stop();
+                _activeClients.Clear();
+                AppLogger.Info("LAN", "StopServer", "Admin LAN server stopped.");
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Error("LAN", "StopServer", ex, "Cannot stop admin LAN server.");
                 throw;
             }
         }
@@ -88,6 +136,7 @@ namespace QuanLyHoSo.Infrastructure.Network
         {
             try
             {
+                TrackClient(context.Request);
                 if (!string.Equals(context.Request.HttpMethod, "POST", StringComparison.OrdinalIgnoreCase))
                 {
                     await WriteErrorAsync(context, 405, "Only POST is supported.");
@@ -113,6 +162,17 @@ namespace QuanLyHoSo.Infrastructure.Network
                 AppLogger.Error("LAN", "HandleRequest", ex, "LAN request failed.");
                 await WriteErrorAsync(context, 500, ex.Message);
             }
+        }
+
+        private void TrackClient(HttpListenerRequest request)
+        {
+            var clientMachine = request.Headers["X-QuanLyHoSo-Client"]?.Trim();
+            if (string.IsNullOrWhiteSpace(clientMachine) || clientMachine.Length > 100)
+            {
+                return;
+            }
+
+            _activeClients[clientMachine] = DateTime.UtcNow;
         }
 
         private object Dispatch(string route, string body)

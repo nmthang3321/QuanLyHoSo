@@ -1,6 +1,6 @@
 using System;
 using System.IO;
-using System.Threading;
+using System.Windows;
 using QuanLyHoSo.Infrastructure.Configuration;
 using QuanLyHoSo.Infrastructure.Data;
 using QuanLyHoSo.Infrastructure.Logging;
@@ -9,11 +9,9 @@ namespace QuanLyHoSo.Server
 {
     internal static class Program
     {
-        private static readonly ManualResetEventSlim ShutdownSignal = new ManualResetEventSlim(false);
-
+        [STAThread]
         private static int Main(string[] args)
         {
-            Console.OutputEncoding = System.Text.Encoding.UTF8;
             AppLogger.Info("Server", "Startup", "QuanLyHoSo server starting.");
 
             try
@@ -23,25 +21,24 @@ namespace QuanLyHoSo.Server
                 AppPathSettings.UseServerMode(options.DatabasePath, options.LogFolder, options.AdminServerUrl);
                 AppDataService.Instance.Initialize();
 
-                Console.WriteLine("QuanLyHoSo server is running.");
-                Console.WriteLine($"API: {AppPathSettings.Current.AdminServerUrl}");
-                Console.WriteLine($"Database: {AppPathSettings.Current.DatabasePath}");
-                Console.WriteLine("Press Ctrl+C to stop.");
-
-                Console.CancelKeyPress += (_, eventArgs) =>
+                var application = new Application
                 {
-                    eventArgs.Cancel = true;
-                    ShutdownSignal.Set();
+                    ShutdownMode = ShutdownMode.OnExplicitShutdown
                 };
+                var window = new ServerWindow(AppDataService.Instance);
+                application.Run(window);
 
-                ShutdownSignal.Wait();
                 AppLogger.Info("Server", "Shutdown", "QuanLyHoSo server stopped.");
                 return 0;
             }
             catch (Exception ex)
             {
                 AppLogger.Error("Server", "Startup", ex, "QuanLyHoSo server failed.");
-                Console.Error.WriteLine(ex.Message);
+                MessageBox.Show(
+                    $"Không thể khởi động máy chủ.\n\n{ex.Message}",
+                    "Quản lý hồ sơ - Server",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
                 return 1;
             }
         }
@@ -87,15 +84,10 @@ namespace QuanLyHoSo.Server
                     return;
                 }
 
-                var sampleSourcePath = Path.Combine(
-                    AppContext.BaseDirectory,
-                    "SampleData",
-                    "quanlyhoso-demo.db");
+                var sampleSourcePath = Path.Combine(AppContext.BaseDirectory, "SampleData", "quanlyhoso-demo.db");
                 if (!File.Exists(sampleSourcePath))
                 {
-                    throw new FileNotFoundException(
-                        "Không tìm thấy database mẫu đi kèm ứng dụng.",
-                        sampleSourcePath);
+                    throw new FileNotFoundException("Không tìm thấy database mẫu đi kèm ứng dụng.", sampleSourcePath);
                 }
 
                 var sampleDataFolder = Path.Combine(
@@ -106,7 +98,7 @@ namespace QuanLyHoSo.Server
 
                 DatabasePath = Path.Combine(sampleDataFolder, "quanlyhoso-sample.db");
                 File.Copy(sampleSourcePath, DatabasePath, true);
-                Console.WriteLine("Đã khởi tạo lại database chạy mẫu.");
+                AppLogger.Info("Server", "SampleData", "Sample database was recreated.");
             }
         }
     }

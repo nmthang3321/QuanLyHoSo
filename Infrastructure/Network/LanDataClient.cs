@@ -2,6 +2,7 @@ using System;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using QuanLyHoSo.Infrastructure.Configuration;
 using QuanLyHoSo.Infrastructure.Security;
@@ -12,6 +13,7 @@ namespace QuanLyHoSo.Infrastructure.Network
     {
         private readonly HttpClient _httpClient;
         private readonly JsonSerializerOptions _jsonOptions;
+        private readonly Timer _heartbeatTimer;
 
         public LanDataClient()
         {
@@ -20,15 +22,29 @@ namespace QuanLyHoSo.Infrastructure.Network
                 BaseAddress = new Uri(AppPathSettings.Current.AdminServerUrl + "/"),
                 Timeout = TimeSpan.FromSeconds(5)
             };
+            _httpClient.DefaultRequestHeaders.TryAddWithoutValidation("X-QuanLyHoSo-Client", Environment.MachineName);
             _jsonOptions = new JsonSerializerOptions
             {
                 PropertyNameCaseInsensitive = true
             };
+            _heartbeatTimer = new Timer(_ => SendHeartbeat(), null, TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(30));
         }
 
         public void Ping()
         {
             Call<object>("health", null);
+        }
+
+        private void SendHeartbeat()
+        {
+            try
+            {
+                Ping();
+            }
+            catch
+            {
+                // Heartbeat is best-effort and must never interrupt client work.
+            }
         }
 
         public T Call<T>(string route, object data)

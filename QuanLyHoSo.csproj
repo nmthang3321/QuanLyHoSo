@@ -36,6 +36,7 @@
     <Compile Remove="QuanLyHoSo.Core\**\*.cs" />
     <Compile Remove="QuanLyHoSo.Shared\**\*.cs" />
     <Compile Remove="QuanLyHoSo.Server\**\*.cs" />
+    <Page Remove="QuanLyHoSo.Server\**\*.xaml" />
   </ItemGroup>
 
   <ItemGroup>

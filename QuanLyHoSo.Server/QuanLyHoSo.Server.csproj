@@ -1,8 +1,11 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <OutputType>Exe</OutputType>
+    <OutputType>WinExe</OutputType>
     <TargetFramework>net5.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ApplicationIcon>..\Assets\AppIcon.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
@@ -10,6 +13,8 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Resource Include="..\Assets\AppIcon.ico" Link="Assets\AppIcon.ico" />
+    <Resource Include="..\Assets\Fonts\MaterialSymbolsOutlined.ttf" Link="Assets\Fonts\MaterialSymbolsOutlined.ttf" />
     <Content Include="..\doc\phieu_de_xuat.docx" Link="doc\phieu_de_xuat.docx" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="..\doc\phieu_huong_dan.docx" Link="doc\phieu_huong_dan.docx" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="..\doc\thong_bao.docx" Link="doc\thong_bao.docx" CopyToOutputDirectory="PreserveNewest" />

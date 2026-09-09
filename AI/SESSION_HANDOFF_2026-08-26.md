@@ -32,3 +32,15 @@ dotnet run --project QuanLyHoSo.Server\QuanLyHoSo.Server.csproj -- --url http://
 - Nut sua ho so o danh sach duoc mo theo `AuthContext.CanEditRecord(record.ProcessorName)`, khong khoa theo client mode.
 - Officer/can bo khong thay muc Nhap du lieu, khong them/xoa ho so; chi xem/chinh sua/phan loai theo quyen va khong duoc lui workflow ve buoc truoc phan cong.
 - Attachment LAN hien moi luu metadata/path; chua co upload/copy file vat ly tu client len server.
+
+## Snapshot 2026-09-09
+
+- `QuanLyHoSo.Server` da co giao dien WPF quan tri co ban thay cho cua so console.
+- Giao dien server compact, chi hien mot URL ket noi client dung duoc, ten may, uptime va so client dang ket noi; khong hien URL lang nghe/duong dan DB/noi dung log ky thuat.
+- Cham xanh trang thai server pulse cham khi listener dang chay.
+- Client gui heartbeat 30 giay kem header `X-QuanLyHoSo-Client`; server dem ten may duy nhat co request/heartbeat trong 90 giay gan nhat.
+- Admin tai may server co the start/stop LAN server, backup ngay khong can login, mo thu muc data/log va copy URL cho client.
+- Dong/thu nho cua so se an xuong system tray; chi nut `Thoat may chu` hoac menu tray moi dung server.
+- Tham so cu van dung: `--url`, `--database`, `--log-folder`, `--sample-data`.
+- Day van la tray application theo user session, chua phai Windows Service tu chay truoc khi dang nhap Windows.
+- File log ky thuat `quanlyhoso-yyyyMMdd.log` tu dong chi giu 30 ngay; cleanup moi ngay mot lan va khong xoa file sai mau/khac ten.

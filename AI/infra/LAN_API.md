@@ -4,6 +4,8 @@ Dung khi task lien quan client/server LAN.
 
 Files:
 - `QuanLyHoSo.Server\Program.cs`
+- `QuanLyHoSo.Server\ServerWindow.xaml`
+- `QuanLyHoSo.Server\ServerWindow.xaml.cs`
 - `QuanLyHoSo.Core\QuanLyHoSo.Core.csproj`
 - `QuanLyHoSo.Shared\QuanLyHoSo.Shared.csproj`
 - `Infrastructure\Configuration\AppPathSettings.cs`
@@ -23,6 +25,8 @@ Notes:
 - Server API co the chay doc lap bang `QuanLyHoSo.Server`.
 - App WPF mac dinh la `Client`; chi ghi ro `AdminHost` neu muon chay don may/tuong thich cu.
 - Neu server tat/mat mang, client hien popup qua `LanServerUnavailableException`.
+- `LanDataClient` gui header `X-QuanLyHoSo-Client` bang machine name va heartbeat route `health` moi 30 giay.
+- `LanDataServer.ConnectedClientCount` dem machine duy nhat co heartbeat/request trong 90 giay gan nhat; stop server se clear danh sach.
 
 Routes dang co:
 - `auth/login`
@@ -42,3 +46,5 @@ Run:
 ```powershell
 dotnet run --project QuanLyHoSo.Server\QuanLyHoSo.Server.csproj -- --url http://0.0.0.0:5055
 ```
+
+Lenh tren mo giao dien WPF quan tri server. Dong/thu nho se dua app xuong system tray; `Thoat may chu` moi stop listener. Day chua phai Windows Service.
