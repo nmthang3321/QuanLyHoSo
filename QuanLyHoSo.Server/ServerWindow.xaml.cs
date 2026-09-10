@@ -164,19 +164,43 @@ namespace QuanLyHoSo.Server
             }
         }
 
-        private void Backup_Click(object sender, RoutedEventArgs e)
+        private void ResetAdmin_Click(object sender, RoutedEventArgs e)
         {
+            var answer = MessageBox.Show(
+                "Reset tài khoản admin sẽ tạo mật khẩu tạm mới, mở khóa tài khoản và vô hiệu hóa mật khẩu hiện tại. Bạn có chắc chắn không?",
+                "Reset tài khoản Admin",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning);
+            if (answer != MessageBoxResult.Yes)
+            {
+                return;
+            }
+
             try
             {
-                var fileName = $"quanlyhoso_{DateTime.Now:yyyyMMdd_HHmmss}.db";
-                var backupPath = _dataService.CreateServerBackupFile(fileName);
-                MessageBox.Show($"Đã sao lưu thành công:\n{backupPath}", "Sao lưu dữ liệu", MessageBoxButton.OK, MessageBoxImage.Information);
+                ResetAdminUserNameText.Text = "admin";
+                ResetAdminPasswordText.Text = _dataService.ResetBuiltInAdminPassword();
+                ResetAdminDialog.Visibility = Visibility.Visible;
             }
             catch (Exception ex)
             {
-                AppLogger.Error("ServerUI", "Backup", ex, "Manual backup failed.");
-                MessageBox.Show(ex.Message, "Sao lưu thất bại", MessageBoxButton.OK, MessageBoxImage.Error);
+                AppLogger.Error("ServerUI", "ResetAdmin", ex, "Admin account reset failed.");
+                MessageBox.Show(ex.Message, "Reset Admin thất bại", MessageBoxButton.OK, MessageBoxImage.Error);
             }
+        }
+
+        private void CopyAdminPassword_Click(object sender, RoutedEventArgs e)
+        {
+            if (!string.IsNullOrWhiteSpace(ResetAdminPasswordText.Text))
+            {
+                Clipboard.SetText(ResetAdminPasswordText.Text);
+            }
+        }
+
+        private void CloseResetAdminDialog_Click(object sender, RoutedEventArgs e)
+        {
+            ResetAdminPasswordText.Text = string.Empty;
+            ResetAdminDialog.Visibility = Visibility.Collapsed;
         }
 
         private void CopyUrl_Click(object sender, RoutedEventArgs e)

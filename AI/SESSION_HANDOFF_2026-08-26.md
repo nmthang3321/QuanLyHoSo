@@ -39,7 +39,9 @@ dotnet run --project QuanLyHoSo.Server\QuanLyHoSo.Server.csproj -- --url http://
 - Giao dien server compact, chi hien mot URL ket noi client dung duoc, ten may, uptime va so client dang ket noi; khong hien URL lang nghe/duong dan DB/noi dung log ky thuat.
 - Cham xanh trang thai server pulse cham khi listener dang chay.
 - Client gui heartbeat 30 giay kem header `X-QuanLyHoSo-Client`; server dem ten may duy nhat co request/heartbeat trong 90 giay gan nhat.
-- Admin tai may server co the start/stop LAN server, backup ngay khong can login, mo thu muc data/log va copy URL cho client.
+- Admin tai may server co the start/stop LAN server, reset built-in `admin`, mo thu muc data/log va copy URL cho client. Sao luu du lieu thuc hien trong Settings cua app WPF sau khi Admin dang nhap.
+- Reset Admin tren server tao mat khau tam 8 ky tu cho username `admin`, co nut copy va bat buoc doi mat khau khi dang nhap.
+- User moi hoac user duoc Admin cap lai mat khau deu phai doi mat khau tren man hinh rieng truoc khi vao shell/sidebar.
 - Dong/thu nho cua so se an xuong system tray; chi nut `Thoat may chu` hoac menu tray moi dung server.
 - Tham so cu van dung: `--url`, `--database`, `--log-folder`, `--sample-data`.
 - Day van la tray application theo user session, chua phai Windows Service tu chay truoc khi dang nhap Windows.

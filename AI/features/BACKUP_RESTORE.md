@@ -25,3 +25,4 @@ Notes:
 - Luong sao luu: client goi `settings/backup/create` de server tao backup an toan, sau do tai file qua `settings/backup/download` ve thu muc Admin da chon.
 - Luong khoi phuc: client doc file `.db`, gui noi dung qua `settings/backup/restore`; server luu file tam, kiem tra database, tao safety backup, restore bang SQLite backup API, chay `PRAGMA quick_check`, roi xoa file tam.
 - Safety backup truoc khi khoi phuc nam trong `%LocalAppData%\QuanLyHoSo\Backup` tren may server.
+- Nut sao luu truc tiep tren cua so `QuanLyHoSo.Server` da duoc thay bang reset tai khoan Admin; Admin sao luu tu card Settings trong app WPF.

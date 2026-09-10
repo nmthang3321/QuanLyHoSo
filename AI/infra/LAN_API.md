@@ -39,7 +39,7 @@ Routes dang co:
 - `staff/performance`, `staff/deadlines`, `staff/active-records`
 - `leadership-notices/latest`, `leadership-notices/save`
 - `settings/catalog-items`, `settings/catalog-counts`, `settings/catalog/add`, `settings/catalog/update`, `settings/catalog/delete`, `settings/catalog/reorder`
-- `settings/system-logs`, `settings/users`, `settings/users/save`, `settings/users/delete`, `settings/backup/create`
+- `settings/system-logs`, `settings/users`, `settings/users/save`, `settings/users/delete`, `settings/users/change-password`, `settings/backup/create`
 
 Run:
 

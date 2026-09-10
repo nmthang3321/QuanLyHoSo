@@ -86,7 +86,14 @@ namespace QuanLyHoSo.ViewModels
                 }
 
                 ErrorMessage = string.Empty;
-                SaveRememberedLogin();
+                if (user.MustChangePassword)
+                {
+                    ClearRememberedLogin();
+                }
+                else
+                {
+                    SaveRememberedLogin();
+                }
                 AppLogger.Info("Auth", "SignIn", $"User signed in: {user.UserName}.");
                 _onSignedIn(user);
             }
@@ -184,7 +191,7 @@ namespace QuanLyHoSo.ViewModels
         private static void ShowForgotPasswordMessage()
         {
             MessageBox.Show(
-                "Vui l\u00F2ng li\u00EAn h\u1EC7 admin \u0111\u1EC3 c\u1EA5p l\u1EA1i m\u1EADt kh\u1EA9u.",
+                "Vui l\u00F2ng li\u00EAn h\u1EC7 Admin \u0111\u1EC3 c\u1EA5p l\u1EA1i m\u1EADt kh\u1EA9u. N\u1EBFu t\u00E0i kho\u1EA3n admin c\u0169ng kh\u00F4ng th\u1EC3 \u0111\u0103ng nh\u1EADp, h\u00E3y d\u00F9ng ch\u1EE9c n\u0103ng Reset t\u00E0i kho\u1EA3n Admin tr\u1EF1c ti\u1EBFp tr\u00EAn m\u00E1y server.",
                 "Qu\u00EAn m\u1EADt kh\u1EA9u",
                 MessageBoxButton.OK,
                 MessageBoxImage.Information);

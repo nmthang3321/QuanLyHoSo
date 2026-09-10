@@ -36,13 +36,14 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Root" Property="Background" Value="#0051E8" />
+                                <Setter TargetName="Root" Property="Background" Value="{StaticResource PrimaryHoverBrush}" />
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="Root" Property="Background" Value="#0045C7" />
+                                <Setter TargetName="Root" Property="Background" Value="{StaticResource PrimaryPressedBrush}" />
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
-                                <Setter Property="Opacity" Value="0.45" />
+                                <Setter Property="Opacity" Value="0.55" />
+                                <Setter Property="Cursor" Value="Arrow" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>

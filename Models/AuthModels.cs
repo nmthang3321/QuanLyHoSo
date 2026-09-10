@@ -18,6 +18,7 @@ namespace QuanLyHoSo.Models
         public string UserName { get; set; }
         public string DisplayName { get; set; }
         public string Role { get; set; }
+        public bool MustChangePassword { get; set; }
 
         public bool IsActive
         {

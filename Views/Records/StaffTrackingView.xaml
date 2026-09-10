@@ -223,6 +223,7 @@
                                   ScrollViewer.VerticalScrollBarVisibility="Disabled"
                                   ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                                   CanUserAddRows="False"
+                                  GridLinesVisibility="Horizontal"
                                   AutoGenerateColumns="False">
                             <DataGrid.RowStyle>
                                 <Style TargetType="DataGridRow">

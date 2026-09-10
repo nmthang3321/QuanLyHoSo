@@ -10,6 +10,7 @@ Files:
 
 Notes:
 - DataGrid bind `Records`.
+- Bang hien luoi ngang va doc mau nhat de tach hang/cot ro rang.
 - Table height bind `TableHeight`.
 - Mouse wheel DataGrid forward ve `RecordListScrollViewer`.
 - Detail modal doc `AI/popups/RECORD_DETAIL_MODAL.md`.

@@ -73,11 +73,11 @@ namespace QuanLyHoSo.ViewModels
                 Title = title,
                 IconGlyph = iconGlyph,
                 IconFontFamily = iconFontFamily,
-                Command = new RelayCommand(() => NavigateTo(key), () => CanNavigateTo(key))
+                Command = new RelayCommand(() => NavigateTo(key, resetPage: true), () => CanNavigateTo(key))
             };
         }
 
-        private void NavigateTo(string key, string selectedNavigationKey = null)
+        private void NavigateTo(string key, string selectedNavigationKey = null, bool resetPage = false)
         {
             if (!IsAuthenticated || !CanNavigateTo(key))
             {
@@ -87,6 +87,11 @@ namespace QuanLyHoSo.ViewModels
             if (CurrentPageKey == "Input" && !RecordInputViewModel.ConfirmLeaveWithoutSaving())
             {
                 return;
+            }
+
+            if (resetPage)
+            {
+                ResetPageViewModel(key);
             }
 
             if (key == "Input" && selectedNavigationKey == null)
@@ -112,6 +117,32 @@ namespace QuanLyHoSo.ViewModels
 
             UpdateNavigationSelection(selectedNavigationKey ?? key);
             RefreshCurrentPage(key);
+        }
+
+        private void ResetPageViewModel(string key)
+        {
+            switch (key)
+            {
+                case "Dashboard":
+                    _dashboardViewModel = null;
+                    break;
+                case "Input":
+                    _recordInputViewModel = null;
+                    break;
+                case "RecordList":
+                    _recordListViewModel = null;
+                    break;
+                case "Processing":
+                    _recordProcessingViewModel = null;
+                    break;
+                case "StaffTracking":
+                    _staffTrackingViewModel = null;
+                    break;
+                case "Settings":
+                    _settingsViewModel = null;
+                    _settingsGuideViewModel = null;
+                    break;
+            }
         }
 
         private void UpdateNavigationSelection(string key)
@@ -193,6 +224,20 @@ namespace QuanLyHoSo.ViewModels
         }
 
         private void SignIn(AppUser user)
+        {
+            AuthContext.SignIn(user);
+            if (user.MustChangePassword)
+            {
+                CurrentPageKey = "RequiredPasswordChange";
+                CurrentViewModel = new RequiredPasswordChangeViewModel(user, CompleteSignIn, SignOut);
+                UpdateNavigationSelection(null);
+                return;
+            }
+
+            CompleteSignIn(user);
+        }
+
+        private void CompleteSignIn(AppUser user)
         {
             AuthContext.SignIn(user);
             _currentUser = user;

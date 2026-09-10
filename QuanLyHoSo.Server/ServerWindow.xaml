@@ -166,7 +166,7 @@
                 <StackPanel>
                     <TextBlock Text="ĐIỀU KHIỂN" Foreground="{StaticResource PrimaryBrush}" FontWeight="Bold" FontSize="13" />
                     <Button x:Name="ToggleServerButton" Content="Dừng máy chủ" Style="{StaticResource PrimaryButton}" Margin="0,16,0,9" Click="ToggleServer_Click" />
-                    <Button Content="Sao lưu ngay" Style="{StaticResource SecondaryButton}" Margin="0,0,0,9" Click="Backup_Click" />
+                    <Button Content="Reset tài khoản Admin" Style="{StaticResource SecondaryButton}" Margin="0,0,0,9" Click="ResetAdmin_Click" />
                     <Button Content="Mở thư mục dữ liệu" Style="{StaticResource SecondaryButton}" Margin="0,0,0,9" Click="OpenDataFolder_Click" />
                     <Button Content="Mở thư mục log" Style="{StaticResource SecondaryButton}" Margin="0,0,0,9" Click="OpenLogFolder_Click" />
                     <Button Content="Thoát máy chủ" Foreground="#C62828" Style="{StaticResource SecondaryButton}" Click="Exit_Click" />
@@ -178,5 +178,62 @@
             <TextBlock Margin="24,0" VerticalAlignment="Center" Foreground="{StaticResource MutedBrush}" FontSize="11"
                        Text="Đóng hoặc thu nhỏ cửa sổ sẽ đưa máy chủ xuống khay hệ thống." />
         </Border>
+
+        <Grid x:Name="ResetAdminDialog" Grid.RowSpan="3" Background="#7306152C" Visibility="Collapsed">
+            <Border Width="470" Padding="24" Background="White" BorderBrush="#C9D7EA" BorderThickness="1"
+                    CornerRadius="10" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <Border.Effect>
+                    <DropShadowEffect Color="#092947" BlurRadius="28" ShadowDepth="6" Opacity="0.25" />
+                </Border.Effect>
+                <StackPanel>
+                    <Grid Margin="0,0,0,8">
+                        <StackPanel>
+                            <TextBlock Text="RESET TÀI KHOẢN ADMIN" Foreground="{StaticResource PrimaryBrush}"
+                                       FontWeight="Bold" FontSize="14" />
+                            <TextBlock Text="Thông tin đăng nhập tạm thời" Foreground="{StaticResource MutedBrush}"
+                                       FontSize="12" Margin="0,4,0,0" />
+                        </StackPanel>
+                        <Button HorizontalAlignment="Right" VerticalAlignment="Top" Width="30" Height="30"
+                                Background="Transparent" BorderThickness="0" Cursor="Hand"
+                                Click="CloseResetAdminDialog_Click" ToolTip="Đóng">
+                            <TextBlock Text="&#xE711;" FontFamily="Segoe MDL2 Assets" FontSize="14" />
+                        </Button>
+                    </Grid>
+
+                    <Border Background="#FFF8E7" BorderBrush="#F0D89B" BorderThickness="1"
+                            CornerRadius="6" Padding="11" Margin="0,8,0,18">
+                        <TextBlock Text="Mật khẩu này chỉ hiển thị trong cửa sổ hiện tại. Admin sẽ phải đổi mật khẩu ngay sau khi đăng nhập."
+                                   Foreground="#7A5A13" FontSize="12" TextWrapping="Wrap" />
+                    </Border>
+
+                    <TextBlock Text="Tên đăng nhập" Foreground="{StaticResource MutedBrush}" FontSize="12" />
+                    <Border Background="#F6F8FB" BorderBrush="{StaticResource LineBrush}" BorderThickness="1"
+                            CornerRadius="5" Padding="12,9" Margin="0,6,0,14">
+                        <TextBlock x:Name="ResetAdminUserNameText" Text="admin" FontWeight="SemiBold" FontSize="15" />
+                    </Border>
+
+                    <TextBlock Text="Mật khẩu tạm" Foreground="{StaticResource MutedBrush}" FontSize="12" />
+                    <Grid Margin="0,6,0,20">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="40" />
+                        </Grid.ColumnDefinitions>
+                        <Border Background="#F6F8FB" BorderBrush="{StaticResource LineBrush}" BorderThickness="1"
+                                CornerRadius="5,0,0,5" Padding="12,9">
+                            <TextBlock x:Name="ResetAdminPasswordText" FontFamily="Consolas" FontWeight="Bold"
+                                       FontSize="17" />
+                        </Border>
+                        <Button Grid.Column="1" Style="{StaticResource CopyIconButton}" Width="40" Height="Auto"
+                                Click="CopyAdminPassword_Click" ToolTip="Sao chép mật khẩu">
+                            <TextBlock Text="&#xE14D;" FontSize="18" Foreground="#174A84"
+                                       FontFamily="pack://application:,,,/Assets/Fonts/#Material Symbols Outlined" />
+                        </Button>
+                    </Grid>
+
+                    <Button Content="Đóng" Style="{StaticResource PrimaryButton}"
+                            HorizontalAlignment="Stretch" Click="CloseResetAdminDialog_Click" />
+                </StackPanel>
+            </Border>
+        </Grid>
     </Grid>
 </Window>

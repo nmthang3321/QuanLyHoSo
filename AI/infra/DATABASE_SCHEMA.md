@@ -10,6 +10,7 @@ Bang chinh:
 - `SystemLogs`
 
 Notes:
+- `Users.MustChangePassword` danh dau tai khoan phai doi mat khau truoc khi vao shell; cot duoc migrate bang `TryAddColumn` voi default `0` cho du lieu cu.
 - `CatalogItems` co `CatalogType`, `Name`, `DisplayOrder`, `IsActive`.
 - Seed demo tao 105 ho so cho 7 can bo (15 ho so/can bo), dung random seed co dinh de du lieu lap lai on dinh.
 - `RecordAttachments` co `FilePath` duoc add/check bang `TryAddColumn`.

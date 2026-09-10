@@ -399,7 +399,8 @@
                               HorizontalScrollBarVisibility="Auto"
                               VerticalScrollBarVisibility="Disabled"
                               PreviewMouseWheel="RecordListDataGrid_PreviewMouseWheel"
-                              GridLinesVisibility="Horizontal"
+                              GridLinesVisibility="All"
+                              VerticalGridLinesBrush="#ECF1F8"
                               IsReadOnly="True">
                         <DataGrid.Columns>
                             <DataGridTemplateColumn Header="Chọn" Width="58" CanUserResize="False"

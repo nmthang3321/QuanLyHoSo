@@ -100,6 +100,7 @@ namespace QuanLyHoSo.ViewModels
             _allCatalogValues = new List<CatalogValueSetting>();
             SoftwareInfos = new ObservableCollection<SoftwareInfo>();
             Users = new ObservableCollection<AppUser>();
+            UserProcessorNames = new ObservableCollection<string>();
             UserRoles = new ObservableCollection<string> { Models.UserRoles.Admin, Models.UserRoles.Officer, Models.UserRoles.Leader };
             DataAccessModes = new ObservableCollection<string> { "AdminHost", "Client" };
 
@@ -124,7 +125,9 @@ namespace QuanLyHoSo.ViewModels
             EditUserCommand = new RelayCommand(EditUser, value => CanEditSettings && value is AppUser);
             SaveUserCommand = new RelayCommand(SaveUser, () => CanEditSettings);
             NewUserCommand = new RelayCommand(ClearUserForm, () => CanEditSettings);
-            DeleteUserCommand = new RelayCommand(DeleteUser, value => CanEditSettings && value is AppUser user && user.Id != AuthContext.CurrentUser?.Id);
+            ToggleUserStatusCommand = new RelayCommand(
+                ToggleUserStatus,
+                value => CanEditSettings && value is AppUser user && user.Id != AuthContext.CurrentUser?.Id);
             ChooseDatabasePathCommand = new RelayCommand(ChooseDatabasePath);
             ChooseLogFolderCommand = new RelayCommand(ChooseLogFolder);
             SaveGeneralSettingsCommand = new RelayCommand(SaveGeneralSettings);
@@ -170,6 +173,7 @@ namespace QuanLyHoSo.ViewModels
         public ObservableCollection<string> CatalogStatusFilters { get; }
         public ObservableCollection<SoftwareInfo> SoftwareInfos { get; }
         public ObservableCollection<AppUser> Users { get; }
+        public ObservableCollection<string> UserProcessorNames { get; }
         public ObservableCollection<string> UserRoles { get; }
         public ObservableCollection<string> DataAccessModes { get; }
 
@@ -194,7 +198,7 @@ namespace QuanLyHoSo.ViewModels
         public ICommand EditUserCommand { get; }
         public ICommand SaveUserCommand { get; }
         public ICommand NewUserCommand { get; }
-        public ICommand DeleteUserCommand { get; }
+        public ICommand ToggleUserStatusCommand { get; }
         public ICommand ChooseDatabasePathCommand { get; }
         public ICommand ChooseLogFolderCommand { get; }
         public ICommand SaveGeneralSettingsCommand { get; }
@@ -316,13 +320,28 @@ namespace QuanLyHoSo.ViewModels
                     LoadSelectedUser();
                     OnPropertyChanged(nameof(IsEditingUser));
                     OnPropertyChanged(nameof(UserSubmitButtonText));
-                    (DeleteUserCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                    OnPropertyChanged(nameof(UserPasswordHintText));
+                    OnPropertyChanged(nameof(SelectedUserStatusText));
+                    OnPropertyChanged(nameof(UserStatusActionText));
+                    (ToggleUserStatusCommand as RelayCommand)?.RaiseCanExecuteChanged();
                 }
             }
         }
 
         public bool IsEditingUser => SelectedUser != null;
         public string UserSubmitButtonText => IsEditingUser ? "Lưu thay đổi" : "Thêm tài khoản";
+        public string UserPasswordHintText => IsEditingUser
+            ? "Để trống nếu không đổi. Nếu cấp mật khẩu mới, user sẽ phải đổi khi đăng nhập"
+            : "Mật khẩu khởi tạo; user sẽ phải đổi khi đăng nhập lần đầu";
+        public string UserSummaryText => $"{Users.Count(user => user.IsActive)} đang hoạt động  •  {Users.Count(user => !user.IsActive)} đã khóa";
+        public string SelectedUserStatusText => SelectedUser == null
+            ? "Chọn một tài khoản trong danh sách để chỉnh sửa"
+            : SelectedUser.Id == AuthContext.CurrentUser?.Id
+                ? "Tài khoản đang đăng nhập • không thể khóa"
+                : SelectedUser.IsActive ? "Tài khoản đang hoạt động" : "Tài khoản đã bị khóa";
+        public string UserStatusActionText => SelectedUser?.IsActive == false
+            ? "Mở khóa tài khoản"
+            : "Khóa tài khoản";
 
         public string UserNameText
         {
@@ -599,18 +618,36 @@ namespace QuanLyHoSo.ViewModels
                 return;
             }
 
+            RefreshUserProcessorNames();
             RefreshUsers();
             ClearUserForm();
             IsUserManagementDialogOpen = true;
         }
 
+        private void RefreshUserProcessorNames()
+        {
+            UserProcessorNames.Clear();
+            foreach (var processorName in _dataService.GetCatalogValues("ProcessorName")
+                .Where(name => !string.IsNullOrWhiteSpace(name))
+                .Select(name => name.Trim())
+                .Distinct(StringComparer.CurrentCultureIgnoreCase))
+            {
+                UserProcessorNames.Add(processorName);
+            }
+        }
+
         private void RefreshUsers()
         {
             Users.Clear();
-            foreach (var user in _dataService.GetUsers())
+            foreach (var user in _dataService.GetUsers()
+                .OrderByDescending(user => user.IsActive)
+                .ThenBy(user => user.Role)
+                .ThenBy(user => user.DisplayName, StringComparer.CurrentCultureIgnoreCase))
             {
                 Users.Add(user);
             }
+
+            OnPropertyChanged(nameof(UserSummaryText));
         }
 
         private void LoadSelectedUser()
@@ -618,6 +655,15 @@ namespace QuanLyHoSo.ViewModels
             if (SelectedUser == null)
             {
                 return;
+            }
+
+            if (!string.IsNullOrWhiteSpace(SelectedUser.DisplayName) &&
+                !UserProcessorNames.Any(name => string.Equals(
+                    name,
+                    SelectedUser.DisplayName.Trim(),
+                    StringComparison.CurrentCultureIgnoreCase)))
+            {
+                UserProcessorNames.Add(SelectedUser.DisplayName.Trim());
             }
 
             UserNameText = SelectedUser.UserName;
@@ -659,7 +705,52 @@ namespace QuanLyHoSo.ViewModels
                 string.IsNullOrWhiteSpace(SelectedUserRole) ||
                 (!IsEditingUser && string.IsNullOrWhiteSpace(UserPasswordText)))
             {
-                MessageBox.Show("Vui lòng nhập đầy đủ tên đăng nhập, họ tên, vai trò và mật khẩu khi tạo mới.", "Quản lý người dùng", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show("Vui lòng nhập tên đăng nhập, chọn tên cán bộ, vai trò và mật khẩu khi tạo mới.", "Quản lý người dùng", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            var normalizedUserName = UserNameText.Trim();
+            var normalizedDisplayName = UserDisplayNameText.Trim();
+            var conflictingUserName = Users.FirstOrDefault(item =>
+                item.Id != (SelectedUser?.Id ?? 0) &&
+                string.Equals(item.UserName?.Trim(), normalizedUserName, StringComparison.OrdinalIgnoreCase));
+            if (conflictingUserName != null)
+            {
+                MessageBox.Show(
+                    conflictingUserName.IsActive
+                        ? "Tên đăng nhập đã tồn tại. Vui lòng chọn tên đăng nhập khác."
+                        : "Tên đăng nhập đã tồn tại và tài khoản đang bị khóa. Vui lòng chọn tài khoản đó trong danh sách để mở khóa.",
+                    "Tài khoản đã tồn tại",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                return;
+            }
+
+            var conflictingDisplayName = Users.FirstOrDefault(item =>
+                item.Id != (SelectedUser?.Id ?? 0) &&
+                string.Equals(item.DisplayName?.Trim(), normalizedDisplayName, StringComparison.CurrentCultureIgnoreCase));
+            if (conflictingDisplayName != null)
+            {
+                MessageBox.Show(
+                    conflictingDisplayName.IsActive
+                        ? "Họ tên / tên cán bộ đã tồn tại. Vui lòng kiểm tra lại người dùng trong danh sách."
+                        : "Họ tên / tên cán bộ đã tồn tại trong một tài khoản đang bị khóa. Vui lòng chọn tài khoản đó để mở khóa.",
+                    "Người dùng đã tồn tại",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                return;
+            }
+
+            if (SelectedUser?.IsActive == true &&
+                string.Equals(SelectedUser.Role, Models.UserRoles.Admin, StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(SelectedUserRole, Models.UserRoles.Admin, StringComparison.OrdinalIgnoreCase) &&
+                Users.Count(item => item.IsActive && string.Equals(item.Role, Models.UserRoles.Admin, StringComparison.OrdinalIgnoreCase)) <= 1)
+            {
+                MessageBox.Show(
+                    "Không thể đổi vai trò của Admin cuối cùng. Hệ thống phải luôn còn ít nhất một Admin đang hoạt động.",
+                    "Quản lý người dùng",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
                 return;
             }
 
@@ -684,6 +775,11 @@ namespace QuanLyHoSo.ViewModels
                 ClearUserForm();
                 MessageBox.Show("Đã lưu tài khoản người dùng.", "Quản lý người dùng", MessageBoxButton.OK, MessageBoxImage.Information);
             }
+            catch (InvalidOperationException ex)
+            {
+                AppLogger.Info("Settings", "SaveUserValidation", ex.Message, UserNameText);
+                MessageBox.Show(ex.Message, "Không thể lưu tài khoản", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
             catch (Exception ex)
             {
                 AppLogger.Error("Settings", "SaveUser", ex, "Failed to save user.", UserNameText);
@@ -691,28 +787,56 @@ namespace QuanLyHoSo.ViewModels
             }
         }
 
-        private void DeleteUser(object parameter)
+        private void ToggleUserStatus(object parameter)
         {
             if (parameter is not AppUser user)
             {
                 return;
             }
 
+            var isUnlocking = !user.IsActive;
             var confirm = MessageBox.Show(
-                $"Khóa tài khoản {user.UserName}?",
+                isUnlocking
+                    ? $"Mở khóa tài khoản {user.UserName}? Người dùng sẽ có thể đăng nhập trở lại."
+                    : $"Khóa tài khoản {user.UserName}? Người dùng sẽ không thể đăng nhập cho đến khi được mở khóa.",
                 "Quản lý người dùng",
                 MessageBoxButton.YesNo,
-                MessageBoxImage.Warning);
+                isUnlocking ? MessageBoxImage.Question : MessageBoxImage.Warning);
             if (confirm != MessageBoxResult.Yes)
             {
                 return;
             }
 
-            if (_dataService.DeleteUser(user.Id))
+            var succeeded = isUnlocking
+                ? _dataService.SaveUser(new AppUser
+                {
+                    Id = user.Id,
+                    UserName = user.UserName,
+                    DisplayName = user.DisplayName,
+                    Role = user.Role,
+                    IsActive = true
+                }, string.Empty)
+                : _dataService.DeleteUser(user.Id);
+
+            if (succeeded)
             {
                 RefreshUsers();
                 ClearUserForm();
+                MessageBox.Show(
+                    isUnlocking ? "Đã mở khóa tài khoản." : "Đã khóa tài khoản.",
+                    "Quản lý người dùng",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+                return;
             }
+
+            MessageBox.Show(
+                isUnlocking
+                    ? "Không thể mở khóa tài khoản. Vui lòng thử lại."
+                    : "Không thể khóa tài khoản. Hệ thống phải luôn còn ít nhất một Admin đang hoạt động.",
+                "Quản lý người dùng",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
         }
 
         public void MoveCatalogValue(CatalogValueSetting source, CatalogValueSetting target)

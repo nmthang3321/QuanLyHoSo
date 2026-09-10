@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Text.RegularExpressions;
 using Microsoft.Data.Sqlite;
 using QuanLyHoSo.Infrastructure.Configuration;
@@ -283,7 +284,7 @@ LIMIT $take;";
             using var connection = OpenConnection();
             using var command = connection.CreateCommand();
             command.CommandText = @"
-SELECT Id, UserName, DisplayName, Role, PasswordHash, IsActive
+SELECT Id, UserName, DisplayName, Role, PasswordHash, IsActive, MustChangePassword
 FROM Users
 WHERE lower(UserName) = lower($userName)
 LIMIT 1;";
@@ -307,7 +308,8 @@ LIMIT 1;";
                 UserName = reader.GetString(1),
                 DisplayName = reader.GetString(2),
                 Role = reader.GetString(3),
-                IsActive = true
+                IsActive = true,
+                MustChangePassword = reader.GetInt32(6) == 1
             };
         }
 
@@ -323,7 +325,7 @@ LIMIT 1;";
             using var connection = OpenConnection();
             using var command = connection.CreateCommand();
             command.CommandText = @"
-SELECT Id, UserName, DisplayName, Role, IsActive
+SELECT Id, UserName, DisplayName, Role, IsActive, MustChangePassword
 FROM Users
 ORDER BY IsActive DESC, Role, DisplayName;";
 
@@ -336,7 +338,8 @@ ORDER BY IsActive DESC, Role, DisplayName;";
                     UserName = reader.GetString(1),
                     DisplayName = reader.GetString(2),
                     Role = reader.GetString(3),
-                    IsActive = reader.GetInt32(4) == 1
+                    IsActive = reader.GetInt32(4) == 1,
+                    MustChangePassword = reader.GetInt32(5) == 1
                 });
             }
 
@@ -360,6 +363,16 @@ ORDER BY IsActive DESC, Role, DisplayName;";
             }
 
             using var connection = OpenConnection();
+            ThrowIfUserConflict(connection, user);
+            if (user.Id > 0 && WouldRemoveLastActiveAdmin(
+                connection,
+                user.Id,
+                NormalizeRole(user.Role),
+                user.IsActive))
+            {
+                return false;
+            }
+
             using var command = connection.CreateCommand();
             if (user.Id > 0)
             {
@@ -370,7 +383,8 @@ SET UserName = $userName, DisplayName = $displayName, Role = $role, IsActive = $
 WHERE Id = $id;"
                     : @"
 UPDATE Users
-SET UserName = $userName, DisplayName = $displayName, Role = $role, PasswordHash = $passwordHash, IsActive = $isActive
+SET UserName = $userName, DisplayName = $displayName, Role = $role, PasswordHash = $passwordHash,
+    IsActive = $isActive, MustChangePassword = 1
 WHERE Id = $id;";
                 command.Parameters.AddWithValue("$id", user.Id);
             }
@@ -382,8 +396,8 @@ WHERE Id = $id;";
                 }
 
                 command.CommandText = @"
-INSERT INTO Users (UserName, DisplayName, Role, PasswordHash, IsActive, CreatedAt, UpdatedAt)
-VALUES ($userName, $displayName, $role, $passwordHash, $isActive, $now, $now);";
+INSERT INTO Users (UserName, DisplayName, Role, PasswordHash, IsActive, MustChangePassword, CreatedAt, UpdatedAt)
+VALUES ($userName, $displayName, $role, $passwordHash, $isActive, 1, $now, $now);";
             }
 
             command.Parameters.AddWithValue("$userName", NormalizeDbText(user.UserName));
@@ -396,13 +410,51 @@ VALUES ($userName, $displayName, $role, $passwordHash, $isActive, $now, $now);";
                 command.Parameters.AddWithValue("$passwordHash", PasswordHasher.HashPassword(password));
             }
 
-            var affectedRows = command.ExecuteNonQuery();
+            int affectedRows;
+            try
+            {
+                affectedRows = command.ExecuteNonQuery();
+            }
+            catch (SqliteException ex) when (ex.SqliteErrorCode == 19)
+            {
+                throw new InvalidOperationException("Tên đăng nhập đã tồn tại. Vui lòng chọn tên đăng nhập khác.", ex);
+            }
             if (affectedRows > 0)
             {
                 WriteDatabaseLog(connection, null, "Người dùng", user.Id > 0 ? "Sửa" : "Thêm", user.UserName, $"Cập nhật tài khoản {user.UserName}.");
             }
 
             return affectedRows > 0;
+        }
+
+        private static void ThrowIfUserConflict(SqliteConnection connection, AppUser user)
+        {
+            using var command = connection.CreateCommand();
+            command.CommandText = @"
+SELECT Id, UserName, DisplayName, IsActive
+FROM Users
+WHERE Id <> $id;";
+            command.Parameters.AddWithValue("$id", user.Id);
+            using var reader = command.ExecuteReader();
+            while (reader.Read())
+            {
+                var existingUserName = reader.GetString(1);
+                var existingDisplayName = reader.GetString(2);
+                var isActive = reader.GetInt32(3) == 1;
+                if (string.Equals(existingUserName.Trim(), user.UserName.Trim(), StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new InvalidOperationException(isActive
+                        ? "Tên đăng nhập đã tồn tại. Vui lòng chọn tên đăng nhập khác."
+                        : "Tên đăng nhập đã tồn tại và tài khoản đang bị khóa. Vui lòng chọn tài khoản đó trong danh sách để mở khóa.");
+                }
+
+                if (string.Equals(existingDisplayName.Trim(), user.DisplayName.Trim(), StringComparison.CurrentCultureIgnoreCase))
+                {
+                    throw new InvalidOperationException(isActive
+                        ? "Họ tên / tên cán bộ đã tồn tại. Vui lòng kiểm tra lại người dùng trong danh sách."
+                        : "Họ tên / tên cán bộ đã tồn tại trong một tài khoản đang bị khóa. Vui lòng chọn tài khoản đó để mở khóa.");
+                }
+            }
         }
 
         public bool DeleteUser(int userId)
@@ -419,6 +471,11 @@ VALUES ($userName, $displayName, $role, $passwordHash, $isActive, $now, $now);";
             }
 
             using var connection = OpenConnection();
+            if (WouldRemoveLastActiveAdmin(connection, userId, null, false))
+            {
+                return false;
+            }
+
             using var command = connection.CreateCommand();
             command.CommandText = "UPDATE Users SET IsActive = 0, UpdatedAt = $now WHERE Id = $id;";
             command.Parameters.AddWithValue("$id", userId);
@@ -430,6 +487,126 @@ VALUES ($userName, $displayName, $role, $passwordHash, $isActive, $now, $now);";
             }
 
             return affectedRows > 0;
+        }
+
+        private static bool WouldRemoveLastActiveAdmin(
+            SqliteConnection connection,
+            int userId,
+            string updatedRole,
+            bool willRemainActive)
+        {
+            using (var currentUserCommand = connection.CreateCommand())
+            {
+                currentUserCommand.CommandText = @"
+SELECT COUNT(*)
+FROM Users
+WHERE Id = $id AND IsActive = 1 AND Role = $role;";
+                currentUserCommand.Parameters.AddWithValue("$id", userId);
+                currentUserCommand.Parameters.AddWithValue("$role", UserRoles.Admin);
+                if (Convert.ToInt32(currentUserCommand.ExecuteScalar(), CultureInfo.InvariantCulture) == 0)
+                {
+                    return false;
+                }
+            }
+
+            if (willRemainActive && string.Equals(updatedRole, UserRoles.Admin, StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            using var countCommand = connection.CreateCommand();
+            countCommand.CommandText = "SELECT COUNT(*) FROM Users WHERE IsActive = 1 AND Role = $role;";
+            countCommand.Parameters.AddWithValue("$role", UserRoles.Admin);
+            return Convert.ToInt32(countCommand.ExecuteScalar(), CultureInfo.InvariantCulture) <= 1;
+        }
+
+        public string ResetBuiltInAdminPassword()
+        {
+            if (AppPathSettings.Current.IsClientMode)
+            {
+                throw new InvalidOperationException("Chỉ có thể khôi phục tài khoản Admin trực tiếp trên máy server.");
+            }
+
+            var temporaryPassword = GenerateTemporaryPassword();
+            var now = DateTime.Now.ToString("O", CultureInfo.InvariantCulture);
+            using var connection = OpenConnection();
+            using var transaction = connection.BeginTransaction();
+
+            int adminUserId;
+            using (var findCommand = connection.CreateCommand())
+            {
+                findCommand.Transaction = transaction;
+                findCommand.CommandText = @"
+SELECT Id
+FROM Users
+WHERE lower(UserName) = 'admin'
+ORDER BY CASE WHEN UserName = 'admin' THEN 0 ELSE 1 END, Id
+LIMIT 1;";
+                adminUserId = Convert.ToInt32(findCommand.ExecuteScalar() ?? 0, CultureInfo.InvariantCulture);
+            }
+
+            using (var resetCommand = connection.CreateCommand())
+            {
+                resetCommand.Transaction = transaction;
+                if (adminUserId > 0)
+                {
+                    resetCommand.CommandText = @"
+UPDATE Users
+SET UserName = 'admin', Role = $role, PasswordHash = $passwordHash,
+    IsActive = 1, MustChangePassword = 1, UpdatedAt = $now
+WHERE Id = $id;";
+                    resetCommand.Parameters.AddWithValue("$id", adminUserId);
+                }
+                else
+                {
+                    resetCommand.CommandText = @"
+INSERT INTO Users
+    (UserName, DisplayName, Role, PasswordHash, IsActive, MustChangePassword, CreatedAt, UpdatedAt)
+VALUES
+    ('admin', $displayName, $role, $passwordHash, 1, 1, $now, $now);";
+                    resetCommand.Parameters.AddWithValue("$displayName", "Quản trị hệ thống");
+                }
+
+                resetCommand.Parameters.AddWithValue("$role", UserRoles.Admin);
+                resetCommand.Parameters.AddWithValue("$passwordHash", PasswordHasher.HashPassword(temporaryPassword));
+                resetCommand.Parameters.AddWithValue("$now", now);
+                resetCommand.ExecuteNonQuery();
+            }
+
+            WriteDatabaseLog(
+                connection,
+                transaction,
+                "Người dùng",
+                "Khôi phục Admin",
+                "admin",
+                $"Đặt lại tài khoản Admin tại máy server {Environment.MachineName}; bắt buộc đổi mật khẩu ở lần đăng nhập tiếp theo.");
+            transaction.Commit();
+            AppLogger.Info("Server", "ResetAdminPassword", $"Built-in admin account was reset on {Environment.MachineName}.");
+            return temporaryPassword;
+        }
+
+        private static string GenerateTemporaryPassword()
+        {
+            const string upperCharacters = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+            const string lowerCharacters = "abcdefghijkmnopqrstuvwxyz";
+            const string digitCharacters = "23456789";
+            const string allCharacters = upperCharacters + lowerCharacters + digitCharacters;
+            var characters = new char[8];
+            characters[0] = upperCharacters[RandomNumberGenerator.GetInt32(upperCharacters.Length)];
+            characters[1] = lowerCharacters[RandomNumberGenerator.GetInt32(lowerCharacters.Length)];
+            characters[2] = digitCharacters[RandomNumberGenerator.GetInt32(digitCharacters.Length)];
+            for (var index = 3; index < characters.Length; index++)
+            {
+                characters[index] = allCharacters[RandomNumberGenerator.GetInt32(allCharacters.Length)];
+            }
+
+            for (var index = characters.Length - 1; index > 0; index--)
+            {
+                var swapIndex = RandomNumberGenerator.GetInt32(index + 1);
+                (characters[index], characters[swapIndex]) = (characters[swapIndex], characters[index]);
+            }
+
+            return new string(characters);
         }
 
         public bool ChangeCurrentUserPassword(string currentPassword, string newPassword)
@@ -467,13 +644,14 @@ VALUES ($userName, $displayName, $role, $passwordHash, $isActive, $now, $now);";
             }
 
             using var updateCommand = connection.CreateCommand();
-            updateCommand.CommandText = "UPDATE Users SET PasswordHash = $passwordHash, UpdatedAt = $now WHERE Id = $id AND IsActive = 1;";
+            updateCommand.CommandText = "UPDATE Users SET PasswordHash = $passwordHash, MustChangePassword = 0, UpdatedAt = $now WHERE Id = $id AND IsActive = 1;";
             updateCommand.Parameters.AddWithValue("$id", currentUser.Id);
             updateCommand.Parameters.AddWithValue("$passwordHash", PasswordHasher.HashPassword(newPassword));
             updateCommand.Parameters.AddWithValue("$now", DateTime.Now.ToString("O", CultureInfo.InvariantCulture));
             var affectedRows = updateCommand.ExecuteNonQuery();
             if (affectedRows > 0)
             {
+                currentUser.MustChangePassword = false;
                 WriteDatabaseLog(connection, null, "Người dùng", "Đổi mật khẩu", currentUser.UserName, "Người dùng đổi mật khẩu tài khoản của mình.");
             }
 
@@ -3046,12 +3224,14 @@ CREATE TABLE IF NOT EXISTS Users (
     Role TEXT NOT NULL,
     PasswordHash TEXT NOT NULL,
     IsActive INTEGER NOT NULL,
+    MustChangePassword INTEGER NOT NULL DEFAULT 0,
     CreatedAt TEXT NOT NULL,
     UpdatedAt TEXT NOT NULL
 );");
             TryAddColumn(connection, "Records", "SenderExpectedHandlingMethod", "TEXT NOT NULL DEFAULT ''");
             TryAddColumn(connection, "RecordAttachments", "FilePath", "TEXT NOT NULL DEFAULT ''");
             TryAddColumn(connection, "LeadershipNotices", "ReadBy", "TEXT NOT NULL DEFAULT ''");
+            TryAddColumn(connection, "Users", "MustChangePassword", "INTEGER NOT NULL DEFAULT 0");
             CreateIndexes(connection);
             EnsureRecordTrashSchema(connection);
         }
@@ -3365,8 +3545,8 @@ WHERE Title = 'Gia hạn';";
             var now = DateTime.Now.ToString("O", CultureInfo.InvariantCulture);
             using var command = connection.CreateCommand();
             command.CommandText = @"
-INSERT INTO Users (UserName, DisplayName, Role, PasswordHash, IsActive, CreatedAt, UpdatedAt)
-VALUES ($userName, $displayName, $role, $passwordHash, 1, $now, $now);";
+INSERT INTO Users (UserName, DisplayName, Role, PasswordHash, IsActive, MustChangePassword, CreatedAt, UpdatedAt)
+VALUES ($userName, $displayName, $role, $passwordHash, 1, 1, $now, $now);";
             command.Parameters.AddWithValue("$userName", "admin");
             command.Parameters.AddWithValue("$displayName", "Quản trị hệ thống");
             command.Parameters.AddWithValue("$role", UserRoles.Admin);

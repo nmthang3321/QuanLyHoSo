@@ -13,7 +13,7 @@
                                Margin="0,4,0,0" />
                 </StackPanel>
                 <Button Command="{Binding BackCommand}"
-                        Style="{StaticResource SecondaryButton}"
+                        Style="{StaticResource PrimaryButton}"
                         HorizontalAlignment="Right"
                         VerticalAlignment="Center"
                         MinWidth="112">
