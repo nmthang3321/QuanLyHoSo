@@ -63,7 +63,6 @@ namespace QuanLyHoSo.ViewModels
             ProcessorNames = new ObservableCollection<string>(_dataService.GetProcessorNames());
             TransferAreas = AreaSelectionOptions.Build(_dataService.GetAreaNames(), includeGroupRows: true, groupRowsSelectable: false);
             FilteredTransferAreas = AreaSelectionOptions.Filter(TransferAreas, null);
-            TransferAreaChoices = new ObservableCollection<AreaSelectionOption>(AreaSelectionOptions.Flatten(TransferAreas).Where(item => !item.IsGroup && item.IsSelectable));
             Attachments = new ObservableCollection<AttachmentDraft>();
             ProcessingStatuses = new ObservableCollection<string>(GetAllowedProcessingStatuses());
             StatusFilters = new ObservableCollection<string>
@@ -113,7 +112,6 @@ namespace QuanLyHoSo.ViewModels
         public ObservableCollection<string> ProcessorNames { get; }
         public ObservableCollection<AreaSelectionOption> TransferAreas { get; }
         public ObservableCollection<AreaSelectionOption> FilteredTransferAreas { get; }
-        public ObservableCollection<AreaSelectionOption> TransferAreaChoices { get; }
         public ObservableCollection<AttachmentDraft> Attachments { get; }
         public bool HasAttachments => Attachments.Count > 0;
         public ObservableCollection<string> ProcessingStatuses { get; }
@@ -141,6 +139,15 @@ namespace QuanLyHoSo.ViewModels
                 if (SetProperty(ref _transferAreaSearchText, value))
                 {
                     ReplaceItems(FilteredTransferAreas, AreaSelectionOptions.Filter(TransferAreas, value));
+
+                    var exactMatch = AreaSelectionOptions.Flatten(TransferAreas)
+                        .FirstOrDefault(area => area.IsSelectable && string.Equals(area.DisplayName, value, StringComparison.CurrentCultureIgnoreCase));
+                    if (exactMatch != null && !string.Equals(_transferAreaName, exactMatch.FilterValue, StringComparison.Ordinal))
+                    {
+                        _transferAreaName = exactMatch.FilterValue;
+                        OnPropertyChanged(nameof(TransferAreaName));
+                        OnPropertyChanged(nameof(TransferAreaDisplayName));
+                    }
                 }
             }
         }
@@ -148,8 +155,25 @@ namespace QuanLyHoSo.ViewModels
         public string TransferAreaName
         {
             get => _transferAreaName;
-            set => SetProperty(ref _transferAreaName, value);
+            set
+            {
+                if (!SetProperty(ref _transferAreaName, value))
+                {
+                    return;
+                }
+
+                if (!string.Equals(_transferAreaSearchText, value, StringComparison.Ordinal))
+                {
+                    TransferAreaSearchText = value;
+                }
+
+                OnPropertyChanged(nameof(TransferAreaDisplayName));
+            }
         }
+
+        public string TransferAreaDisplayName => string.IsNullOrWhiteSpace(TransferAreaName)
+            ? "Chọn địa bàn"
+            : AreaSelectionOptions.GetDisplayName(TransferAreas, TransferAreaName);
         public bool CanUpdateProcessing => SelectedProcessingDetail != null && AuthContext.CanEditRecord(SelectedProcessingDetail.ProcessorName);
 
         public bool IsProcessingUpdateBusy

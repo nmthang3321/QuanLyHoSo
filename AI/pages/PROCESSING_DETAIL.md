@@ -18,3 +18,4 @@ Notes:
 - Role: Officer chi sua ho so minh phu trach, Leader chi xem.
 - Rule quy trinh: Officer khong duoc chon/cap nhat ve `Moi tiep nhan` hoac `Dang phan loai`; sau `Da phan cong` co the quan ly cac buoc 3-7. Admin khong bi gioi han buoc.
 - Tai lieu lien quan ho tro PDF/Word/anh. Chi khi save o step 5 va attachment chua du 3 phieu moi hoi tao file. Neu chon Yes, `InitialResultDocumentGenerator` chi tao phieu con thieu tu template Word trong `doc\`, append vao attachment va refresh detail; khong hien progress. Kiem tra ten file khong phan biet hoa/thuong, ke ca hau to timestamp do generator tao.
+- Khi trang thai la `Chuyen co quan khac`, selector `Co quan chuyen den` phai dung cung overlay/group/search/display nhu selector `Dia ban` o trang Nhap du lieu; khong doi lai thanh ComboBox phang.
