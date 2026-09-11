@@ -573,7 +573,9 @@
                                                VerticalAlignment="Center" />
                                 </Border>
                                 <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
-                                    <TextBlock Text="TÌNH TRẠNG DEADLINE" Style="{StaticResource SectionTitleText}" />
+                                    <TextBlock Text="TÌNH TRẠNG DEADLINE"
+                                               Style="{StaticResource SectionTitleText}"
+                                               Foreground="{StaticResource PrimaryBrush}" />
                                     <TextBlock Text="Phân bố hồ sơ theo thời hạn xử lý"
                                                Style="{StaticResource MutedText}"
                                                FontSize="11"
@@ -680,7 +682,9 @@
                                                    VerticalAlignment="Center" />
                                     </Border>
                                     <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
-                                        <TextBlock Text="THAO TÁC CÁN BỘ" Style="{StaticResource SectionTitleText}" />
+                                        <TextBlock Text="THAO TÁC CÁN BỘ"
+                                                   Style="{StaticResource SectionTitleText}"
+                                                   Foreground="{StaticResource PrimaryBrush}" />
                                         <TextBlock Text="Gửi thông báo hoặc thiết lập chỉ tiêu KPI"
                                                    Style="{StaticResource MutedText}"
                                                    FontSize="11"

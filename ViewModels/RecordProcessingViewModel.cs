@@ -528,6 +528,8 @@ namespace QuanLyHoSo.ViewModels
             {
                 Attachments.Add(attachment);
             }
+
+            OnPropertyChanged(nameof(HasAttachments));
         }
 
         private void DataService_CatalogChanged(string catalogType)

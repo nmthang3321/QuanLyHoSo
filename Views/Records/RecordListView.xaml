@@ -378,7 +378,7 @@
                                        VerticalAlignment="Center" Margin="0,4,20,4" />
                             <Button Content="Chọn tất cả kết quả" Command="{Binding SelectAllCommand}"
                                     ToolTip="Chọn toàn bộ hồ sơ theo bộ lọc, bao gồm các trang tiếp theo"
-                                    Style="{StaticResource SecondaryButton}" Margin="0,4,8,4" />
+                                    Style="{StaticResource SecondaryButton}" Padding="20,0" Margin="0,4,8,4" />
                             <Button Content="Bỏ chọn" Command="{Binding ClearSelectionCommand}"
                                     Style="{StaticResource SecondaryButton}" Margin="0,4,8,4" />
                             <Button Command="{Binding DeleteSelectedCommand}"

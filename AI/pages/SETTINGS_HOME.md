@@ -12,7 +12,7 @@ Home cards/open commands:
 - catalog cards: `OpenCatalogDialogCommand`
 - system logs: `OpenSystemLogDialogCommand`
 - user management: `OpenUserManagementDialogCommand`
-- guide: `OpenGuideCommand` mo `SettingsGuideViewModel`/`SettingsGuideView` thanh trang rieng; Back ve `Settings` va sidebar van highlight Cai dat.
+- nut guide da duoc go khoi trang Cai dat; `SettingsGuideViewModel`/`SettingsGuideView` hien khong duoc mo tu UI.
 - backup: `ChooseBackupFolderCommand`, `BackupNowCommand`
 - restore: `ChooseRestoreFileCommand`, `RestoreDataCommand`
 

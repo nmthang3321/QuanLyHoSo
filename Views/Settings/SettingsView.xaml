@@ -320,23 +320,6 @@
                                             </Grid>
                                         </Border>
                                     </Button>
-                                    <Button Command="{Binding OpenGuideCommand}" Style="{StaticResource CatalogCardButton}">
-                                        <Border Style="{StaticResource QuickActionItemBorder}">
-                                            <Grid>
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="34" />
-                                                    <ColumnDefinition Width="*" />
-                                                    <ColumnDefinition Width="Auto" />
-                                                </Grid.ColumnDefinitions>
-                                                <TextBlock Text="&#xE897;" FontFamily="Segoe MDL2 Assets" Foreground="{StaticResource PrimaryBrush}" FontSize="18" VerticalAlignment="Center" />
-                                                <StackPanel Grid.Column="1">
-                                                    <TextBlock Text="Hướng dẫn" Foreground="{StaticResource PrimaryBrush}" FontWeight="SemiBold" />
-                                                    <TextBlock Text="Xem nhanh cách dùng các phần cài đặt" Foreground="{StaticResource MutedTextBrush}" FontSize="12" Margin="0,3,0,0" />
-                                                </StackPanel>
-                                                <TextBlock Grid.Column="2" Text="&#xE76C;" FontFamily="Segoe MDL2 Assets" VerticalAlignment="Center" />
-                                            </Grid>
-                                        </Border>
-                                    </Button>
                                 </StackPanel>
                             </StackPanel>
                         </Border>
@@ -544,6 +527,7 @@
                                     <Button Style="{StaticResource SecondaryButton}"
                                             Command="{Binding RestoreDataCommand}"
                                             BorderBrush="#D96F00"
+                                            Padding="20,0"
                                             Margin="10,0,0,0">
                                         <StackPanel Orientation="Horizontal">
                                             <TextBlock Text="&#xE777;" FontFamily="Segoe MDL2 Assets" Foreground="#B85E00" Margin="0,0,8,0" />
@@ -687,7 +671,6 @@
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
                     <Grid>
                         <StackPanel>
@@ -697,27 +680,27 @@
                                        FontSize="12"
                                        Margin="0,4,0,0" />
                         </StackPanel>
-                        <Button Style="{StaticResource PopupIconButton}"
-                                HorizontalAlignment="Right"
-                                Foreground="{StaticResource MutedTextBrush}"
-                                Command="{Binding CloseSystemLogDialogCommand}"
-                                ToolTip="Đóng">
-                            <TextBlock Text="&#xE711;" FontFamily="Segoe MDL2 Assets" />
-                        </Button>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top">
+                            <Button Style="{StaticResource SecondaryButton}"
+                                    Command="{Binding RefreshSystemLogsCommand}"
+                                    Padding="18,0"
+                                    Margin="0,0,10,0">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="&#xE72C;" FontFamily="Segoe MDL2 Assets" Foreground="{StaticResource PrimaryBrush}" Margin="0,0,8,0" />
+                                    <TextBlock Text="Làm mới" />
+                                </StackPanel>
+                            </Button>
+                            <Button Style="{StaticResource PopupIconButton}"
+                                    Foreground="{StaticResource MutedTextBrush}"
+                                    Command="{Binding CloseSystemLogDialogCommand}"
+                                    ToolTip="Đóng">
+                                <TextBlock Text="&#xE711;" FontFamily="Segoe MDL2 Assets" />
+                            </Button>
+                        </StackPanel>
                     </Grid>
 
-                    <Grid Grid.Row="1" Margin="0,14,0,12">
-                        <Button Style="{StaticResource SecondaryButton}"
-                                Command="{Binding RefreshSystemLogsCommand}"
-                                HorizontalAlignment="Left">
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="&#xE72C;" FontFamily="Segoe MDL2 Assets" Foreground="{StaticResource PrimaryBrush}" Margin="0,0,8,0" />
-                                <TextBlock Text="Làm mới" />
-                            </StackPanel>
-                        </Button>
-                    </Grid>
-
-                    <DataGrid Grid.Row="2"
+                    <DataGrid Grid.Row="1"
+                              Margin="0,14,0,0"
                               ItemsSource="{Binding SystemLogs}"
                               Height="420"
                               FontWeight="Normal"

@@ -12,9 +12,9 @@ State/commands:
 - `IsSystemLogDialogOpen`
 - `OpenSystemLogDialogCommand`
 - `CloseSystemLogDialogCommand`
+- `RefreshSystemLogsCommand`; nut Lam moi nam o header, canh nut dong popup.
 
 Notes:
 - DB bang `SystemLogs`.
 - Ghi log qua helper `WriteDatabaseLog(...)` trong `AppDataService.cs`.
 - Khong log thao tac doc/filter/xem chi tiet/export/backup refresh UI.
-

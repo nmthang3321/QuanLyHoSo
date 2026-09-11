@@ -28,6 +28,7 @@ UI hien co:
 - Bang can bo hien 5 dong moi trang cho moi role; danh sach dai dung phan trang va khong cuon ben trong bang.
 - Danh sach thong bao sap xep moi nhat truoc, tai toan bo noi dung va cuon trong card; khong dung phan trang, van co nut danh dau da doc.
 - Thong bao chua doc in dam; sidebar item `StaffTracking` co badge do bang so thong bao chua doc.
+- Shell tu kiem tra thong bao moi trong nen moi 5 giay sau khi dang nhap, nen badge sidebar cap nhat ma khong can chuyen trang; polling dung khi dang xuat.
 - Card thong bao nam o hang cuoi cung voi hai card bieu do, co cung chieu cao. Noi dung dai chi hien tom tat; bam vao mot thong bao se mo popup xem day du va tu dong danh dau da doc.
 - KPI dat boi lanh dao dung route/bang rieng `leadership-kpi/*` va `LeadershipKpiTargets`, khong tao item thong bao moi.
 - Bar chart dung `StaffBarStat`, co truc Y 0-100% theo buoc 25%, duong luoi ngang va tooltip tai con tro cho tung cot Dung han/KPI.

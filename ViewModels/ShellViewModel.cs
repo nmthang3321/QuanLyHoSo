@@ -1,5 +1,8 @@
+using System;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Threading.Tasks;
+using System.Windows.Threading;
 using System.Windows.Input;
 using QuanLyHoSo.Infrastructure.Configuration;
 using QuanLyHoSo.Infrastructure.Data;
@@ -18,10 +21,12 @@ namespace QuanLyHoSo.ViewModels
         private StaffTrackingViewModel _staffTrackingViewModel;
         private SettingsViewModel _settingsViewModel;
         private SettingsGuideViewModel _settingsGuideViewModel;
+        private readonly DispatcherTimer _notificationBadgeRefreshTimer;
 
         private ViewModelBase _currentViewModel;
         private string _currentPageKey;
         private AppUser _currentUser;
+        private bool _isRefreshingNotificationBadge;
 
         public ShellViewModel()
         {
@@ -41,6 +46,12 @@ namespace QuanLyHoSo.ViewModels
                 CreateNavigationItem("StaffTracking", "Theo dõi cán bộ", "\uE716")
             };
             SettingsNavigationItem = CreateNavigationItem("Settings", "Cài đặt", "\uE713");
+
+            _notificationBadgeRefreshTimer = new DispatcherTimer
+            {
+                Interval = TimeSpan.FromSeconds(5)
+            };
+            _notificationBadgeRefreshTimer.Tick += async (_, _) => await RefreshStaffNotificationBadgeAsync();
 
             SignOutCommand = new RelayCommand(SignOut);
             CurrentViewModel = new LoginViewModel(SignIn);
@@ -247,11 +258,13 @@ namespace QuanLyHoSo.ViewModels
             UpdateNavigationVisibility();
             RaiseNavigationCommandStates();
             UpdateStaffNotificationBadge();
+            _notificationBadgeRefreshTimer.Start();
             NavigateTo(AuthContext.IsOfficer ? "RecordList" : "Dashboard");
         }
 
         private void SignOut()
         {
+            _notificationBadgeRefreshTimer.Stop();
             AuthContext.SignOut();
             _currentUser = null;
             _dashboardViewModel = null;
@@ -280,6 +293,41 @@ namespace QuanLyHoSo.ViewModels
                     AuthContext.IsAdmin)
                 : 0;
             SetStaffNotificationBadge(unreadCount);
+        }
+
+        private async Task RefreshStaffNotificationBadgeAsync()
+        {
+            if (_isRefreshingNotificationBadge || !IsAuthenticated)
+            {
+                return;
+            }
+
+            _isRefreshingNotificationBadge = true;
+            var signedInUser = _currentUser;
+            var officerName = AuthContext.CurrentDisplayName;
+            var adminOnly = AuthContext.IsLeader;
+            var includeAll = AuthContext.IsAdmin;
+
+            try
+            {
+                var unreadCount = await Task.Run(() => AppDataService.Instance.CountUnreadLeadershipNotices(
+                    officerName,
+                    adminOnly,
+                    includeAll));
+
+                if (ReferenceEquals(_currentUser, signedInUser))
+                {
+                    SetStaffNotificationBadge(unreadCount);
+                }
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Error("Shell", "RefreshNotificationBadge", ex, "Could not refresh unread notification badge.");
+            }
+            finally
+            {
+                _isRefreshingNotificationBadge = false;
+            }
         }
 
         private void SetStaffNotificationBadge(int unreadCount)
