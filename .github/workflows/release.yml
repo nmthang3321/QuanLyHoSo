@@ -45,7 +45,7 @@ jobs:
         with:
           dotnet-version: "8.0.x"
 
-      - name: Publish app
+      - name: Publish client and server
         shell: pwsh
         run: |
           dotnet publish .\QuanLyHoSo.csproj `
@@ -57,30 +57,53 @@ jobs:
             /p:Version=${{ steps.version.outputs.value }} `
             /p:AssemblyVersion=${{ steps.version.outputs.value }}.0 `
             /p:FileVersion=${{ steps.version.outputs.value }}.0 `
-            -o .\artifacts\publish-win-x64
+            -o .\artifacts\publish-client-win-x64
 
-      - name: Create update zip
+          dotnet publish .\QuanLyHoSo.Server\QuanLyHoSo.Server.csproj `
+            -c Release `
+            -r win-x64 `
+            --self-contained true `
+            /p:PublishSingleFile=true `
+            /p:IncludeNativeLibrariesForSelfExtract=true `
+            /p:Version=${{ steps.version.outputs.value }} `
+            /p:AssemblyVersion=${{ steps.version.outputs.value }}.0 `
+            /p:FileVersion=${{ steps.version.outputs.value }}.0 `
+            -o .\artifacts\publish-server-win-x64
+
+      - name: Create update packages
         shell: pwsh
         run: |
           Compress-Archive `
-            -Path .\artifacts\publish-win-x64\* `
-            -DestinationPath .\artifacts\QuanLyHoSo-${{ steps.version.outputs.value }}-win-x64-update.zip `
+            -Path .\artifacts\publish-client-win-x64\* `
+            -DestinationPath .\artifacts\QuanLyHoSo-Client-${{ steps.version.outputs.value }}-win-x64-update.zip `
+            -Force
+
+          Compress-Archive `
+            -Path .\artifacts\publish-server-win-x64\* `
+            -DestinationPath .\artifacts\QuanLyHoSo-Server-${{ steps.version.outputs.value }}-win-x64.zip `
             -Force
 
       - name: Install Inno Setup
         shell: pwsh
         run: choco install innosetup --no-progress -y
 
-      - name: Build installer
+      - name: Build installers
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Path .\artifacts\installer -Force | Out-Null
           & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" `
             /DAppVersion=${{ steps.version.outputs.value }} `
-            /DPublishDir="$pwd\artifacts\publish-win-x64" `
+            /DPublishDir="$pwd\artifacts\publish-client-win-x64" `
             /DIconPath="$pwd\Assets\AppIcon.ico" `
             /O"$pwd\artifacts\installer" `
-            .\installer\QuanLyHoSo.iss
+            .\installer\QuanLyHoSo.Client.iss
+
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" `
+            /DAppVersion=${{ steps.version.outputs.value }} `
+            /DPublishDir="$pwd\artifacts\publish-server-win-x64" `
+            /DIconPath="$pwd\Assets\AppIcon.ico" `
+            /O"$pwd\artifacts\installer" `
+            .\installer\QuanLyHoSo.Server.iss
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -90,5 +113,7 @@ jobs:
           prerelease: false
           make_latest: true
           files: |
-            artifacts/QuanLyHoSo-${{ steps.version.outputs.value }}-win-x64-update.zip
-            artifacts/installer/QuanLyHoSo-Setup-${{ steps.version.outputs.value }}-win-x64.exe
+            artifacts/QuanLyHoSo-Client-${{ steps.version.outputs.value }}-win-x64-update.zip
+            artifacts/QuanLyHoSo-Server-${{ steps.version.outputs.value }}-win-x64.zip
+            artifacts/installer/QuanLyHoSo-Client-Setup-${{ steps.version.outputs.value }}-win-x64.exe
+            artifacts/installer/QuanLyHoSo-Server-Setup-${{ steps.version.outputs.value }}-win-x64.exe

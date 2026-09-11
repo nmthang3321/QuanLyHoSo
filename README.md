@@ -166,3 +166,21 @@ Neu thay doi kien truc, data model, workflow hoac quy uoc logging, hay cap nhat:
 
 README nay la ban do lam viec nhanh; file thiet ke trong `doc/` la tai lieu chi tiet hon.
 
+## 11. Dong goi bo cai Windows
+
+May build can co .NET SDK va Inno Setup 6. Chay tai thu muc goc:
+
+```powershell
+.\scripts\build-release.ps1 -Version 1.0.2
+```
+
+Hai file giao khach hang duoc tao trong `artifacts/installer/`:
+
+- `QuanLyHoSo-Server-Setup-<version>-win-x64.exe`: cai tren mot may chu, yeu cau quyen Administrator de dang ky URL va mo firewall TCP 5055.
+- `QuanLyHoSo-Client-Setup-<version>-win-x64.exe`: cai tren cac may tram, khong yeu cau quyen Administrator va se hoi URL may chu trong luc cai.
+
+Client phai dung URL dang `http://SERVER-PC:5055` hoac `http://192.168.1.10:5055`, khong dung `0.0.0.0`. Co the cai Client tu dong bang tham so:
+
+```powershell
+QuanLyHoSo-Client-Setup-1.0.2-win-x64.exe /SERVERURL="http://SERVER-PC:5055"
+```
