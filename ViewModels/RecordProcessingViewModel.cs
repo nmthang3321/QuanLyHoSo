@@ -15,6 +15,7 @@ using QuanLyHoSo.Infrastructure.Logging;
 using QuanLyHoSo.Infrastructure.Security;
 using QuanLyHoSo.Models;
 using System.Windows.Threading;
+using QuanLyHoSo.ApplicationServices.Abstractions;
 
 namespace QuanLyHoSo.ViewModels
 {
@@ -25,7 +26,7 @@ namespace QuanLyHoSo.ViewModels
         private const int MaximumPageSize = 50;
         private const int AssignedProcessStep = 3;
 
-        private readonly AppDataService _dataService;
+        private readonly IApplicationDataService _dataService;
         private readonly Action _goBackToPreviousPage;
         private readonly RelayCommand _nextPageCommand;
         private readonly RelayCommand _previousPageCommand;
@@ -53,8 +54,13 @@ namespace QuanLyHoSo.ViewModels
         private string _totalRecordsText;
 
         public RecordProcessingViewModel(Action goBackToPreviousPage = null)
+            : this(AppDataService.Instance, goBackToPreviousPage)
         {
-            _dataService = AppDataService.Instance;
+        }
+
+        public RecordProcessingViewModel(IApplicationDataService dataService, Action goBackToPreviousPage = null)
+        {
+            _dataService = dataService ?? throw new ArgumentNullException(nameof(dataService));
             _goBackToPreviousPage = goBackToPreviousPage ?? (() => { });
             Metrics = new ObservableCollection<DashboardMetric>();
             QueueRecords = new ObservableCollection<ProcessingQueueRecord>();
@@ -403,6 +409,18 @@ namespace QuanLyHoSo.ViewModels
         {
             _searchDebounceTimer.Stop();
             ReloadFromFirstPage();
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                _dataService.CatalogChanged -= DataService_CatalogChanged;
+                _searchDebounceTimer.Stop();
+                _searchDebounceTimer.Tick -= SearchDebounceTimer_Tick;
+            }
+
+            base.Dispose(disposing);
         }
 
         private void LoadPage()

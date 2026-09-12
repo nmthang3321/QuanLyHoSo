@@ -13,6 +13,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Include="..\Application\Abstractions\IApplicationDataService.cs" Link="Application\Abstractions\IApplicationDataService.cs" />
     <Compile Include="..\Infrastructure\Configuration\AppPathSettings.cs" Link="Configuration\AppPathSettings.cs" />
     <Compile Include="..\Infrastructure\Data\AppDataService.cs" Link="Data\AppDataService.cs" />
     <Compile Include="..\Infrastructure\Documents\InitialResultDocumentGenerator.cs" Link="Documents\InitialResultDocumentGenerator.cs" />

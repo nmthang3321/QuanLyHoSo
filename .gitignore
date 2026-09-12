@@ -6,6 +6,9 @@ obj/
 .verify-builds/
 .lan-test-build/
 artifacts/
+/output/
+/tmp/
+/.venv/
 
 # Visual Studio user files
 .vs/

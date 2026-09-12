@@ -1,10 +1,14 @@
 # AI index - QuanLyHoSo
 
+Canonical architecture and coding rules are now in `.ai/ARCHITECTURE.md`,
+`.ai/CODING_GUIDELINES.md`, and `.ai/AI_INSTRUCTIONS.md`. The files under
+`AI/` remain detailed historical feature maps and behavioral references.
+
 Cap nhat: 2026-09-01
 
 Doc file nay truoc, sau do chi doc file dung voi task.
 
-Session handoff nam tai `AI/SESSION_HANDOFF_2026-08-26.md`. Context AI chi dung cac file trong thu muc `AI/`.
+Session handoff nam tai `AI/SESSION_HANDOFF.md`. Context AI chi dung cac file trong thu muc `AI/`.
 
 ## Routing tong quan
 

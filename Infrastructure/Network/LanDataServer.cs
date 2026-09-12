@@ -2,6 +2,7 @@ using System;
 using System.Collections.Concurrent;
 using System.IO;
 using System.Net;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
@@ -17,9 +18,11 @@ namespace QuanLyHoSo.Infrastructure.Network
     public sealed class LanDataServer
     {
         private static readonly TimeSpan ClientActiveWindow = TimeSpan.FromSeconds(90);
+        private static readonly TimeSpan SessionLifetime = TimeSpan.FromHours(12);
         private readonly AppDataService _dataService;
         private readonly HttpListener _listener = new HttpListener();
         private readonly ConcurrentDictionary<string, DateTime> _activeClients = new ConcurrentDictionary<string, DateTime>(StringComparer.OrdinalIgnoreCase);
+        private readonly ConcurrentDictionary<string, LanSession> _sessions = new ConcurrentDictionary<string, LanSession>(StringComparer.Ordinal);
         private readonly JsonSerializerOptions _jsonOptions = new JsonSerializerOptions
         {
             PropertyNameCaseInsensitive = true
@@ -89,7 +92,10 @@ namespace QuanLyHoSo.Infrastructure.Network
             {
                 _cancellationTokenSource?.Cancel();
                 _listener.Stop();
+                _cancellationTokenSource?.Dispose();
+                _cancellationTokenSource = null;
                 _activeClients.Clear();
+                _sessions.Clear();
                 AppLogger.Info("LAN", "StopServer", "Admin LAN server stopped.");
             }
             catch (Exception ex)
@@ -157,6 +163,11 @@ namespace QuanLyHoSo.Infrastructure.Network
 
                 await WriteJsonAsync(context, result);
             }
+            catch (UnauthorizedAccessException ex)
+            {
+                AppLogger.Warning("LAN", "RejectRequest", "LAN request was rejected by authorization.", ex);
+                await WriteErrorAsync(context, 401, ex.Message);
+            }
             catch (Exception ex)
             {
                 AppLogger.Error("LAN", "HandleRequest", ex, "LAN request failed.");
@@ -182,24 +193,23 @@ namespace QuanLyHoSo.Infrastructure.Network
                 return new { ok = true, machine = Environment.MachineName };
             }
 
-            var previousUser = AuthContext.CurrentUser;
-            try
+            if (string.Equals(route, "auth/login", StringComparison.OrdinalIgnoreCase))
             {
-                var user = ReadEnvelopeUser(body);
-                if (user != null)
+                var login = ReadData<LoginRequest>(body);
+                var authenticatedUser = _dataService.AuthenticateUser(login?.UserName, login?.Password);
+                if (authenticatedUser != null)
                 {
-                    AuthContext.SignIn(user);
-                }
-                else
-                {
-                    AuthContext.SignOut();
+                    authenticatedUser.SessionToken = CreateSession(authenticatedUser.Id);
                 }
 
+                return authenticatedUser;
+            }
+
+            var user = ResolveSessionUser(ReadEnvelopeUser(body));
+            using (AuthContext.BeginRequestScope(user))
+            {
                 switch (route)
                 {
-                    case "auth/login":
-                        var login = ReadData<LoginRequest>(body);
-                        return _dataService.AuthenticateUser(login.UserName, login.Password);
                     case "catalog/areas":
                         return _dataService.GetAreaNames(ReadData<IncludeAllRequest>(body).IncludeAll);
                     case "catalog/values":
@@ -355,15 +365,58 @@ namespace QuanLyHoSo.Infrastructure.Network
                         throw new InvalidOperationException($"Unknown LAN API route: {route}");
                 }
             }
-            finally
+        }
+
+        private string CreateSession(int userId)
+        {
+            RemoveExpiredSessions();
+            var tokenBytes = new byte[32];
+            using (var random = RandomNumberGenerator.Create())
             {
-                if (previousUser == null)
+                random.GetBytes(tokenBytes);
+            }
+
+            var token = Convert.ToBase64String(tokenBytes);
+            _sessions[token] = new LanSession(userId, DateTime.UtcNow.Add(SessionLifetime));
+            return token;
+        }
+
+        private AppUser ResolveSessionUser(AppUser claimedUser)
+        {
+            if (claimedUser == null ||
+                string.IsNullOrWhiteSpace(claimedUser.SessionToken) ||
+                !_sessions.TryGetValue(claimedUser.SessionToken, out var session) ||
+                session.UserId != claimedUser.Id ||
+                session.ExpiresAtUtc <= DateTime.UtcNow)
+            {
+                if (!string.IsNullOrWhiteSpace(claimedUser?.SessionToken))
                 {
-                    AuthContext.SignOut();
+                    _sessions.TryRemove(claimedUser.SessionToken, out _);
                 }
-                else
+
+                throw new UnauthorizedAccessException("Phiên đăng nhập không hợp lệ hoặc đã hết hạn. Vui lòng đăng nhập lại.");
+            }
+
+            var authenticatedUser = _dataService.GetActiveUserForSession(session.UserId);
+            if (authenticatedUser == null)
+            {
+                _sessions.TryRemove(claimedUser.SessionToken, out _);
+                throw new UnauthorizedAccessException("Tài khoản không còn hoạt động. Vui lòng đăng nhập lại.");
+            }
+
+            authenticatedUser.SessionToken = claimedUser.SessionToken;
+            _sessions[claimedUser.SessionToken] = new LanSession(session.UserId, DateTime.UtcNow.Add(SessionLifetime));
+            return authenticatedUser;
+        }
+
+        private void RemoveExpiredSessions()
+        {
+            var now = DateTime.UtcNow;
+            foreach (var item in _sessions)
+            {
+                if (item.Value.ExpiresAtUtc <= now)
                 {
-                    AuthContext.SignIn(previousUser);
+                    _sessions.TryRemove(item.Key, out _);
                 }
             }
         }
@@ -422,6 +475,18 @@ namespace QuanLyHoSo.Infrastructure.Network
             context.Response.ContentLength64 = bytes.Length;
             await context.Response.OutputStream.WriteAsync(bytes, 0, bytes.Length);
             context.Response.OutputStream.Close();
+        }
+
+        private sealed class LanSession
+        {
+            public LanSession(int userId, DateTime expiresAtUtc)
+            {
+                UserId = userId;
+                ExpiresAtUtc = expiresAtUtc;
+            }
+
+            public int UserId { get; }
+            public DateTime ExpiresAtUtc { get; }
         }
     }
 }

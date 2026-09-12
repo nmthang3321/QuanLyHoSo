@@ -1,5 +1,6 @@
 using System;
 using System.Windows.Input;
+using QuanLyHoSo.ApplicationServices.Abstractions;
 using QuanLyHoSo.Infrastructure.Data;
 using QuanLyHoSo.Infrastructure.Logging;
 using QuanLyHoSo.Infrastructure.Network;
@@ -9,18 +10,23 @@ namespace QuanLyHoSo.ViewModels
 {
     public sealed class RequiredPasswordChangeViewModel : ViewModelBase
     {
-        private readonly AppDataService _dataService;
+        private readonly IApplicationDataService _dataService;
         private readonly AppUser _user;
         private readonly Action<AppUser> _onCompleted;
         private readonly Action _onCancel;
         private string _errorMessage;
 
         public RequiredPasswordChangeViewModel(AppUser user, Action<AppUser> onCompleted, Action onCancel)
+            : this(AppDataService.Instance, user, onCompleted, onCancel)
+        {
+        }
+
+        public RequiredPasswordChangeViewModel(IApplicationDataService dataService, AppUser user, Action<AppUser> onCompleted, Action onCancel)
         {
             _user = user ?? throw new ArgumentNullException(nameof(user));
             _onCompleted = onCompleted ?? throw new ArgumentNullException(nameof(onCompleted));
             _onCancel = onCancel ?? throw new ArgumentNullException(nameof(onCancel));
-            _dataService = AppDataService.Instance;
+            _dataService = dataService ?? throw new ArgumentNullException(nameof(dataService));
             ChangePasswordCommand = new RelayCommand(ChangePassword);
             CancelCommand = new RelayCommand(_onCancel);
         }

@@ -1,11 +1,15 @@
 using System;
+using System.Threading;
 using QuanLyHoSo.Models;
 
 namespace QuanLyHoSo.Infrastructure.Security
 {
     public static class AuthContext
     {
-        public static AppUser CurrentUser { get; private set; }
+        private static readonly AsyncLocal<AppUser> ScopedUser = new AsyncLocal<AppUser>();
+        private static AppUser _currentUser;
+
+        public static AppUser CurrentUser => ScopedUser.Value ?? _currentUser;
 
         public static bool IsAuthenticated => CurrentUser != null;
         public static bool IsAdmin => string.Equals(CurrentUser?.Role, UserRoles.Admin, StringComparison.Ordinal);
@@ -19,12 +23,17 @@ namespace QuanLyHoSo.Infrastructure.Security
 
         public static void SignIn(AppUser user)
         {
-            CurrentUser = user;
+            _currentUser = user;
         }
 
         public static void SignOut()
         {
-            CurrentUser = null;
+            _currentUser = null;
+        }
+
+        public static IDisposable BeginRequestScope(AppUser user)
+        {
+            return new UserScope(user);
         }
 
         public static bool CanAccessRecord(string processorName)
@@ -44,6 +53,29 @@ namespace QuanLyHoSo.Infrastructure.Security
         public static bool CanEditRecord(string processorName)
         {
             return IsAdmin || (IsOfficer && CanAccessRecord(processorName));
+        }
+
+        private sealed class UserScope : IDisposable
+        {
+            private readonly AppUser _previousUser;
+            private bool _isDisposed;
+
+            public UserScope(AppUser user)
+            {
+                _previousUser = ScopedUser.Value;
+                ScopedUser.Value = user;
+            }
+
+            public void Dispose()
+            {
+                if (_isDisposed)
+                {
+                    return;
+                }
+
+                ScopedUser.Value = _previousUser;
+                _isDisposed = true;
+            }
         }
     }
 }

@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Threading.Tasks;
 using System.Windows.Threading;
 using System.Windows.Input;
+using QuanLyHoSo.ApplicationServices.Abstractions;
 using QuanLyHoSo.Infrastructure.Configuration;
 using QuanLyHoSo.Infrastructure.Data;
 using QuanLyHoSo.Infrastructure.Logging;
@@ -22,6 +23,7 @@ namespace QuanLyHoSo.ViewModels
         private SettingsViewModel _settingsViewModel;
         private SettingsGuideViewModel _settingsGuideViewModel;
         private readonly DispatcherTimer _notificationBadgeRefreshTimer;
+        private readonly IApplicationDataService _dataService;
 
         private ViewModelBase _currentViewModel;
         private string _currentPageKey;
@@ -29,11 +31,17 @@ namespace QuanLyHoSo.ViewModels
         private bool _isRefreshingNotificationBadge;
 
         public ShellViewModel()
+            : this(AppDataService.Instance)
         {
+        }
+
+        public ShellViewModel(IApplicationDataService dataService)
+        {
+            _dataService = dataService ?? throw new ArgumentNullException(nameof(dataService));
             var stopwatch = Stopwatch.StartNew();
             if (!AppPathSettings.Current.IsClientMode)
             {
-                AppDataService.Instance.Initialize();
+                _dataService.Initialize();
                 LogElapsed("InitializeDatabase", stopwatch);
             }
 
@@ -51,10 +59,10 @@ namespace QuanLyHoSo.ViewModels
             {
                 Interval = TimeSpan.FromSeconds(5)
             };
-            _notificationBadgeRefreshTimer.Tick += async (_, _) => await RefreshStaffNotificationBadgeAsync();
+            _notificationBadgeRefreshTimer.Tick += NotificationBadgeRefreshTimer_Tick;
 
             SignOutCommand = new RelayCommand(SignOut);
-            CurrentViewModel = new LoginViewModel(SignIn);
+            CurrentViewModel = new LoginViewModel(_dataService, SignIn);
         }
 
         public ObservableCollection<NavigationItem> NavigationItems { get; }
@@ -135,23 +143,23 @@ namespace QuanLyHoSo.ViewModels
             switch (key)
             {
                 case "Dashboard":
-                    _dashboardViewModel = null;
+                    DisposeAndClear(ref _dashboardViewModel);
                     break;
                 case "Input":
-                    _recordInputViewModel = null;
+                    DisposeAndClear(ref _recordInputViewModel);
                     break;
                 case "RecordList":
-                    _recordListViewModel = null;
+                    DisposeAndClear(ref _recordListViewModel);
                     break;
                 case "Processing":
-                    _recordProcessingViewModel = null;
+                    DisposeAndClear(ref _recordProcessingViewModel);
                     break;
                 case "StaffTracking":
-                    _staffTrackingViewModel = null;
+                    DisposeAndClear(ref _staffTrackingViewModel);
                     break;
                 case "Settings":
-                    _settingsViewModel = null;
-                    _settingsGuideViewModel = null;
+                    DisposeAndClear(ref _settingsViewModel);
+                    DisposeAndClear(ref _settingsGuideViewModel);
                     break;
             }
         }
@@ -203,21 +211,23 @@ namespace QuanLyHoSo.ViewModels
             NavigateTo("Processing", selectedNavigationKey: "RecordList");
         }
 
-        private DashboardViewModel DashboardViewModel => _dashboardViewModel ??= new DashboardViewModel();
+        private DashboardViewModel DashboardViewModel => _dashboardViewModel ??= new DashboardViewModel(_dataService);
 
-        private RecordInputViewModel RecordInputViewModel => _recordInputViewModel ??= new RecordInputViewModel(() => NavigateTo("RecordList"));
+        private RecordInputViewModel RecordInputViewModel => _recordInputViewModel ??= new RecordInputViewModel(_dataService, () => NavigateTo("RecordList"));
 
         private RecordListViewModel RecordListViewModel => _recordListViewModel ??= new RecordListViewModel(
+            _dataService,
             () => NavigateTo(AuthContext.CanCreateRecord ? "Input" : "Dashboard"),
             EditRecordFromList,
             ClassifyRecordFromList);
 
         private RecordProcessingViewModel RecordProcessingViewModel => _recordProcessingViewModel ??= new RecordProcessingViewModel(
+            _dataService,
             () => NavigateTo("RecordList"));
 
-        private StaffTrackingViewModel StaffTrackingViewModel => _staffTrackingViewModel ??= new StaffTrackingViewModel(SetStaffNotificationBadge);
+        private StaffTrackingViewModel StaffTrackingViewModel => _staffTrackingViewModel ??= new StaffTrackingViewModel(_dataService, SetStaffNotificationBadge);
 
-        private SettingsViewModel SettingsViewModel => _settingsViewModel ??= new SettingsViewModel(OpenSettingsGuide);
+        private SettingsViewModel SettingsViewModel => _settingsViewModel ??= new SettingsViewModel(_dataService, OpenSettingsGuide);
 
         private SettingsGuideViewModel SettingsGuideViewModel => _settingsGuideViewModel ??= new SettingsGuideViewModel(
             () => NavigateTo("Settings"));
@@ -240,7 +250,7 @@ namespace QuanLyHoSo.ViewModels
             if (user.MustChangePassword)
             {
                 CurrentPageKey = "RequiredPasswordChange";
-                CurrentViewModel = new RequiredPasswordChangeViewModel(user, CompleteSignIn, SignOut);
+                CurrentViewModel = new RequiredPasswordChangeViewModel(_dataService, user, CompleteSignIn, SignOut);
                 UpdateNavigationSelection(null);
                 return;
             }
@@ -267,16 +277,10 @@ namespace QuanLyHoSo.ViewModels
             _notificationBadgeRefreshTimer.Stop();
             AuthContext.SignOut();
             _currentUser = null;
-            _dashboardViewModel = null;
-            _recordInputViewModel = null;
-            _recordListViewModel = null;
-            _recordProcessingViewModel = null;
-            _staffTrackingViewModel = null;
-            _settingsViewModel = null;
-            _settingsGuideViewModel = null;
+            DisposePageViewModels();
             CurrentPageKey = null;
             UpdateNavigationSelection(null);
-            CurrentViewModel = new LoginViewModel(SignIn);
+            CurrentViewModel = new LoginViewModel(_dataService, SignIn);
             OnPropertyChanged(nameof(IsAuthenticated));
             OnPropertyChanged(nameof(CurrentUserDisplayName));
             OnPropertyChanged(nameof(CurrentUserRoleText));
@@ -287,7 +291,7 @@ namespace QuanLyHoSo.ViewModels
         private void UpdateStaffNotificationBadge()
         {
             var unreadCount = AuthContext.IsOfficer || AuthContext.IsLeader || AuthContext.IsAdmin
-                ? AppDataService.Instance.CountUnreadLeadershipNotices(
+                ? _dataService.CountUnreadLeadershipNotices(
                     AuthContext.CurrentDisplayName,
                     AuthContext.IsLeader,
                     AuthContext.IsAdmin)
@@ -310,7 +314,7 @@ namespace QuanLyHoSo.ViewModels
 
             try
             {
-                var unreadCount = await Task.Run(() => AppDataService.Instance.CountUnreadLeadershipNotices(
+                var unreadCount = await Task.Run(() => _dataService.CountUnreadLeadershipNotices(
                     officerName,
                     adminOnly,
                     includeAll));
@@ -328,6 +332,11 @@ namespace QuanLyHoSo.ViewModels
             {
                 _isRefreshingNotificationBadge = false;
             }
+        }
+
+        private async void NotificationBadgeRefreshTimer_Tick(object sender, EventArgs e)
+        {
+            await RefreshStaffNotificationBadgeAsync();
         }
 
         private void SetStaffNotificationBadge(int unreadCount)
@@ -369,6 +378,36 @@ namespace QuanLyHoSo.ViewModels
         {
             stopwatch.Stop();
             AppLogger.Info("Shell", action, $"Completed in {stopwatch.ElapsedMilliseconds} ms.");
+        }
+
+        private void DisposePageViewModels()
+        {
+            DisposeAndClear(ref _dashboardViewModel);
+            DisposeAndClear(ref _recordInputViewModel);
+            DisposeAndClear(ref _recordListViewModel);
+            DisposeAndClear(ref _recordProcessingViewModel);
+            DisposeAndClear(ref _staffTrackingViewModel);
+            DisposeAndClear(ref _settingsViewModel);
+            DisposeAndClear(ref _settingsGuideViewModel);
+        }
+
+        private static void DisposeAndClear<TViewModel>(ref TViewModel viewModel)
+            where TViewModel : ViewModelBase
+        {
+            viewModel?.Dispose();
+            viewModel = null;
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                _notificationBadgeRefreshTimer.Stop();
+                _notificationBadgeRefreshTimer.Tick -= NotificationBadgeRefreshTimer_Tick;
+                DisposePageViewModels();
+            }
+
+            base.Dispose(disposing);
         }
     }
 }

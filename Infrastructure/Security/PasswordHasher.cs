@@ -36,11 +36,31 @@ namespace QuanLyHoSo.Infrastructure.Security
                 return false;
             }
 
-            var salt = Convert.FromBase64String(parts[1]);
-            var expectedKey = Convert.FromBase64String(parts[2]);
-            using var deriveBytes = new Rfc2898DeriveBytes(password ?? string.Empty, salt, iterations, HashAlgorithmName.SHA256);
-            var actualKey = deriveBytes.GetBytes(expectedKey.Length);
-            return CryptographicOperations.FixedTimeEquals(actualKey, expectedKey);
+            try
+            {
+                var salt = Convert.FromBase64String(parts[1]);
+                var expectedKey = Convert.FromBase64String(parts[2]);
+                if (iterations <= 0 || salt.Length == 0 || expectedKey.Length == 0)
+                {
+                    return false;
+                }
+
+                using var deriveBytes = new Rfc2898DeriveBytes(password ?? string.Empty, salt, iterations, HashAlgorithmName.SHA256);
+                var actualKey = deriveBytes.GetBytes(expectedKey.Length);
+                return CryptographicOperations.FixedTimeEquals(actualKey, expectedKey);
+            }
+            catch (FormatException)
+            {
+                return false;
+            }
+            catch (CryptographicException)
+            {
+                return false;
+            }
+            catch (ArgumentException)
+            {
+                return false;
+            }
         }
     }
 }

@@ -9,7 +9,7 @@ using QuanLyHoSo.Infrastructure.Security;
 
 namespace QuanLyHoSo.Infrastructure.Network
 {
-    public sealed class LanDataClient
+    public sealed class LanDataClient : IDisposable
     {
         private readonly HttpClient _httpClient;
         private readonly JsonSerializerOptions _jsonOptions;
@@ -117,6 +117,12 @@ namespace QuanLyHoSo.Infrastructure.Network
             {
                 throw new LanServerUnavailableException(AppPathSettings.Current.AdminServerUrl, ex);
             }
+        }
+
+        public void Dispose()
+        {
+            _heartbeatTimer.Dispose();
+            _httpClient.Dispose();
         }
     }
 }

@@ -5,6 +5,7 @@ using System.Globalization;
 using System.Linq;
 using System.Windows;
 using System.Windows.Input;
+using QuanLyHoSo.ApplicationServices.Abstractions;
 using QuanLyHoSo.Infrastructure.Data;
 using QuanLyHoSo.Infrastructure.Security;
 using QuanLyHoSo.Models;
@@ -13,6 +14,7 @@ namespace QuanLyHoSo.ViewModels
 {
     public sealed class StaffTrackingViewModel : ViewModelBase
     {
+        private readonly IApplicationDataService _dataService;
         private const string ThisWeekFilter = "Tuần này";
         private const string ThisMonthFilter = "Tháng này";
         private const string ThisYearFilter = "Năm này";
@@ -54,9 +56,15 @@ namespace QuanLyHoSo.ViewModels
         private string _leadershipKpiStatus;
 
         public StaffTrackingViewModel(Action<int> notificationUnreadCountChanged = null)
+            : this(AppDataService.Instance, notificationUnreadCountChanged)
         {
+        }
+
+        public StaffTrackingViewModel(IApplicationDataService dataService, Action<int> notificationUnreadCountChanged = null)
+        {
+            _dataService = dataService ?? throw new ArgumentNullException(nameof(dataService));
             _notificationUnreadCountChanged = notificationUnreadCountChanged;
-            AppDataService.Instance.CatalogChanged += DataService_CatalogChanged;
+            _dataService.CatalogChanged += DataService_CatalogChanged;
 
             Metrics = new ObservableCollection<StaffTrackingMetric>();
 
@@ -318,8 +326,8 @@ namespace QuanLyHoSo.ViewModels
 
         private void RefreshStaffData()
         {
-            var staffRows = AppDataService.Instance.GetStaffPerformanceRows(FromDate, ToDate);
-            var deadlineStats = AppDataService.Instance.GetStaffDeadlineStats(FromDate, ToDate);
+            var staffRows = _dataService.GetStaffPerformanceRows(FromDate, ToDate);
+            var deadlineStats = _dataService.GetStaffDeadlineStats(FromDate, ToDate);
             if (AuthContext.IsOfficer)
             {
                 staffRows = staffRows
@@ -542,6 +550,16 @@ namespace QuanLyHoSo.ViewModels
             }
         }
 
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                _dataService.CatalogChanged -= DataService_CatalogChanged;
+            }
+
+            base.Dispose(disposing);
+        }
+
         private int GetLeadershipKpiTarget()
         {
             return int.TryParse(LeadershipKpiTargetText, NumberStyles.Integer, CultureInfo.InvariantCulture, out var target) && target > 0
@@ -595,7 +613,7 @@ namespace QuanLyHoSo.ViewModels
                 ? SelectedStaff?.Name ?? "cán bộ đang chọn"
                 : "toàn bộ cán bộ";
 
-            AppDataService.Instance.SaveLeadershipNotice(
+            _dataService.SaveLeadershipNotice(
                 IsSelectedStaffLeadershipScope() ? "Staff" : "All",
                 IsSelectedStaffLeadershipScope() ? SelectedStaff?.Name : string.Empty,
                 string.Empty,
@@ -638,7 +656,7 @@ namespace QuanLyHoSo.ViewModels
             {
                 var scope = IsSelectedStaffLeadershipScope() ? "Staff" : "All";
                 var targetName = IsSelectedStaffLeadershipScope() ? SelectedStaff?.Name : string.Empty;
-                AppDataService.Instance.SaveLeadershipKpi(
+                _dataService.SaveLeadershipKpi(
                     scope,
                     targetName,
                     LeadershipKpiTargetText);
@@ -660,7 +678,7 @@ namespace QuanLyHoSo.ViewModels
 
                 foreach (var notificationTarget in notificationTargets)
                 {
-                    AppDataService.Instance.SaveLeadershipNotice(
+                    _dataService.SaveLeadershipNotice(
                         "Staff",
                         notificationTarget,
                         targetValue.ToString(CultureInfo.InvariantCulture),
@@ -688,7 +706,7 @@ namespace QuanLyHoSo.ViewModels
                 return;
             }
 
-            LeadershipKpiTargetText = AppDataService.Instance.GetLatestLeadershipKpiTarget(targetStaffName);
+            LeadershipKpiTargetText = _dataService.GetLatestLeadershipKpiTarget(targetStaffName);
         }
 
         private void LoadNotifications()
@@ -701,7 +719,7 @@ namespace QuanLyHoSo.ViewModels
                 return;
             }
 
-            var page = AppDataService.Instance.GetLeadershipNotices(
+            var page = _dataService.GetLeadershipNotices(
                 AuthContext.CurrentDisplayName,
                 0,
                 int.MaxValue,
@@ -727,7 +745,7 @@ namespace QuanLyHoSo.ViewModels
                 return;
             }
 
-            AppDataService.Instance.MarkLeadershipNoticesAsRead(
+            _dataService.MarkLeadershipNoticesAsRead(
                 AuthContext.CurrentDisplayName,
                 unreadIds,
                 AuthContext.IsAdmin);
@@ -749,7 +767,7 @@ namespace QuanLyHoSo.ViewModels
                 return;
             }
 
-            AppDataService.Instance.MarkLeadershipNoticesAsRead(
+            _dataService.MarkLeadershipNoticesAsRead(
                 AuthContext.CurrentDisplayName,
                 new[] { notification.Id },
                 AuthContext.IsAdmin);
@@ -766,7 +784,7 @@ namespace QuanLyHoSo.ViewModels
         {
             if (CanReadLeadershipNotice)
             {
-                _notificationUnreadCountChanged?.Invoke(AppDataService.Instance.CountUnreadLeadershipNotices(
+                _notificationUnreadCountChanged?.Invoke(_dataService.CountUnreadLeadershipNotices(
                     AuthContext.CurrentDisplayName,
                     AuthContext.IsLeader,
                     AuthContext.IsAdmin));
@@ -782,7 +800,7 @@ namespace QuanLyHoSo.ViewModels
                 return;
             }
 
-            foreach (var record in AppDataService.Instance.GetStaffActiveRecords(staffName, FromDate, ToDate))
+            foreach (var record in _dataService.GetStaffActiveRecords(staffName, FromDate, ToDate))
             {
                 ActiveRecords.Add(record);
             }

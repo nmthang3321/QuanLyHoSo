@@ -9,6 +9,7 @@ using System.Text;
 using System.Windows;
 using System.Windows.Data;
 using System.Windows.Input;
+using QuanLyHoSo.ApplicationServices.Abstractions;
 using QuanLyHoSo.Infrastructure.Data;
 using QuanLyHoSo.Infrastructure.Logging;
 using QuanLyHoSo.Infrastructure.Security;
@@ -18,14 +19,19 @@ namespace QuanLyHoSo.ViewModels
 {
     public sealed class RecordInputViewModel : ViewModelBase
     {
-        private readonly AppDataService _dataService;
+        private readonly IApplicationDataService _dataService;
         private readonly Action _goBack;
         private string _editingRecordCode;
         private RecordFormDraft _originalDraft;
 
         public RecordInputViewModel(Action goBack = null)
+            : this(AppDataService.Instance, goBack)
         {
-            _dataService = AppDataService.Instance;
+        }
+
+        public RecordInputViewModel(IApplicationDataService dataService, Action goBack = null)
+        {
+            _dataService = dataService ?? throw new ArgumentNullException(nameof(dataService));
             _goBack = goBack ?? (() => { });
 
             ReceiveSources = new ObservableCollection<string>(_dataService.GetCatalogValues("ReceiveSource"));
@@ -829,6 +835,17 @@ namespace QuanLyHoSo.ViewModels
         private void Attachments_CollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
         {
             OnPropertyChanged(nameof(HasAttachments));
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                _dataService.CatalogChanged -= DataService_CatalogChanged;
+                Attachments.CollectionChanged -= Attachments_CollectionChanged;
+            }
+
+            base.Dispose(disposing);
         }
     }
 }

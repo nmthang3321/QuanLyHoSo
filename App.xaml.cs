@@ -34,6 +34,11 @@ namespace QuanLyHoSo
 
         protected override void OnExit(ExitEventArgs e)
         {
+            if (AppDataService.IsCreated)
+            {
+                AppDataService.Instance.Shutdown();
+            }
+
             AppLogger.Info("Application", "Exit", $"Application exited with code {e.ApplicationExitCode}.");
             base.OnExit(e);
         }

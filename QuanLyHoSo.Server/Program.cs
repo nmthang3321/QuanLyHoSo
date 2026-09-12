@@ -28,6 +28,7 @@ namespace QuanLyHoSo.Server
                 var window = new ServerWindow(AppDataService.Instance);
                 application.Run(window);
 
+                AppDataService.Instance.Shutdown();
                 AppLogger.Info("Server", "Shutdown", "QuanLyHoSo server stopped.");
                 return 0;
             }

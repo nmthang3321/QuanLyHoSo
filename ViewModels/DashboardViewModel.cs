@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
+using QuanLyHoSo.ApplicationServices.Abstractions;
 using QuanLyHoSo.Infrastructure.Data;
 using QuanLyHoSo.Infrastructure.Logging;
 using QuanLyHoSo.Models;
@@ -23,7 +24,7 @@ namespace QuanLyHoSo.ViewModels
         private const int DefaultRecentRecordsPageSize = 5;
         private const int MinimumRecentRecordsPageSize = 1;
         private const int MaximumRecentRecordsPageSize = 20;
-        private readonly AppDataService _dataService;
+        private readonly IApplicationDataService _dataService;
         private readonly RelayCommand _nextRecentPageCommand;
         private readonly RelayCommand _previousRecentPageCommand;
         private DateTime? _fromDate;
@@ -40,8 +41,13 @@ namespace QuanLyHoSo.ViewModels
         private string _totalRecordsText;
 
         public DashboardViewModel()
+            : this(AppDataService.Instance)
         {
-            _dataService = AppDataService.Instance;
+        }
+
+        public DashboardViewModel(IApplicationDataService dataService)
+        {
+            _dataService = dataService ?? throw new ArgumentNullException(nameof(dataService));
             var today = DateTime.Today;
 
             _fromDate = new DateTime(today.Year, 1, 1);
@@ -266,6 +272,11 @@ namespace QuanLyHoSo.ViewModels
                     };
                 });
 
+                if (IsDisposed)
+                {
+                    return;
+                }
+
                 ReplaceItems(Metrics, snapshot.Metrics);
                 ReplaceItems(StatusStats, snapshot.StatusStats);
                 ReplaceItems(AreaStats, snapshot.AreaStats);
@@ -284,7 +295,10 @@ namespace QuanLyHoSo.ViewModels
             catch (Exception ex)
             {
                 AppLogger.Error("Dashboard", "Reload", ex, "Dashboard reload failed.");
-                MessageBox.Show($"Không thể tải trang Tổng quan.\n\nChi tiết: {ex.Message}", "Tổng quan", MessageBoxButton.OK, MessageBoxImage.Error);
+                if (!IsDisposed)
+                {
+                    MessageBox.Show($"Không thể tải trang Tổng quan.\n\nChi tiết: {ex.Message}", "Tổng quan", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
             }
             finally
             {

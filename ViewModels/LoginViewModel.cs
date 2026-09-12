@@ -1,9 +1,11 @@
 using System;
 using System.IO;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Input;
+using QuanLyHoSo.ApplicationServices.Abstractions;
 using QuanLyHoSo.Infrastructure.Data;
 using QuanLyHoSo.Infrastructure.Logging;
 using QuanLyHoSo.Infrastructure.Network;
@@ -13,15 +15,21 @@ namespace QuanLyHoSo.ViewModels
 {
     public sealed class LoginViewModel : ViewModelBase
     {
-        private readonly AppDataService _dataService;
+        private const string ProtectedPasswordPrefix = "dpapi:";
+        private readonly IApplicationDataService _dataService;
         private readonly Action<AppUser> _onSignedIn;
         private string _userName;
         private string _errorMessage;
         private bool _rememberMe;
 
         public LoginViewModel(Action<AppUser> onSignedIn)
+            : this(AppDataService.Instance, onSignedIn)
         {
-            _dataService = AppDataService.Instance;
+        }
+
+        public LoginViewModel(IApplicationDataService dataService, Action<AppUser> onSignedIn)
+        {
+            _dataService = dataService ?? throw new ArgumentNullException(nameof(dataService));
             _onSignedIn = onSignedIn ?? (_ => { });
             SignInCommand = new RelayCommand(SignIn);
             ForgotPasswordCommand = new RelayCommand(ShowForgotPasswordMessage);
@@ -125,6 +133,11 @@ namespace QuanLyHoSo.ViewModels
                 RememberMe = true;
                 UserName = remembered.UserName ?? string.Empty;
                 Password = Decode(remembered.PasswordText);
+                if (!string.IsNullOrWhiteSpace(remembered.PasswordText) &&
+                    !remembered.PasswordText.StartsWith(ProtectedPasswordPrefix, StringComparison.Ordinal))
+                {
+                    SaveRememberedLogin();
+                }
             }
             catch (Exception ex)
             {
@@ -175,7 +188,9 @@ namespace QuanLyHoSo.ViewModels
 
         private static string Encode(string value)
         {
-            return Convert.ToBase64String(Encoding.UTF8.GetBytes(value ?? string.Empty));
+            var plaintext = Encoding.UTF8.GetBytes(value ?? string.Empty);
+            var protectedBytes = ProtectedData.Protect(plaintext, null, DataProtectionScope.CurrentUser);
+            return ProtectedPasswordPrefix + Convert.ToBase64String(protectedBytes);
         }
 
         private static string Decode(string value)
@@ -185,7 +200,14 @@ namespace QuanLyHoSo.ViewModels
                 return string.Empty;
             }
 
-            return Encoding.UTF8.GetString(Convert.FromBase64String(value));
+            if (!value.StartsWith(ProtectedPasswordPrefix, StringComparison.Ordinal))
+            {
+                return Encoding.UTF8.GetString(Convert.FromBase64String(value));
+            }
+
+            var protectedBytes = Convert.FromBase64String(value.Substring(ProtectedPasswordPrefix.Length));
+            var plaintext = ProtectedData.Unprotect(protectedBytes, null, DataProtectionScope.CurrentUser);
+            return Encoding.UTF8.GetString(plaintext);
         }
 
         private static void ShowForgotPasswordMessage()

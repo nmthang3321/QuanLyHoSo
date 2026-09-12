@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Data;
 using System.Windows.Input;
+using QuanLyHoSo.ApplicationServices.Abstractions;
 using QuanLyHoSo.Infrastructure.Data;
 using QuanLyHoSo.Infrastructure.Logging;
 using QuanLyHoSo.Models;
@@ -22,13 +23,20 @@ namespace QuanLyHoSo.ViewModels
 
     public sealed class RecordTrashViewModel : ViewModelBase
     {
+        private readonly IApplicationDataService _dataService;
         private bool _isBusy;
         private string _message = "Đang tải thùng rác…";
         private string _searchText;
         private readonly RelayCommand _restoreCommand;
         private readonly RelayCommand _deletePermanentlyCommand;
         public RecordTrashViewModel(Action close = null)
+            : this(AppDataService.Instance, close)
         {
+        }
+
+        public RecordTrashViewModel(IApplicationDataService dataService, Action close = null)
+        {
+            _dataService = dataService ?? throw new ArgumentNullException(nameof(dataService));
             Rows = new ObservableCollection<RecordTrashRowViewModel>();
             FilteredRows = CollectionViewSource.GetDefaultView(Rows);
             FilteredRows.Filter = item =>
@@ -90,12 +98,12 @@ namespace QuanLyHoSo.ViewModels
             IsBusy = true;
             try
             {
-                var records = await Task.Run(() => AppDataService.Instance.GetDeletedRecords());
+                var records = await Task.Run(() => _dataService.GetDeletedRecords());
                 Rows.Clear();
                 foreach (var record in records)
                 {
                     var row = new RecordTrashRowViewModel(record);
-                    row.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(row.IsSelected)) NotifySelection(); };
+                    row.PropertyChanged += Row_PropertyChanged;
                     Rows.Add(row);
                 }
                 Message = records.Count == 0 ? "Thùng rác trống." : "Khôi phục sẽ giữ nguyên trạng thái, người xử lý, lịch sử và tệp đính kèm.";
@@ -131,7 +139,7 @@ namespace QuanLyHoSo.ViewModels
                     {
                         try
                         {
-                            if (AppDataService.Instance.PermanentlyDeleteRecord(record.RecordCode, record.DeletionBatchId)) deleted++;
+                            if (_dataService.PermanentlyDeleteRecord(record.RecordCode, record.DeletionBatchId)) deleted++;
                         }
                         catch (Exception ex)
                         {
@@ -171,7 +179,7 @@ namespace QuanLyHoSo.ViewModels
                 {
                     foreach (var record in records)
                     {
-                        try { if (AppDataService.Instance.RestoreRecord(record.RecordCode, record.DeletionBatchId)) restored++; }
+                        try { if (_dataService.RestoreRecord(record.RecordCode, record.DeletionBatchId)) restored++; }
                         catch (Exception ex) { AppLogger.Error("Records", "RestoreRecord", ex, "Failed to restore record.", record.RecordCode); }
                     }
                 });
@@ -182,6 +190,30 @@ namespace QuanLyHoSo.ViewModels
             Message = $"Đã khôi phục {restored:N0}/{records.Count:N0} hồ sơ. " +
                 (restored < records.Count ? "Một số hồ sơ đã thay đổi hoặc chưa khôi phục được; hãy kiểm tra danh sách và thử lại." : "Hồ sơ sẽ hiển thị theo bộ lọc của danh sách làm việc.");
             Message += reloadWarning;
+        }
+
+        private void Row_PropertyChanged(object sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(RecordTrashRowViewModel.IsSelected))
+            {
+                NotifySelection();
+            }
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                foreach (var row in Rows)
+                {
+                    row.PropertyChanged -= Row_PropertyChanged;
+                    row.Dispose();
+                }
+
+                FilteredRows.Filter = null;
+            }
+
+            base.Dispose(disposing);
         }
     }
 }

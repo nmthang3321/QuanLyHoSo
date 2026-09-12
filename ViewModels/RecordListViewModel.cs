@@ -15,6 +15,7 @@ using System.Windows.Input;
 using System.Windows.Threading;
 using System.Xml;
 using Microsoft.Win32;
+using QuanLyHoSo.ApplicationServices.Abstractions;
 using QuanLyHoSo.Infrastructure.Data;
 using QuanLyHoSo.Infrastructure.Logging;
 using QuanLyHoSo.Infrastructure.Security;
@@ -28,7 +29,7 @@ namespace QuanLyHoSo.ViewModels
         private const int MinimumPageSize = 1;
         private const int MaximumPageSize = 20;
 
-        private readonly AppDataService _dataService;
+        private readonly IApplicationDataService _dataService;
         private readonly Action _goBack;
         private readonly Action<string> _editRecord;
         private readonly Action<string> _classifyRecord;
@@ -67,8 +68,13 @@ namespace QuanLyHoSo.ViewModels
         private string _totalRecordsText;
 
         public RecordListViewModel(Action goBack, Action<string> editRecord, Action<string> classifyRecord)
+            : this(AppDataService.Instance, goBack, editRecord, classifyRecord)
         {
-            _dataService = AppDataService.Instance;
+        }
+
+        public RecordListViewModel(IApplicationDataService dataService, Action goBack, Action<string> editRecord, Action<string> classifyRecord)
+        {
+            _dataService = dataService ?? throw new ArgumentNullException(nameof(dataService));
             _goBack = goBack ?? (() => { });
             _editRecord = editRecord ?? (_ => { });
             _classifyRecord = classifyRecord ?? (_ => { });
@@ -133,7 +139,7 @@ namespace QuanLyHoSo.ViewModels
             _clearSelectionCommand = new RelayCommand(ClearSelection, () => !IsSelectionBusy && SelectedCount > 0);
             ToggleSelectionCommand = new RelayCommand(() => IsSelectionMode = !IsSelectionMode);
             SelectAllCommand = new RelayCommand(async () => await SelectAllRecordsAsync());
-            Trash = new RecordTrashViewModel(CloseTrash);
+            Trash = new RecordTrashViewModel(_dataService, CloseTrash);
             OpenTrashCommand = new RelayCommand(async () => await OpenTrashAsync(), () => CanDeleteRecords);
 
             ResetFilters();
@@ -1181,6 +1187,29 @@ namespace QuanLyHoSo.ViewModels
         {
             _previousPageCommand.RaiseCanExecuteChanged();
             _nextPageCommand.RaiseCanExecuteChanged();
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                Trash.Dispose();
+                _dataService.CatalogChanged -= DataService_CatalogChanged;
+                _searchDebounceTimer.Stop();
+                _searchDebounceTimer.Tick -= SearchDebounceTimer_Tick;
+
+                foreach (var column in ColumnOptions)
+                {
+                    column.PropertyChanged -= ColumnOption_PropertyChanged;
+                }
+
+                foreach (var row in Records)
+                {
+                    row.PropertyChanged -= RowSelectionChanged;
+                }
+            }
+
+            base.Dispose(disposing);
         }
 
         private static string GetFirstOrDefault(ObservableCollection<string> items)

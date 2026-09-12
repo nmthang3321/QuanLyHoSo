@@ -14,6 +14,7 @@ using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
+using QuanLyHoSo.ApplicationServices.Abstractions;
 using QuanLyHoSo.Infrastructure.Configuration;
 using QuanLyHoSo.Infrastructure.Data;
 using QuanLyHoSo.Infrastructure.Logging;
@@ -30,7 +31,7 @@ namespace QuanLyHoSo.ViewModels
         private const string GitHubReleasesPageUrl = "https://github.com/nmthang3321/QuanLyHoSo/releases/latest";
         private const int CatalogDialogPageSize = 6;
 
-        private readonly AppDataService _dataService;
+        private readonly IApplicationDataService _dataService;
         private readonly Action _openGuide;
         private readonly List<CatalogValueSetting> _allCatalogValues;
         private CatalogGroupSetting _selectedCatalogGroup;
@@ -74,8 +75,13 @@ namespace QuanLyHoSo.ViewModels
         private int _catalogFilteredCount;
 
         public SettingsViewModel(Action openGuide = null)
+            : this(AppDataService.Instance, openGuide)
         {
-            _dataService = AppDataService.Instance;
+        }
+
+        public SettingsViewModel(IApplicationDataService dataService, Action openGuide = null)
+        {
+            _dataService = dataService ?? throw new ArgumentNullException(nameof(dataService));
             _openGuide = openGuide;
 
             CatalogGroups = new ObservableCollection<CatalogGroupSetting>

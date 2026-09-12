@@ -7,6 +7,7 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Text.RegularExpressions;
 using Microsoft.Data.Sqlite;
+using QuanLyHoSo.ApplicationServices.Abstractions;
 using QuanLyHoSo.Infrastructure.Configuration;
 using QuanLyHoSo.Infrastructure.Documents;
 using QuanLyHoSo.Infrastructure.Logging;
@@ -16,7 +17,7 @@ using QuanLyHoSo.Models;
 
 namespace QuanLyHoSo.Infrastructure.Data
 {
-    public sealed class AppDataService
+    public sealed class AppDataService : IApplicationDataService
     {
         private const string RecordCodePrefix = "HS";
         private const int RecordCodeSequenceWidth = 6;
@@ -41,6 +42,8 @@ namespace QuanLyHoSo.Infrastructure.Data
 
         public static AppDataService Instance => LazyInstance.Value;
 
+        public static bool IsCreated => LazyInstance.IsValueCreated;
+
         public static Action<Action> UiDispatcher { get; set; }
 
         public event Action<string> CatalogChanged;
@@ -64,6 +67,12 @@ namespace QuanLyHoSo.Infrastructure.Data
         public void StopLanServer()
         {
             _lanServer?.Stop();
+        }
+
+        public void Shutdown()
+        {
+            _lanServer?.Stop();
+            _lanClient?.Dispose();
         }
 
         public void Initialize()
@@ -1178,61 +1187,39 @@ LIMIT $take OFFSET $skip;";
             };
         }
 
-            /*
-            using var countCommand = connection.CreateCommand();
-            countCommand.CommandText = @"
-SELECT COUNT(*),
-       SUM(CASE WHEN $readToken <> '||' AND INSTR(ReadBy, $readToken) = 0 THEN 1 ELSE 0 END)
-FROM LeadershipNotices
-WHERE $officerName = '' OR Scope = 'All' OR TRIM(TargetName) = $officerName;";
-            countCommand.Parameters.AddWithValue("$officerName", normalizedOfficerName);
-            countCommand.Parameters.AddWithValue("$readToken", readToken);
-            using var countReader = countCommand.ExecuteReader();
-            var totalCount = 0;
-            var unreadCount = 0;
-            if (countReader.Read())
+        internal AppUser GetActiveUserForSession(int userId)
+        {
+            if (AppPathSettings.Current.IsClientMode || userId <= 0)
             {
-                totalCount = countReader.IsDBNull(0) ? 0 : countReader.GetInt32(0);
-                unreadCount = countReader.IsDBNull(1) ? 0 : countReader.GetInt32(1);
+                return null;
             }
 
+            using var connection = OpenConnection();
             using var command = connection.CreateCommand();
             command.CommandText = @"
-SELECT Id, Message, CreatedAt, SenderName, ReadBy
-FROM LeadershipNotices
-WHERE $officerName = '' OR Scope = 'All' OR TRIM(TargetName) = $officerName
-ORDER BY CreatedAt DESC, Id DESC
-LIMIT $take OFFSET $skip;";
-            command.Parameters.AddWithValue("$officerName", normalizedOfficerName);
-            command.Parameters.AddWithValue("$take", Math.Max(1, take));
-            command.Parameters.AddWithValue("$skip", Math.Max(0, skip));
+SELECT Id, UserName, DisplayName, Role, IsActive, MustChangePassword
+FROM Users
+WHERE Id = $id AND IsActive = 1
+LIMIT 1;";
+            command.Parameters.AddWithValue("$id", userId);
 
-            var items = new List<StaffNotification>();
             using var reader = command.ExecuteReader();
-            while (reader.Read())
+            if (!reader.Read())
             {
-                var createdAt = FormatDateTime(reader.GetString(2));
-                var senderName = reader.GetString(3);
-                var readBy = reader.IsDBNull(4) ? string.Empty : reader.GetString(4);
-                items.Add(new StaffNotification
-                {
-                    Id = reader.GetInt32(0),
-                    Message = reader.GetString(1),
-                    SenderName = senderName,
-                    ReceivedText = $"Nhận lúc {createdAt} từ {senderName}",
-                    IsUnread = readToken != "||" && !readBy.Contains(readToken, StringComparison.OrdinalIgnoreCase)
-                });
+                return null;
             }
 
-            return new StaffNotificationPage
+            return new AppUser
             {
-                Items = items,
-                TotalCount = totalCount,
-                UnreadCount = unreadCount
+                Id = reader.GetInt32(0),
+                UserName = reader.GetString(1),
+                DisplayName = reader.GetString(2),
+                Role = reader.GetString(3),
+                IsActive = true,
+                MustChangePassword = reader.GetInt32(5) == 1
             };
         }
 
-        */
         public int CountUnreadLeadershipNotices(string officerName, bool adminOnly = false, bool includeAll = false)
         {
             if (AppPathSettings.Current.IsClientMode)
