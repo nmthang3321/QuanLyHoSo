@@ -101,7 +101,7 @@ namespace QuanLyHoSo.Infrastructure.Network
                 {
                     var responseBody = response.Content.ReadAsStringAsync().GetAwaiter().GetResult();
                     throw new InvalidOperationException(string.IsNullOrWhiteSpace(responseBody)
-                        ? $"MÃ¡y admin tráº£ vá» lá»—i HTTP {(int)response.StatusCode}."
+                        ? $"Máy admin trả về lỗi HTTP {(int)response.StatusCode}."
                         : responseBody);
                 }
 

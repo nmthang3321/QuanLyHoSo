@@ -980,7 +980,7 @@ namespace QuanLyHoSo.ViewModels
             SelectedDataAccessMode = AppPathSettings.Current.DataAccessMode;
             AdminMachineNameText = AppPathSettings.Current.AdminMachineName;
             AdminServerUrlText = AppPathSettings.Current.AdminServerUrl;
-            GeneralSettingsStatus = "MÃ¡y admin giá»¯ DB local vÃ  má»Ÿ API LAN. MÃ¡y tráº¡m chá»‰ nháº­p URL mÃ¡y admin, khÃ´ng dÃ¹ng DB local.";
+            GeneralSettingsStatus = "Máy admin giữ cơ sở dữ liệu cục bộ và mở API LAN. Máy trạm chỉ nhập URL máy admin, không dùng cơ sở dữ liệu cục bộ.";
             IsGeneralSettingsDialogOpen = true;
         }
 
@@ -988,8 +988,8 @@ namespace QuanLyHoSo.ViewModels
         {
             using var dialog = new Forms.SaveFileDialog
             {
-                Title = "Chá»n Ä‘Æ°á»ng dáº«n cÆ¡ sá»Ÿ dá»¯ liá»‡u",
-                Filter = "SQLite database (*.db)|*.db|All files (*.*)|*.*",
+                Title = "Chọn đường dẫn cơ sở dữ liệu",
+                Filter = "Cơ sở dữ liệu SQLite (*.db)|*.db|Tất cả tệp (*.*)|*.*",
                 FileName = Path.GetFileName(DatabasePathText),
                 InitialDirectory = Directory.Exists(Path.GetDirectoryName(DatabasePathText))
                     ? Path.GetDirectoryName(DatabasePathText)
@@ -1007,7 +1007,7 @@ namespace QuanLyHoSo.ViewModels
         {
             using var dialog = new Forms.FolderBrowserDialog
             {
-                Description = "Chá»n thÆ° má»¥c lÆ°u log",
+                Description = "Chọn thư mục lưu nhật ký",
                 SelectedPath = Directory.Exists(LogFolderText)
                     ? LogFolderText
                     : Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -1033,8 +1033,8 @@ namespace QuanLyHoSo.ViewModels
                 if (dataAccessMode == "Client" && !Uri.TryCreate(adminServerUrl, UriKind.Absolute, out _))
                 {
                     MessageBox.Show(
-                        "MÃ¡y tráº¡m pháº£i nháº­p URL mÃ¡y admin há»£p lá»‡, vÃ­ dá»¥ http://localhost:5055 khi test local hoáº·c http://192.168.1.10:5055 khi cháº¡y LAN.",
-                        "CÃ i Ä‘áº·t dá»¯ liá»‡u trung tÃ¢m",
+                        "Máy trạm phải nhập URL máy admin hợp lệ, ví dụ http://localhost:5055 khi kiểm thử cục bộ hoặc http://192.168.1.10:5055 khi chạy LAN.",
+                        "Cài đặt dữ liệu trung tâm",
                         MessageBoxButton.OK,
                         MessageBoxImage.Warning);
                     return;
@@ -1042,7 +1042,7 @@ namespace QuanLyHoSo.ViewModels
 
                 if (dataAccessMode != "Client" && string.IsNullOrWhiteSpace(databaseFolder))
                 {
-                    MessageBox.Show("ÄÆ°á»ng dáº«n cÆ¡ sá»Ÿ dá»¯ liá»‡u khÃ´ng há»£p lá»‡.", "CÃ i Ä‘áº·t chung", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    MessageBox.Show("Đường dẫn cơ sở dữ liệu không hợp lệ.", "Cài đặt chung", MessageBoxButton.OK, MessageBoxImage.Warning);
                     return;
                 }
 
@@ -1076,16 +1076,16 @@ namespace QuanLyHoSo.ViewModels
                 AdminServerUrlText = adminServerUrl;
                 RefreshSoftwareInfos();
                 GeneralSettingsStatus = databasePath.Equals(_dataService.DatabasePath, StringComparison.OrdinalIgnoreCase)
-                    ? "ÄÃ£ lÆ°u cÃ i Ä‘áº·t. ÄÆ°á»ng dáº«n log má»›i cÃ³ hiá»‡u lá»±c ngay."
-                    : "ÄÃ£ lÆ°u cÃ i Ä‘áº·t. Vui lÃ²ng khá»Ÿi Ä‘á»™ng láº¡i á»©ng dá»¥ng Ä‘á»ƒ dÃ¹ng Ä‘Æ°á»ng dáº«n DB má»›i.";
+                    ? "Đã lưu cài đặt. Đường dẫn nhật ký mới có hiệu lực ngay."
+                    : "Đã lưu cài đặt. Vui lòng khởi động lại ứng dụng để dùng đường dẫn cơ sở dữ liệu mới.";
 
-                MessageBox.Show(GeneralSettingsStatus, "CÃ i Ä‘áº·t chung", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show(GeneralSettingsStatus, "Cài đặt chung", MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception ex)
             {
                 AppLogger.Error("Settings", "SaveGeneralSettings", ex, "Failed to save path settings.");
-                GeneralSettingsStatus = "KhÃ´ng thá»ƒ lÆ°u cÃ i Ä‘áº·t Ä‘Æ°á»ng dáº«n.";
-                MessageBox.Show($"KhÃ´ng thá»ƒ lÆ°u cÃ i Ä‘áº·t Ä‘Æ°á»ng dáº«n.\n{ex.Message}", "CÃ i Ä‘áº·t chung", MessageBoxButton.OK, MessageBoxImage.Error);
+                GeneralSettingsStatus = "Không thể lưu cài đặt đường dẫn.";
+                MessageBox.Show($"Không thể lưu cài đặt đường dẫn.\n{ex.Message}", "Cài đặt chung", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -1096,7 +1096,7 @@ namespace QuanLyHoSo.ViewModels
             SelectedDataAccessMode = "AdminHost";
             AdminMachineNameText = Environment.MachineName;
             AdminServerUrlText = "http://localhost:5055";
-            GeneralSettingsStatus = "ÄÃ£ Ä‘Æ°a vá» cháº¿ Ä‘á»™ mÃ¡y admin giá»¯ DB. Báº¥m LÆ°u cÃ i Ä‘áº·t Ä‘á»ƒ Ã¡p dá»¥ng.";
+            GeneralSettingsStatus = "Đã đưa về chế độ máy admin giữ cơ sở dữ liệu. Bấm Lưu cài đặt để áp dụng.";
         }
 
         private void OpenSystemLogDialog()

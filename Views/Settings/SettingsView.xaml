@@ -1,6 +1,7 @@
 ﻿<UserControl x:Class="QuanLyHoSo.Views.Settings.SettingsView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:presentation="clr-namespace:QuanLyHoSo.Presentation"
              UseLayoutRounding="True"
              SnapsToDevicePixels="True"
              FontWeight="Medium">
@@ -752,13 +753,19 @@
 
                     <StackPanel Grid.Row="1" Margin="0,18,0,0">
                         <TextBlock Text="Mật khẩu hiện tại" Style="{StaticResource SettingsLabel}" Margin="0,0,0,6" />
-                        <TextBox Text="{Binding CurrentPasswordText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,12" />
+                        <PasswordBox presentation:PasswordBoxBinding.BoundPassword="{Binding CurrentPasswordText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                     AutomationProperties.Name="Mật khẩu hiện tại"
+                                     Margin="0,0,0,12" />
 
                         <TextBlock Text="Mật khẩu mới" Style="{StaticResource SettingsLabel}" Margin="0,0,0,6" />
-                        <TextBox Text="{Binding NewPasswordText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,12" />
+                        <PasswordBox presentation:PasswordBoxBinding.BoundPassword="{Binding NewPasswordText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                     AutomationProperties.Name="Mật khẩu mới"
+                                     Margin="0,0,0,12" />
 
                         <TextBlock Text="Nhập lại mật khẩu mới" Style="{StaticResource SettingsLabel}" Margin="0,0,0,6" />
-                        <TextBox Text="{Binding ConfirmNewPasswordText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,12" />
+                        <PasswordBox presentation:PasswordBoxBinding.BoundPassword="{Binding ConfirmNewPasswordText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                     AutomationProperties.Name="Nhập lại mật khẩu mới"
+                                     Margin="0,0,0,12" />
 
                         <TextBlock Text="{Binding ChangePasswordStatus}"
                                    Foreground="#E11414"
@@ -925,7 +932,8 @@
                                 <ComboBox ItemsSource="{Binding UserRoles}" SelectedItem="{Binding SelectedUserRole, Mode=TwoWay}" Margin="0,0,0,12" />
 
                                 <TextBlock Text="Mật khẩu" Style="{StaticResource SettingsLabel}" Margin="0,0,0,6" />
-                                <TextBox Text="{Binding UserPasswordText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                <PasswordBox presentation:PasswordBoxBinding.BoundPassword="{Binding UserPasswordText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                             AutomationProperties.Name="Mật khẩu tài khoản" />
                                 <TextBlock Text="{Binding UserPasswordHintText}"
                                            Foreground="{StaticResource MutedTextBrush}"
                                            FontSize="10"
