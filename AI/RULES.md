@@ -30,6 +30,11 @@ rg -n "MethodName" Infrastructure\Data\AppDataService.cs -C 5
 
 ## Build
 
+- Neu task thay doi code/logic, doc `AI/infra/TESTING.md` va chay `tests/Scripts/run-smoke.ps1` sau thay doi.
+- Truoc merge/release, chay `tests/Scripts/run-all.ps1`; UI tests tach rieng, can desktop Windows khong khoa.
+- Khong sua UI/business rules chi de test pass. Bao cao defect hien co va test fail; khong an failure bang rerun hoac assertion yeu.
+- Test code phai nam trong `tests/`; khong dung DB, credentials hay file ca nhan/production lam test data.
+
 Neu task build bi khoa exe, build ra output rieng:
 
 ```powershell

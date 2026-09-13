@@ -326,6 +326,7 @@
                                        IsHitTestVisible="False" />
                             <Grid Grid.Column="1">
                                 <TextBox x:Name="UserNameInput"
+                                         AutomationProperties.AutomationId="Login.UserName"
                                          Style="{StaticResource LoginInputTextBox}"
                                          Text="{Binding UserName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                          GotKeyboardFocus="UserNameInput_FocusChanged"
@@ -366,6 +367,7 @@
                                        IsHitTestVisible="False" />
                             <Grid Grid.Column="1">
                                 <PasswordBox x:Name="PasswordInput"
+                                             AutomationProperties.AutomationId="Login.Password"
                                              Style="{StaticResource LoginPasswordBox}"
                                              PasswordChanged="PasswordInput_PasswordChanged"
                                              KeyDown="PasswordInput_KeyDown"
@@ -386,6 +388,7 @@
                                            IsHitTestVisible="False" />
                             </Grid>
                             <Button x:Name="TogglePasswordButton"
+                                    AutomationProperties.AutomationId="Login.TogglePassword"
                                     Grid.Column="2"
                                     Style="{StaticResource LoginIconButton}"
                                     HorizontalAlignment="Center"
@@ -451,6 +454,7 @@
                     </Grid>
 
                     <Button Style="{StaticResource LoginPrimaryButton}"
+                            AutomationProperties.AutomationId="Login.SignIn"
                             HorizontalAlignment="Stretch"
                             IsDefault="True"
                             Command="{Binding SignInCommand}">

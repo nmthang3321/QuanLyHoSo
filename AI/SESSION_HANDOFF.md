@@ -1,6 +1,6 @@
 # Session handoff - QuanLyHoSo
 
-Cap nhat: 2026-09-01
+Cap nhat: 2026-09-13
 
 File nay nam trong `AI/` de gom toan bo context cho AI vao mot cho. Khi bat dau analyse:
 
@@ -14,6 +14,17 @@ Routing chinh:
 - Popup/overlay: `AI/popups/*.md`
 - Chuc nang dung chung: `AI/features/*.md`
 - Infra/DB/build/LAN: `AI/infra/*.md`
+- Automated tests: `AI/infra/TESTING.md`
+
+## Snapshot 2026-09-13 - Automated regression tests
+
+- Da them 3 test projects vao solution, tach biet trong `tests/`: UnitTests, IntegrationTests, UITests. Framework: xUnit, Moq, Coverlet, FlaUI UIA3; test projects target .NET 8, app target .NET 5 khong doi.
+- Ket qua da verify ngay 2026-09-12: Release solution build pass; 36 unit/ViewModel + 20 SQLite integration + 1 WPF UI smoke = 57 test cases pass. Lenh full da verify: `tests/Scripts/run-all.ps1 -IncludeUI`. Day la ket qua lich su, khong thay cho viec chay lai sau thay doi.
+- Tests bao ve password/auth/role, commands/notifications, forced password-change validation, area selector, CRUD/reopen/Unicode/attachments metadata, search/pagination, rollback khi trung ma, trash/stale undo/permanent delete, backup/restore/corrupt backup.
+- Production testability changes: internal `AppDataService(string databasePath)` khong tao LAN listener; `InternalsVisibleTo` cho IntegrationTests; path override `QUANLYHOSO_TEST_ROOT` chi khi env duoc set; 4 AutomationIds login; root csproj exclude `tests/**` khoi Compile. Khong doi UI visual hay business rules.
+- Moi integration test tao DB rieng trong OS temp va cleanup; UI smoke launch child process voi profile rieng. Generated reports ignored trong git.
+- Chua cover full processing transitions, export contents, LAN failures/concurrency, document generation, file locks/permission denial va authenticated UI workflows. Khong coi bo test hien tai la full feature coverage.
+- Huong dan chay/duyet test: `AI/infra/TESTING.md`, `tests/README.md`; inventory: `tests/TEST_MATRIX.md`.
 
 ## Snapshot 2026-09-03
 

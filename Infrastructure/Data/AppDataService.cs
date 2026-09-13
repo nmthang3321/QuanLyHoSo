@@ -40,6 +40,23 @@ namespace QuanLyHoSo.Infrastructure.Data
             _lanServer = new LanDataServer(this);
         }
 
+        /// <summary>
+        /// Creates an isolated local-data service without starting the LAN listener.
+        /// This is intentionally internal and exists only so automated integration tests
+        /// can exercise the real SQLite implementation against a temporary database.
+        /// </summary>
+        internal AppDataService(string databasePath)
+        {
+            if (string.IsNullOrWhiteSpace(databasePath))
+            {
+                throw new ArgumentException("Database path is required.", nameof(databasePath));
+            }
+
+            DatabasePath = Path.GetFullPath(databasePath);
+            Directory.CreateDirectory(Path.GetDirectoryName(DatabasePath));
+            _connectionString = new SqliteConnectionStringBuilder { DataSource = DatabasePath }.ToString();
+        }
+
         public static AppDataService Instance => LazyInstance.Value;
 
         public static bool IsCreated => LazyInstance.IsValueCreated;
@@ -61,7 +78,7 @@ namespace QuanLyHoSo.Infrastructure.Data
                 throw new InvalidOperationException("LAN server is not available in client mode.");
             }
 
-            _lanServer.Start();
+            _lanServer?.Start();
         }
 
         public void StopLanServer()
@@ -103,7 +120,7 @@ namespace QuanLyHoSo.Infrastructure.Data
             SeedRecords(connection);
             NormalizeFutureRecordDates(connection);
             SyncProcessorCatalogFromRecords(connection);
-            _lanServer.Start();
+            _lanServer?.Start();
             LogElapsed("Database", "Initialize", stopwatch);
         }
 

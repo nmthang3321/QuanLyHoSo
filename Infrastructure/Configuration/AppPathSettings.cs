@@ -34,21 +34,19 @@ namespace QuanLyHoSo.Infrastructure.Configuration
             }
         }
 
-        public static string SettingsFolder => Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "QuanLyHoSo",
-            "Settings");
+        public static string SettingsFolder => Path.Combine(GetApplicationDataRoot(), "Settings");
 
-        public static string DefaultDatabasePath => Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "QuanLyHoSo",
-            "Data",
-            "quanlyhoso.db");
+        public static string DefaultDatabasePath => Path.Combine(GetApplicationDataRoot(), "Data", "quanlyhoso.db");
 
-        public static string DefaultLogFolder => Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "QuanLyHoSo",
-            "Logs");
+        public static string DefaultLogFolder => Path.Combine(GetApplicationDataRoot(), "Logs");
+
+        private static string GetApplicationDataRoot()
+        {
+            var isolatedRoot = Environment.GetEnvironmentVariable("QUANLYHOSO_TEST_ROOT");
+            return string.IsNullOrWhiteSpace(isolatedRoot)
+                ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "QuanLyHoSo")
+                : Path.GetFullPath(isolatedRoot);
+        }
 
         public static void Save(AppPathSettings settings)
         {

@@ -31,6 +31,8 @@ _ReSharper*/
 
 # Test and coverage output
 TestResults/
+tests/Reports/*
+!tests/Reports/.gitkeep
 *.coverage
 *.coveragexml
 coverage/

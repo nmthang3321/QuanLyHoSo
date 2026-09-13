@@ -4,7 +4,7 @@ Canonical architecture and coding rules are now in `.ai/ARCHITECTURE.md`,
 `.ai/CODING_GUIDELINES.md`, and `.ai/AI_INSTRUCTIONS.md`. The files under
 `AI/` remain detailed historical feature maps and behavioral references.
 
-Cap nhat: 2026-09-01
+Cap nhat: 2026-09-13
 
 Doc file nay truoc, sau do chi doc file dung voi task.
 
@@ -59,11 +59,14 @@ Session handoff nam tai `AI/SESSION_HANDOFF.md`. Context AI chi dung cac file tr
 ## Infra
 
 - Build/git: `AI/infra/BUILD_GIT.md`
+- Automated tests, scripts, isolation va coverage gaps: `AI/infra/TESTING.md`
 - AppDataService routing: `AI/infra/DATA_SERVICE.md`
 - Database schema: `AI/infra/DATABASE_SCHEMA.md`
 - LAN API: `AI/infra/LAN_API.md`
 
 ## Luu y moi nhat
+
+- Da co bo automated tests trong `tests/`. Sau khi sua code, chay smoke; truoc merge/release, chay full noninteractive suite. Doc `AI/infra/TESTING.md` de chon lenh va biet coverage gaps.
 
 - Selector dia ban dang co thay doi UI quan trong, doc `AI/features/AREA_SELECTOR.md` neu task cham toi dia ban.
 - Build verify nen dung output rieng de tranh exe dang chay bi khoa:

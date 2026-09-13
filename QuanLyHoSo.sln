@@ -11,6 +11,14 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "QuanLyHoSo.Server", "QuanLy
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "QuanLyHoSo.Core", "QuanLyHoSo.Core\QuanLyHoSo.Core.csproj", "{7FC464BF-CDAA-43DE-A484-7967D528F803}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{1E07332F-920A-42F7-8952-1830E80879D8}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "QuanLyHoSo.UnitTests", "tests\QuanLyHoSo.UnitTests\QuanLyHoSo.UnitTests.csproj", "{108F8BB7-A06D-4EDE-ACE6-4CE4572672D1}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "QuanLyHoSo.IntegrationTests", "tests\QuanLyHoSo.IntegrationTests\QuanLyHoSo.IntegrationTests.csproj", "{BC735426-9AEA-48AB-A8C3-001830DB607B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "QuanLyHoSo.UITests", "tests\QuanLyHoSo.UITests\QuanLyHoSo.UITests.csproj", "{59471B54-8E0B-40A8-AA75-AB86761C8069}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -33,11 +41,28 @@ Global
 		{7FC464BF-CDAA-43DE-A484-7967D528F803}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{7FC464BF-CDAA-43DE-A484-7967D528F803}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{7FC464BF-CDAA-43DE-A484-7967D528F803}.Release|Any CPU.Build.0 = Release|Any CPU
+		{108F8BB7-A06D-4EDE-ACE6-4CE4572672D1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{108F8BB7-A06D-4EDE-ACE6-4CE4572672D1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{108F8BB7-A06D-4EDE-ACE6-4CE4572672D1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{108F8BB7-A06D-4EDE-ACE6-4CE4572672D1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BC735426-9AEA-48AB-A8C3-001830DB607B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BC735426-9AEA-48AB-A8C3-001830DB607B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BC735426-9AEA-48AB-A8C3-001830DB607B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BC735426-9AEA-48AB-A8C3-001830DB607B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{59471B54-8E0B-40A8-AA75-AB86761C8069}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{59471B54-8E0B-40A8-AA75-AB86761C8069}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{59471B54-8E0B-40A8-AA75-AB86761C8069}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{59471B54-8E0B-40A8-AA75-AB86761C8069}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {AD033DFB-EE91-4934-B217-6D535C3A0811}
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{108F8BB7-A06D-4EDE-ACE6-4CE4572672D1} = {1E07332F-920A-42F7-8952-1830E80879D8}
+		{BC735426-9AEA-48AB-A8C3-001830DB607B} = {1E07332F-920A-42F7-8952-1830E80879D8}
+		{59471B54-8E0B-40A8-AA75-AB86761C8069} = {1E07332F-920A-42F7-8952-1830E80879D8}
 	EndGlobalSection
 EndGlobal
