@@ -180,7 +180,7 @@ namespace QuanLyHoSo.ViewModels
         public string TransferAreaDisplayName => string.IsNullOrWhiteSpace(TransferAreaName)
             ? "Chọn địa bàn"
             : AreaSelectionOptions.GetDisplayName(TransferAreas, TransferAreaName);
-        public bool CanUpdateProcessing => SelectedProcessingDetail != null && AuthContext.CanEditRecord(SelectedProcessingDetail.ProcessorName);
+        public bool CanUpdateProcessing => SelectedProcessingDetail != null && SelectedProcessingDetail.Status != RecordStatuses.ResubmittedResolved && AuthContext.CanEditRecord(SelectedProcessingDetail.ProcessorName);
 
         public bool IsProcessingUpdateBusy
         {

@@ -14,6 +14,7 @@ namespace QuanLyHoSo.Presentation.Converters
 
             var color = status switch
             {
+                QuanLyHoSo.Models.RecordStatuses.ResubmittedResolved => isForeground ? "#0D7A2A" : "#DDF8E7",
                 "Đã giải quyết" => isForeground ? "#0D7A2A" : "#DDF8E7",
                 "Đang xác minh" => isForeground ? "#075CE8" : "#E7F0FF",
                 "Đang phân loại" => isForeground ? "#B45C00" : "#FFF0D6",

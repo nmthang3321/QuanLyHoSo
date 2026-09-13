@@ -90,6 +90,7 @@ namespace QuanLyHoSo.ViewModels
                 "Chờ kết quả",
                 "Đang chờ bổ sung tài liệu",
                 "Đã giải quyết",
+                RecordStatuses.ResubmittedResolved,
                 "Chuyển cơ quan khác"
             };
             CaseTypes = new ObservableCollection<string>(_dataService.GetCatalogValues("CaseType", includeAll: true));
@@ -135,6 +136,7 @@ namespace QuanLyHoSo.ViewModels
             ExportCommand = new RelayCommand(async () => await ExportExcelAsync(), () => !_isExporting);
             BackCommand = new RelayCommand(_goBack);
             CloseDetailCommand = new RelayCommand(CloseDetail);
+            OpenSenderRecordCommand = new RelayCommand(parameter => ViewRecord(parameter as string));
             _deleteSelectedCommand = new RelayCommand(async () => await DeleteSelectedRecordsAsync(), () => CanDeleteRecords && !IsSelectionBusy && SelectedCount > 0);
             _clearSelectionCommand = new RelayCommand(ClearSelection, () => !IsSelectionBusy && SelectedCount > 0);
             ToggleSelectionCommand = new RelayCommand(() => IsSelectionMode = !IsSelectionMode);
@@ -162,6 +164,7 @@ namespace QuanLyHoSo.ViewModels
         public ICommand ExportCommand { get; }
         public ICommand BackCommand { get; }
         public ICommand CloseDetailCommand { get; }
+        public ICommand OpenSenderRecordCommand { get; }
         public ICommand DeleteSelectedCommand => _deleteSelectedCommand;
         public ICommand ClearSelectionCommand => _clearSelectionCommand;
         public ICommand ToggleSelectionCommand { get; }

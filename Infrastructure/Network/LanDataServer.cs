@@ -290,6 +290,9 @@ namespace QuanLyHoSo.Infrastructure.Network
                     case "records/similar":
                         var similar = ReadData<SimilarRecordRequest>(body);
                         return _dataService.FindSimilarRecord(similar.Record, similar.DateRangeDays);
+                    case "records/sender-history":
+                        return _dataService.GetSenderRecords(ReadData<RecordFormDraft>(body));
+                    case "records/save-resubmission":
                     case "records/save":
                         var saveRecord = ReadData<SaveRecordFormRequest>(body);
                         return _dataService.SaveRecordForm(saveRecord.Record, saveRecord.OriginalRecordCode);

@@ -23,6 +23,35 @@ namespace QuanLyHoSo.ViewModels
         private readonly Action _goBack;
         private string _editingRecordCode;
         private RecordFormDraft _originalDraft;
+        private RecordFormDraft _pendingDraft;
+        private bool _isSenderHistoryOpen;
+        private SenderRecordHistory _selectedSenderRecord;
+        private string _resubmissionReason = string.Empty;
+        private string _senderHistoryError = string.Empty;
+        public ObservableCollection<SenderRecordHistory> SenderRecords { get; } = new ObservableCollection<SenderRecordHistory>();
+        public bool IsSenderHistoryOpen { get => _isSenderHistoryOpen; private set => SetProperty(ref _isSenderHistoryOpen, value); }
+        public SenderRecordHistory SelectedSenderRecord
+        {
+            get => _selectedSenderRecord;
+            set
+            {
+                if (!SetProperty(ref _selectedSenderRecord, value)) return;
+                OnPropertyChanged(nameof(CanSaveResubmission));
+                OnPropertyChanged(nameof(ResubmissionAvailability));
+                (SaveResubmissionCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            }
+        }
+        public string ResubmissionReason { get => _resubmissionReason; set => SetProperty(ref _resubmissionReason, value); }
+        public string SenderHistoryError { get => _senderHistoryError; private set => SetProperty(ref _senderHistoryError, value); }
+        public bool CanSaveResubmission => IsSenderHistoryOpen && SelectedSenderRecord?.CanLinkAsResubmission == true;
+        public string ResubmissionAvailability => SelectedSenderRecord == null ? "Chọn hồ sơ đã giải quyết để liên kết."
+            : !string.IsNullOrEmpty(SelectedSenderRecord.OriginalRecordCode) ? "Đây là hồ sơ gửi lại. Hãy chọn hồ sơ gốc đã giải quyết."
+            : SelectedSenderRecord.Status != "Đã giải quyết" ? "Hồ sơ được chọn chưa giải quyết; có thể lưu và xử lý như hồ sơ mới."
+            : !SelectedSenderRecord.IsSameCase ? "Hồ sơ được chọn khác địa bàn hoặc loại vụ việc. Hãy đối chiếu lại thông tin đang nhập."
+            : "Có thể lưu gửi lại hồ sơ này. Vui lòng ghi lý do xác nhận.";
+        public ICommand CloseSenderHistoryCommand { get; }
+        public ICommand SaveAsNewRecordCommand { get; }
+        public ICommand SaveResubmissionCommand { get; }
 
         public RecordInputViewModel(Action goBack = null)
             : this(AppDataService.Instance, goBack)
@@ -54,6 +83,9 @@ namespace QuanLyHoSo.ViewModels
             RemoveAttachmentCommand = new RelayCommand(RemoveAttachment);
             OpenAttachmentCommand = new RelayCommand(OpenAttachment);
 
+            CloseSenderHistoryCommand = new RelayCommand(CloseSenderHistory);
+            SaveAsNewRecordCommand = new RelayCommand(() => SavePendingRecord(false));
+            SaveResubmissionCommand = new RelayCommand(() => SavePendingRecord(true), () => CanSaveResubmission);
             ClearForm();
         }
 
@@ -67,6 +99,10 @@ namespace QuanLyHoSo.ViewModels
         public ObservableCollection<string> Priorities { get; }
         public ObservableCollection<string> HandlingMethods { get; }
         public ObservableCollection<AttachmentDraft> Attachments { get; }
+        public bool IsResubmission => !string.IsNullOrEmpty(_originalDraft?.OriginalRecordCode);
+        public string ResubmissionSummary => IsResubmission
+            ? $"{RecordStatuses.ResubmittedResolved}. Tham chiếu hồ sơ {_originalDraft.OriginalRecordCode}. Không xác minh lại."
+            : string.Empty;
         public bool HasAttachments => Attachments.Count > 0;
         public ICommand NewCommand { get; }
         public ICommand SaveCommand { get; }
@@ -144,16 +180,20 @@ namespace QuanLyHoSo.ViewModels
                 Attachments.Add(attachment);
             }
 
+            _originalDraft = record;
             _originalDraft = BuildDraft();
 
             OnPropertyChanged(nameof(IsEditingExistingRecord));
             OnPropertyChanged(nameof(SaveButtonText));
+            OnPropertyChanged(nameof(IsResubmission));
+            OnPropertyChanged(nameof(ResubmissionSummary));
             RaisePermissionPropertyChanges();
             RaiseFormPropertyChanges();
         }
 
         private void ClearForm()
         {
+            CloseSenderHistory();
             _editingRecordCode = null;
             _originalDraft = null;
             RecordCode = _dataService.GetNextRecordCode();
@@ -182,6 +222,8 @@ namespace QuanLyHoSo.ViewModels
             Attachments.Clear();
             OnPropertyChanged(nameof(IsEditingExistingRecord));
             OnPropertyChanged(nameof(SaveButtonText));
+            OnPropertyChanged(nameof(IsResubmission));
+            OnPropertyChanged(nameof(ResubmissionSummary));
             RaisePermissionPropertyChanges();
             RaiseFormPropertyChanges();
         }
@@ -253,6 +295,7 @@ namespace QuanLyHoSo.ViewModels
 
         private void Save()
         {
+            if (IsSenderHistoryOpen) return;
             if (!CanSave)
             {
                 MessageBox.Show("Tài khoản hiện tại chỉ được xem dữ liệu.", "Phân quyền", MessageBoxButton.OK, MessageBoxImage.Information);
@@ -270,21 +313,12 @@ namespace QuanLyHoSo.ViewModels
             {
                 var draft = BuildDraft();
                 var isEditing = IsEditingExistingRecord;
-                if (!isEditing && !ConfirmSaveWhenSimilarRecordExists(draft))
+                if (!isEditing && OpenSenderHistory(draft))
                 {
                     return;
                 }
 
-                var savedRecordCode = _dataService.SaveRecordForm(draft, _editingRecordCode);
-                RecordCode = savedRecordCode;
-                _editingRecordCode = savedRecordCode;
-                _originalDraft = BuildDraft();
-                OnPropertyChanged(nameof(RecordCode));
-                OnPropertyChanged(nameof(IsEditingExistingRecord));
-                OnPropertyChanged(nameof(SaveButtonText));
-                RaisePermissionPropertyChanges();
-                var actionText = isEditing ? "cập nhật" : "lưu";
-                MessageBox.Show($"Đã {actionText} hồ sơ vào cơ sở dữ liệu.", "Hồ sơ", MessageBoxButton.OK, MessageBoxImage.Information);
+                PersistRecord(draft, isEditing);
             }
             catch (Exception ex)
             {
@@ -293,44 +327,73 @@ namespace QuanLyHoSo.ViewModels
             }
         }
 
-        private bool ConfirmSaveWhenSimilarRecordExists(RecordFormDraft draft)
+        private void PersistRecord(RecordFormDraft draft, bool isEditing, bool showConfirmation = true)
         {
-            var similarRecord = _dataService.FindSimilarRecord(draft);
-            if (similarRecord == null)
+            var savedRecordCode = _dataService.SaveRecordForm(draft, _editingRecordCode);
+            RecordCode = savedRecordCode;
+            _editingRecordCode = savedRecordCode;
+            _originalDraft = draft;
+            _originalDraft = BuildDraft();
+            OnPropertyChanged(nameof(RecordCode));
+            OnPropertyChanged(nameof(IsEditingExistingRecord));
+            OnPropertyChanged(nameof(SaveButtonText));
+            OnPropertyChanged(nameof(IsResubmission));
+            OnPropertyChanged(nameof(ResubmissionSummary));
+            RaisePermissionPropertyChanges();
+            var actionText = isEditing ? "cập nhật" : "lưu";
+            if (showConfirmation)
+                MessageBox.Show($"Đã {actionText} hồ sơ vào cơ sở dữ liệu.", "Hồ sơ", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        private bool OpenSenderHistory(RecordFormDraft draft)
+        {
+            var history = _dataService.GetSenderRecords(draft);
+            if (history.Count == 0) return false;
+            _pendingDraft = draft;
+            SenderRecords.Clear();
+            foreach (var item in history) SenderRecords.Add(item);
+            ResubmissionReason = string.Empty;
+            SenderHistoryError = string.Empty;
+            IsSenderHistoryOpen = true;
+            // History is newest first; a newer repeat must not hide an eligible original.
+            SelectedSenderRecord = history.FirstOrDefault(item => item.CanLinkAsResubmission) ?? history.First();
+            return true;
+        }
+
+        private void CloseSenderHistory()
+        {
+            IsSenderHistoryOpen = false;
+            _pendingDraft = null;
+            SelectedSenderRecord = null;
+            SenderRecords.Clear();
+            SenderHistoryError = string.Empty;
+            OnPropertyChanged(nameof(CanSaveResubmission));
+            (SaveResubmissionCommand as RelayCommand)?.RaiseCanExecuteChanged();
+        }
+
+        private void SavePendingRecord(bool asResubmission)
+        {
+            if (!IsSenderHistoryOpen || _pendingDraft == null) return;
+            if (!CanSave) { SenderHistoryError = "Tài khoản hiện tại không được lưu hồ sơ."; return; }
+            if (asResubmission && !CanSaveResubmission) { SenderHistoryError = ResubmissionAvailability; return; }
+            if (asResubmission && string.IsNullOrWhiteSpace(ResubmissionReason))
             {
-                return true;
+                SenderHistoryError = "Vui lòng ghi lý do xác nhận hồ sơ gửi lại.";
+                return;
             }
-
-            var message =
-                "Hệ thống phát hiện hồ sơ có thể trùng với hồ sơ đã có.\n\n" +
-                $"Mã hồ sơ: {similarRecord.RecordCode}\n" +
-                $"Ngày tiếp nhận: {similarRecord.ReceivedDate}\n" +
-                $"Người gửi: {similarRecord.SenderName}\n" +
-                $"Số điện thoại: {similarRecord.SenderPhone}\n" +
-                $"Địa bàn: {similarRecord.AreaName}\n" +
-                $"Loại vụ việc: {similarRecord.CaseType}\n" +
-                $"Trạng thái: {similarRecord.Status}\n\n" +
-                "Chọn Yes để vẫn tạo hồ sơ mới.\n" +
-                "Chọn No để mở hồ sơ đã có.\n" +
-                "Chọn Cancel để hủy lưu.";
-
-            var result = MessageBox.Show(
-                message,
-                "Cảnh báo hồ sơ nghi trùng",
-                MessageBoxButton.YesNoCancel,
-                MessageBoxImage.Warning);
-
-            if (result == MessageBoxResult.Yes)
+            var draft = _pendingDraft;
+            draft.OriginalRecordCode = asResubmission ? SelectedSenderRecord.RecordCode : null;
+            draft.ResubmissionReason = asResubmission ? ResubmissionReason.Trim() : null;
+            try
             {
-                return true;
+                PersistRecord(draft, false, showConfirmation: false);
+                CloseSenderHistory();
             }
-
-            if (result == MessageBoxResult.No)
+            catch (Exception ex)
             {
-                LoadRecord(similarRecord.RecordCode);
+                AppLogger.Error("Records", "SaveRecordForm", ex, "Failed to save record from sender history.", RecordCode);
+                SenderHistoryError = "Không thể lưu hồ sơ. " + ex.Message;
             }
-
-            return false;
         }
 
         private void DeleteCurrentRecord()
@@ -382,6 +445,9 @@ namespace QuanLyHoSo.ViewModels
         {
             return new RecordFormDraft
             {
+                SenderId = _originalDraft?.SenderId,
+                OriginalRecordCode = _originalDraft?.OriginalRecordCode,
+                ResubmissionReason = _originalDraft?.ResubmissionReason,
                 RecordCode = RecordCode,
                 ReceivedDate = ReceivedDate,
                 ReceiveSource = ReceiveSource,

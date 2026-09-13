@@ -42,6 +42,7 @@ namespace QuanLyHoSo.ApplicationServices.Abstractions
         void SaveLeadershipNotice(string scope, string targetName, string kpiTarget, string message);
         int GetAreaCount();
         string GetNextRecordCode();
+        IReadOnlyList<SenderRecordHistory> GetSenderRecords(RecordFormDraft record);
         SimilarRecordMatch FindSimilarRecord(RecordFormDraft record, int dateRangeDays = 30);
         IReadOnlyList<DashboardMetric> GetDashboardMetrics(DateTime? fromDate = null, DateTime? toDate = null, DateTime? previousFromDate = null, DateTime? previousToDate = null);
         IReadOnlyList<StatusStat> GetStatusStats(DateTime? fromDate = null, DateTime? toDate = null);

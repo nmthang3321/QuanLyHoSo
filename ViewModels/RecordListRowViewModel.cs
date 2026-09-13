@@ -27,7 +27,7 @@ namespace QuanLyHoSo.ViewModels
             UpdatedAt = record.UpdatedAt;
             ProcessorName = record.ProcessorName;
             CanEdit = AuthContext.CanEditRecord(record.ProcessorName);
-            CanClassify = AuthContext.CanEditRecord(record.ProcessorName);
+            CanClassify = record.Status != RecordStatuses.ResubmittedResolved && AuthContext.CanEditRecord(record.ProcessorName);
             CanDelete = AuthContext.CanDeleteRecord;
             ViewCommand = viewCommand;
             EditCommand = editCommand;

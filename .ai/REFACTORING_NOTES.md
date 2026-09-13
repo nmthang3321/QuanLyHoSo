@@ -90,3 +90,23 @@ This is testability debt, especially in Settings and export flows. Moving it nee
 - Confirmed the refactor diff contains no schema-changing SQL.
 
 Manual pixel-level and full click-through UI regression still require an interactive Windows desktop test session. The unchanged XAML and preserved bindings provide static assurance but do not replace that acceptance pass.
+
+## Approved feature — resubmitted resolved records (2026-09-13)
+
+User explicitly approved a behavior and schema change. Previously intake warned about one exact match within ±30 days and could still create an ordinary processing record. Intake now displays sender history across all dates, with normalized name + phone (or name + address when both phones are absent). The officer explicitly chooses ordinary intake or a linked resubmission of an already resolved case and supplies a reason.
+
+A resubmission receives a separate record code, intake date, content and attachments, with the status `Đã giải quyết — hồ sơ gửi lại`. It references the original result without manufacturing processing history or a new resolution date. It contributes to received totals and its own status category, but not processing queues, overdue counts or completed-work KPIs. Record-list details show sender history and links to individual records; processing actions are hidden/blocked for repeats.
+
+Additive metadata columns (`SenderId`, `OriginalRecordCode`, `ResubmissionReason`) default to empty for legacy records; indexes support identity/reference lookup. Links are immutable through ordinary edits. Referenced originals cannot be deleted, renamed, changed to a different sender/case or reopened while linked records exist. Server-side validation enforces identity, area, case type, resolved status and live references. All new LAN routes require existing authenticated sessions; sender history respects officer access.
+
+Verification: client/server isolated builds and Release solution build passed; `tests/Scripts/run-all.ps1 -IncludeUI` passed 71 cases (37 unit/ViewModel, 33 integration, 1 UI smoke). New checks include normalization, independent intake preservation, no extra work/resolution, invalid references, edit identity, reference preservation, copied legacy migration/idempotence/quick_check and authenticated LAN round trip. Dialog/detail rendered using synthetic data; full authenticated dialog click-through remains manual. No real user database was migrated during development.
+
+## Requested popup correction (2026-09-13)
+
+The user requested an in-page popup instead of a separate Window and reported that resubmission could not be selected. SenderHistoryDialog is now a UserControl hosted as a modal overlay in RecordInputView, coordinated through ViewModel commands and a captured pending draft. The form is disabled behind the overlay. Selection defaults to the first eligible resolved original rather than the newest row, which may be a repeat or unresolved intake. Eligibility explanations and validation/save errors are displayed inline. The existing server eligibility rules remain unchanged.
+
+Verification: Release client/server solution build and 74 cases passed (40 unit/ViewModel, 33 integration, 1 UI smoke). New popup tests cover original selection, required reason, successful resubmission/new-record continuation, and cancel preserving input. A synthetic WPF harness rendered the actual overlay and verified button binding, eligible/ineligible selection and save completion with a mock service.
+
+## Requested detail grouping correction (2026-09-13)
+
+Record-list detail previously showed all records of the sender, including independent new intakes. The user requested separate management of each new intake. Detail history now includes only its original record and resubmissions explicitly linked to that original. A new intake without resubmissions shows itself only. Intake lookup still provides all sender records for choosing an original. The caption is now “Hồ sơ gốc và các lần gửi lại”. A regression test covers two independent groups with identical sender/area/case data and ensures opening either original or repeat shows only its own group.

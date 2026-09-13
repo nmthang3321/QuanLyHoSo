@@ -11,11 +11,13 @@ Files:
 
 Service methods:
 - `GetNextRecordCode`
-- `FindSimilarRecord`
+- `GetSenderRecords` (luồng đối chiếu hiện tại; không giới hạn ngày)
+- `FindSimilarRecord` (API cũ)
 - `SaveRecordForm`
 - `DeleteRecord`
 
 Notes:
+- Hồ sơ gửi lại: xem `AI/features/RECORD_RESUBMISSION.md`; form mới đối chiếu lịch sử người gửi trước khi lưu.
 - App WPF mac dinh chay `Client`. Admin van vao trang nhap/sua ho so; `FindSimilarRecord`, `SaveRecordForm`, `DeleteRecord` di qua LAN API khi client mode.
 - Can bo khong thay muc Nhap du lieu trong sidebar; chi xem/chinh sua/phan loai theo quyen xu ly.
 - Dia ban doc them `AI/features/AREA_SELECTOR.md`.

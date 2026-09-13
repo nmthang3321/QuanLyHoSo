@@ -20,6 +20,29 @@ namespace QuanLyHoSo.Models
         public string FilePath { get; set; }
     }
 
+    public static class RecordStatuses
+    {
+        public const string ResubmittedResolved = "Đã giải quyết — hồ sơ gửi lại";
+    }
+
+    public sealed class SenderRecordHistory
+    {
+        public string RecordCode { get; set; }
+        public string ReceivedDate { get; set; }
+        public string SenderName { get; set; }
+        public string SenderPhone { get; set; }
+        public string ContactAddress { get; set; }
+        public string AreaName { get; set; }
+        public string CaseType { get; set; }
+        public string Content { get; set; }
+        public string Status { get; set; }
+        public string OriginalRecordCode { get; set; }
+        public string ResolutionSummary { get; set; }
+        public bool IsSameCase { get; set; }
+        public bool CanLinkAsResubmission => IsSameCase && Status == "Đã giải quyết" && string.IsNullOrEmpty(OriginalRecordCode);
+        public string Relationship => string.IsNullOrEmpty(OriginalRecordCode) ? "Hồ sơ gốc" : "Gửi lại " + OriginalRecordCode;
+    }
+
     public sealed class RecordFormDraft
     {
         public string RecordCode { get; set; }
@@ -42,6 +65,12 @@ namespace QuanLyHoSo.Models
         public string ExpectedResultDate { get; set; }
         public string Note { get; set; }
         public string AdditionalNote { get; set; }
+        public string SenderId { get; set; }
+        public string OriginalRecordCode { get; set; }
+        public string ResubmissionReason { get; set; }
+        public string Status { get; set; }
+        public string Relationship => string.IsNullOrEmpty(OriginalRecordCode) ? "Hồ sơ gốc" : "Gửi lại " + OriginalRecordCode;
+        public IReadOnlyList<SenderRecordHistory> SenderHistory { get; set; } = new List<SenderRecordHistory>();
         public IReadOnlyList<AttachmentDraft> Attachments { get; set; } = new List<AttachmentDraft>();
     }
 

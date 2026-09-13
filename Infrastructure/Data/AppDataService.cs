@@ -885,15 +885,15 @@ ORDER BY Name;";
                 command.CommandText = @"
 SELECT
     COUNT(*) AS AssignedCount,
-    SUM(CASE WHEN Status <> 'Đã giải quyết' THEN 1 ELSE 0 END) AS ProcessingCount,
+    SUM(CASE WHEN Status NOT IN ('Đã giải quyết', 'Đã giải quyết — hồ sơ gửi lại') THEN 1 ELSE 0 END) AS ProcessingCount,
     SUM(CASE WHEN Status = 'Đã giải quyết' THEN 1 ELSE 0 END) AS CompletedCount,
-    SUM(CASE WHEN Status <> 'Đã giải quyết' AND ExpectedResultDate <> '' AND ExpectedResultDate >= $today AND ExpectedResultDate <= $dueSoon THEN 1 ELSE 0 END) AS DueSoonCount,
-    SUM(CASE WHEN Status <> 'Đã giải quyết' AND ExpectedResultDate <> '' AND ExpectedResultDate < $today THEN 1 ELSE 0 END) AS OverdueCount,
+    SUM(CASE WHEN Status NOT IN ('Đã giải quyết', 'Đã giải quyết — hồ sơ gửi lại') AND ExpectedResultDate <> '' AND ExpectedResultDate >= $today AND ExpectedResultDate <= $dueSoon THEN 1 ELSE 0 END) AS DueSoonCount,
+    SUM(CASE WHEN Status NOT IN ('Đã giải quyết', 'Đã giải quyết — hồ sơ gửi lại') AND ExpectedResultDate <> '' AND ExpectedResultDate < $today THEN 1 ELSE 0 END) AS OverdueCount,
     SUM(CASE WHEN Status = 'Đã giải quyết' AND ExpectedResultDate <> '' AND UpdatedAt <> '' AND datetime(UpdatedAt) <= datetime(ExpectedResultDate) THEN 1 ELSE 0 END) AS OnTimeCompletedCount,
     SUM(CASE WHEN ExpectedResultDate <> '' THEN 1 ELSE 0 END) AS DeadlineTrackedCount,
     AVG(CASE WHEN Status = 'Đã giải quyết' AND ReceivedDate <> '' AND UpdatedAt <> '' AND datetime(UpdatedAt) >= datetime(ReceivedDate) THEN julianday(UpdatedAt) - julianday(ReceivedDate) END) AS AverageProcessingDays
 FROM (SELECT * FROM Records WHERE DeletedAt = '') AS Records
-WHERE TRIM(ProcessorName) = $processorName
+WHERE OriginalRecordCode = '' AND TRIM(ProcessorName) = $processorName
     AND ($fromDate IS NULL OR ReceivedDate >= $fromDate)
     AND ($toDate IS NULL OR ReceivedDate <= $toDate);";
                 command.Parameters.AddWithValue("$processorName", processorName.Trim());
@@ -959,11 +959,11 @@ WHERE TRIM(ProcessorName) = $processorName
 
             command.CommandText = @"
 SELECT
-    SUM(CASE WHEN ExpectedResultDate <> '' AND ((Status = 'Đã giải quyết' AND UpdatedAt <> '' AND datetime(UpdatedAt) <= datetime(ExpectedResultDate)) OR (Status <> 'Đã giải quyết' AND ExpectedResultDate > $dueSoon)) THEN 1 ELSE 0 END) AS OnTimeCount,
-    SUM(CASE WHEN Status <> 'Đã giải quyết' AND ExpectedResultDate <> '' AND ExpectedResultDate >= $today AND ExpectedResultDate <= $dueSoon THEN 1 ELSE 0 END) AS DueSoonCount,
-    SUM(CASE WHEN ExpectedResultDate <> '' AND ((Status <> 'Đã giải quyết' AND ExpectedResultDate < $today) OR (Status = 'Đã giải quyết' AND UpdatedAt <> '' AND datetime(UpdatedAt) > datetime(ExpectedResultDate))) THEN 1 ELSE 0 END) AS OverdueCount
+    SUM(CASE WHEN ExpectedResultDate <> '' AND ((Status = 'Đã giải quyết' AND UpdatedAt <> '' AND datetime(UpdatedAt) <= datetime(ExpectedResultDate)) OR (Status NOT IN ('Đã giải quyết', 'Đã giải quyết — hồ sơ gửi lại') AND ExpectedResultDate > $dueSoon)) THEN 1 ELSE 0 END) AS OnTimeCount,
+    SUM(CASE WHEN Status NOT IN ('Đã giải quyết', 'Đã giải quyết — hồ sơ gửi lại') AND ExpectedResultDate <> '' AND ExpectedResultDate >= $today AND ExpectedResultDate <= $dueSoon THEN 1 ELSE 0 END) AS DueSoonCount,
+    SUM(CASE WHEN ExpectedResultDate <> '' AND ((Status NOT IN ('Đã giải quyết', 'Đã giải quyết — hồ sơ gửi lại') AND ExpectedResultDate < $today) OR (Status = 'Đã giải quyết' AND UpdatedAt <> '' AND datetime(UpdatedAt) > datetime(ExpectedResultDate))) THEN 1 ELSE 0 END) AS OverdueCount
 FROM (SELECT * FROM Records WHERE DeletedAt = '') AS Records
-WHERE TRIM(ProcessorName) <> ''
+WHERE OriginalRecordCode = '' AND TRIM(ProcessorName) <> ''
   AND ($currentProcessorName IS NULL OR TRIM(ProcessorName) = $currentProcessorName)
   AND ($fromDate IS NULL OR ReceivedDate >= $fromDate)
   AND ($toDate IS NULL OR ReceivedDate <= $toDate);";
@@ -1020,8 +1020,8 @@ WHERE TRIM(ProcessorName) <> ''
             command.CommandText = @"
 SELECT RecordCode, CaseType, ExpectedResultDate
 FROM (SELECT * FROM Records WHERE DeletedAt = '') AS Records
-WHERE TRIM(ProcessorName) = $processorName
-  AND Status <> 'Đã giải quyết'
+WHERE OriginalRecordCode = '' AND TRIM(ProcessorName) = $processorName
+  AND Status NOT IN ('Đã giải quyết', 'Đã giải quyết — hồ sơ gửi lại')
   AND ($fromDate IS NULL OR ReceivedDate >= $fromDate)
   AND ($toDate IS NULL OR ReceivedDate <= $toDate)
 ORDER BY
@@ -1498,6 +1498,139 @@ VALUES ($createdAt, $senderName, $scope, $targetName, $kpiTarget, $message);";
             return GenerateNextRecordCode(connection, null, DateTime.Today.Year);
         }
 
+        private static string NormalizeSenderText(string value)
+        {
+            var decomposed = (value ?? string.Empty).Normalize(System.Text.NormalizationForm.FormD);
+            var chars = decomposed.Where(c => CharUnicodeInfo.GetUnicodeCategory(c) != UnicodeCategory.NonSpacingMark);
+            return Regex.Replace(new string(chars.ToArray()).Replace('đ', 'd').Replace('Đ', 'D').ToUpperInvariant().Trim(), @"\s+", " ");
+        }
+
+        private static string NormalizeSenderPhone(string value)
+        {
+            var digits = new string((value ?? string.Empty).Where(char.IsDigit).ToArray());
+            if (digits.StartsWith("0084")) digits = "0" + digits.Substring(4);
+            else if (digits.StartsWith("84") && digits.Length > 9) digits = "0" + digits.Substring(2);
+            return digits;
+        }
+
+        // Name alone is never enough to identify a sender. Legacy rows are matched by
+        // name + phone, or name + address when both phone numbers are absent.
+        private static void AddSenderIdentityConditions(SqliteCommand command, List<string> conditions, RecordFormDraft record)
+        {
+            conditions.Add("normalize_sender(SenderName) = $senderNameKey");
+            command.Parameters.AddWithValue("$senderNameKey", NormalizeSenderText(record.SenderName));
+            var phone = NormalizeSenderPhone(record.SenderPhone);
+            if (phone.Length > 0)
+            {
+                conditions.Add("normalize_phone(SenderPhone) = $senderPhoneKey");
+                command.Parameters.AddWithValue("$senderPhoneKey", phone);
+            }
+            else
+            {
+                conditions.Add("normalize_phone(SenderPhone) = '' AND normalize_sender(ContactAddress) = $senderAddressKey");
+                command.Parameters.AddWithValue("$senderAddressKey", NormalizeSenderText(record.ContactAddress));
+            }
+        }
+
+        public IReadOnlyList<SenderRecordHistory> GetSenderRecords(RecordFormDraft record)
+        {
+            if (AppPathSettings.Current.IsClientMode)
+                return _lanClient.Call<IReadOnlyList<SenderRecordHistory>>("records/sender-history", record) ?? Array.Empty<SenderRecordHistory>();
+            if (record == null || string.IsNullOrWhiteSpace(record.SenderName) ||
+                (string.IsNullOrWhiteSpace(record.SenderPhone) && string.IsNullOrWhiteSpace(record.ContactAddress)))
+                return Array.Empty<SenderRecordHistory>();
+            using var connection = OpenConnection();
+            using var command = connection.CreateCommand();
+            var conditions = new List<string>();
+            AddSenderIdentityConditions(command, conditions, record);
+            // Resolve persisted identity from an authorized record; never trust an arbitrary wire SenderId.
+            if (!string.IsNullOrWhiteSpace(record.RecordCode))
+            {
+                using var identity = connection.CreateCommand();
+                identity.CommandText = "SELECT SenderId FROM Records WHERE RecordCode = $code AND DeletedAt = ''" + BuildUserRecordCondition(identity) + ";";
+                identity.Parameters.AddWithValue("$code", record.RecordCode);
+                var senderId = Convert.ToString(identity.ExecuteScalar());
+                if (!string.IsNullOrWhiteSpace(senderId))
+                {
+                    conditions[0] = "(SenderId = $senderId OR (" + string.Join(" AND ", conditions) + "))";
+                    conditions.RemoveRange(1, conditions.Count - 1);
+                    command.Parameters.AddWithValue("$senderId", senderId);
+                }
+            }
+            ApplyUserRecordScope(command, conditions);
+            command.CommandText = @"
+SELECT RecordCode, ReceivedDate, SenderName, SenderPhone, ContactAddress, AreaName, CaseType, Content, Status, OriginalRecordCode,
+       COALESCE((SELECT group_concat(strftime('%d/%m/%Y', ProcessedAt) || ' — ' || Title || ': ' || Content, char(10)) FROM (SELECT ProcessedAt, Title, Content FROM ProcessHistories WHERE RecordId = Records.Id ORDER BY ProcessedAt, Id)), '')
+FROM (SELECT * FROM Records WHERE DeletedAt = '') AS Records
+WHERE " + string.Join(" AND ", conditions) + " ORDER BY ReceivedDate DESC, Id DESC;";
+            using var reader = command.ExecuteReader();
+            var result = new List<SenderRecordHistory>();
+            while (reader.Read()) result.Add(new SenderRecordHistory
+            {
+                RecordCode = reader.GetString(0), ReceivedDate = FormatDate(reader.GetString(1)),
+                SenderName = reader.GetString(2), SenderPhone = reader.GetString(3), ContactAddress = reader.GetString(4),
+                AreaName = reader.GetString(5), CaseType = reader.GetString(6), Content = reader.GetString(7),
+                Status = reader.GetString(8), OriginalRecordCode = reader.GetString(9), ResolutionSummary = reader.GetString(10),
+                IsSameCase = NormalizeSenderText(reader.GetString(5)) == NormalizeSenderText(record.AreaName)
+                    && NormalizeSenderText(reader.GetString(6)) == NormalizeSenderText(record.CaseType)
+            });
+            return result;
+        }
+
+        private static string ResolveSenderId(SqliteConnection connection, SqliteTransaction transaction, RecordFormDraft record)
+        {
+            if (string.IsNullOrWhiteSpace(record.SenderName) ||
+                (NormalizeSenderPhone(record.SenderPhone).Length == 0 && string.IsNullOrWhiteSpace(record.ContactAddress)))
+                return Guid.NewGuid().ToString("N");
+            using var command = connection.CreateCommand();
+            command.Transaction = transaction;
+            var conditions = new List<string> { "SenderId <> ''" };
+            AddSenderIdentityConditions(command, conditions, record);
+            command.CommandText = "SELECT SenderId FROM Records WHERE " + string.Join(" AND ", conditions) + " ORDER BY Id LIMIT 1;";
+            var existing = Convert.ToString(command.ExecuteScalar());
+            var id = string.IsNullOrEmpty(existing) ? Guid.NewGuid().ToString("N") : existing;
+            using var update = connection.CreateCommand();
+            update.Transaction = transaction;
+            conditions = new List<string> { "SenderId = ''" };
+            AddSenderIdentityConditions(update, conditions, record);
+            update.CommandText = "UPDATE Records SET SenderId = $id WHERE " + string.Join(" AND ", conditions) + ";";
+            update.Parameters.AddWithValue("$id", id);
+            update.ExecuteNonQuery();
+            return id;
+        }
+
+        private static void EnsureNoLinkedResubmissions(SqliteConnection connection, SqliteTransaction transaction, string code)
+        {
+            using var command = connection.CreateCommand();
+            command.Transaction = transaction;
+            command.CommandText = "SELECT COUNT(*) FROM Records WHERE OriginalRecordCode = $code;";
+            command.Parameters.AddWithValue("$code", code);
+            if (Convert.ToInt32(command.ExecuteScalar(), CultureInfo.InvariantCulture) > 0)
+                throw new InvalidOperationException("Hồ sơ đang được hồ sơ gửi lại tham chiếu. Không thể xóa, đổi mã hoặc mở lại xử lý khi còn liên kết này.");
+        }
+
+        private static int? ValidateResubmission(SqliteConnection connection, SqliteTransaction transaction, RecordFormDraft record)
+        {
+            if (string.IsNullOrWhiteSpace(record.OriginalRecordCode)) return null;
+            if (string.IsNullOrWhiteSpace(record.SenderName) ||
+                (NormalizeSenderPhone(record.SenderPhone).Length == 0 && string.IsNullOrWhiteSpace(record.ContactAddress)))
+                throw new InvalidOperationException("Cần tên và số điện thoại hoặc địa chỉ để xác nhận người gửi.");
+            if (string.IsNullOrWhiteSpace(record.ResubmissionReason))
+                throw new InvalidOperationException("Vui lòng ghi lý do xác nhận hồ sơ gửi lại.");
+            using var command = connection.CreateCommand();
+            command.Transaction = transaction;
+            var conditions = new List<string> { "RecordCode = $originalCode", "DeletedAt = ''", "Status = 'Đã giải quyết'", "OriginalRecordCode = ''",
+                "normalize_sender(AreaName) = $area", "normalize_sender(CaseType) = $case" };
+            AddSenderIdentityConditions(command, conditions, record);
+            command.Parameters.AddWithValue("$originalCode", NormalizeDbText(record.OriginalRecordCode));
+            command.Parameters.AddWithValue("$area", NormalizeSenderText(record.AreaName));
+            command.Parameters.AddWithValue("$case", NormalizeSenderText(record.CaseType));
+            command.CommandText = "SELECT Id FROM Records WHERE " + string.Join(" AND ", conditions) + ";";
+            var id = command.ExecuteScalar();
+            if (id == null) throw new InvalidOperationException("Hồ sơ tham chiếu phải đã giải quyết, còn trong danh sách và cùng người gửi, địa bàn, loại vụ việc. Vui lòng đối chiếu lại.");
+            return Convert.ToInt32(id, CultureInfo.InvariantCulture);
+        }
+
         public SimilarRecordMatch FindSimilarRecord(RecordFormDraft record, int dateRangeDays = 30)
         {
             if (AppPathSettings.Current.IsClientMode)
@@ -1852,7 +1985,7 @@ LIMIT $take OFFSET $skip;";
             command.CommandText = @"
 SELECT Id, RecordCode, ReceivedDate, ReceiveSource, ReceiverName, SenderName, SenderPhone, ContactAddress,
        AreaName, IncidentAddress, Content, CaseType, ContentGroup, Field, RelatedPerson,
-       ExpectedHandlingMethod, SenderExpectedHandlingMethod, SeverityLevel, ExpectedResultDate, Note, AdditionalNote
+       ExpectedHandlingMethod, SenderExpectedHandlingMethod, SeverityLevel, ExpectedResultDate, Note, AdditionalNote, SenderId, OriginalRecordCode, ResubmissionReason, Status
 FROM (SELECT * FROM Records WHERE DeletedAt = '') AS Records
 ORDER BY UpdatedAt DESC, Id DESC
 LIMIT 1;";
@@ -1876,22 +2009,25 @@ LIMIT 1;";
             command.CommandText = @"
 SELECT Id, RecordCode, ReceivedDate, ReceiveSource, ReceiverName, SenderName, SenderPhone, ContactAddress,
        AreaName, IncidentAddress, Content, CaseType, ContentGroup, Field, RelatedPerson,
-       ExpectedHandlingMethod, SenderExpectedHandlingMethod, SeverityLevel, ExpectedResultDate, Note, AdditionalNote
+       ExpectedHandlingMethod, SenderExpectedHandlingMethod, SeverityLevel, ExpectedResultDate, Note, AdditionalNote, SenderId, OriginalRecordCode, ResubmissionReason, Status
 FROM (SELECT * FROM Records WHERE DeletedAt = '') AS Records
 WHERE RecordCode = $recordCode
 LIMIT 1;";
             command.Parameters.AddWithValue("$recordCode", recordCode);
             var record = ReadRecordForm(connection, command);
-            return AuthContext.CanAccessRecord(GetRecordProcessorName(connection, recordCode))
-                ? record
-                : new RecordFormDraft();
+            if (!AuthContext.CanAccessRecord(GetRecordProcessorName(connection, recordCode))) return new RecordFormDraft();
+            var rootCode = string.IsNullOrEmpty(record.OriginalRecordCode) ? record.RecordCode : record.OriginalRecordCode;
+            record.SenderHistory = GetSenderRecords(record)
+                .Where(item => item.RecordCode == rootCode || item.OriginalRecordCode == rootCode)
+                .ToList();
+            return record;
         }
 
         public string SaveRecordForm(RecordFormDraft record, string originalRecordCode = null)
         {
             if (AppPathSettings.Current.IsClientMode)
             {
-                return _lanClient.Call<string>("records/save", new SaveRecordFormRequest { Record = record, OriginalRecordCode = originalRecordCode });
+                return _lanClient.Call<string>(string.IsNullOrWhiteSpace(record?.OriginalRecordCode) ? "records/save" : "records/save-resubmission", new SaveRecordFormRequest { Record = record, OriginalRecordCode = originalRecordCode });
             }
 
             if (record == null)
@@ -1911,6 +2047,34 @@ LIMIT 1;";
             if (recordId.HasValue)
             {
                 EnsureCanEditRecord(connection, transaction, recordId.Value);
+                using var metadata = connection.CreateCommand();
+                metadata.Transaction = transaction;
+                metadata.CommandText = "SELECT OriginalRecordCode, ResubmissionReason FROM Records WHERE Id = $id;";
+                metadata.Parameters.AddWithValue("$id", recordId.Value);
+                using (var reader = metadata.ExecuteReader())
+                {
+                    reader.Read();
+                    // Links are established at intake; ordinary form edits cannot change them.
+                    record.OriginalRecordCode = reader.GetString(0);
+                    record.ResubmissionReason = reader.GetString(1);
+                }
+                ValidateResubmission(connection, transaction, record);
+                using var linked = connection.CreateCommand();
+                linked.Transaction = transaction;
+                linked.CommandText = "SELECT SenderName, SenderPhone, ContactAddress, AreaName, CaseType FROM Records WHERE Id = $id AND EXISTS (SELECT 1 FROM Records r WHERE r.OriginalRecordCode = $code);";
+                linked.Parameters.AddWithValue("$id", recordId.Value);
+                linked.Parameters.AddWithValue("$code", originalRecordCode);
+                using (var reader = linked.ExecuteReader())
+                {
+                    if (reader.Read() && (NormalizeSenderText(reader.GetString(0)) != NormalizeSenderText(record.SenderName)
+                        || NormalizeSenderPhone(reader.GetString(1)) != NormalizeSenderPhone(record.SenderPhone)
+                        || (NormalizeSenderPhone(record.SenderPhone).Length == 0 && NormalizeSenderText(reader.GetString(2)) != NormalizeSenderText(record.ContactAddress))
+                        || NormalizeSenderText(reader.GetString(3)) != NormalizeSenderText(record.AreaName)
+                        || NormalizeSenderText(reader.GetString(4)) != NormalizeSenderText(record.CaseType)))
+                        throw new InvalidOperationException("Không thể đổi người gửi, địa bàn hoặc loại vụ việc của hồ sơ đang được hồ sơ gửi lại tham chiếu.");
+                }
+                if (NormalizeDbText(record.RecordCode) != originalRecordCode)
+                    EnsureNoLinkedResubmissions(connection, transaction, originalRecordCode);
             }
             var now = DateTime.Now.ToString("O", CultureInfo.InvariantCulture);
             var savedRecordCode = NormalizeDbText(record.RecordCode);
@@ -1922,6 +2086,7 @@ LIMIT 1;";
                 updateCommand.CommandText = @"
 UPDATE Records
 SET RecordCode = $recordCode,
+    SenderId = $senderId,
     ReceivedDate = $receivedDate,
     ReceiveSource = $receiveSource,
     ReceiverName = $receiverName,
@@ -1944,6 +2109,7 @@ SET RecordCode = $recordCode,
     UpdatedAt = $updatedAt
 WHERE Id = $recordId;";
                 updateCommand.Parameters.AddWithValue("$recordId", recordId.Value);
+                updateCommand.Parameters.AddWithValue("$senderId", ResolveSenderId(connection, transaction, record));
                 AddRecordFormParameters(updateCommand, record, now);
                 updateCommand.ExecuteNonQuery();
                 ReplaceAttachments(connection, transaction, recordId.Value, record.Attachments);
@@ -1952,6 +2118,8 @@ WHERE Id = $recordId;";
             else
             {
                 EnsureCanCreateRecords();
+                var originalId = ValidateResubmission(connection, transaction, record);
+                var senderId = ResolveSenderId(connection, transaction, record);
                 savedRecordCode = GenerateNextRecordCode(connection, transaction, DateTime.Today.Year);
                 record.RecordCode = savedRecordCode;
                 using var insertCommand = connection.CreateCommand();
@@ -1961,20 +2129,24 @@ INSERT INTO Records (
     RecordCode, ReceivedDate, ReceiveSource, ReceiverName, SenderName, SenderPhone, ContactAddress,
     AreaName, IncidentAddress, Content, CaseType, ContentGroup, Field, RelatedPerson,
     ExpectedHandlingMethod, SenderExpectedHandlingMethod, SeverityLevel, ExpectedResultDate, Status, ProcessorName,
-    Note, AdditionalNote, CreatedAt, UpdatedAt)
+    Note, AdditionalNote, CreatedAt, UpdatedAt, SenderId, OriginalRecordCode, ResubmissionReason)
 VALUES (
     $recordCode, $receivedDate, $receiveSource, $receiverName, $senderName, $senderPhone, $contactAddress,
     $areaName, $incidentAddress, $content, $caseType, $contentGroup, $field, $relatedPerson,
     $method, $senderMethod, $severity, $expectedDate, $status, $processor,
-    $note, $additionalNote, $createdAt, $updatedAt);
+    $note, $additionalNote, $createdAt, $updatedAt, $senderId, $originalCode, $resubmissionReason);
 SELECT last_insert_rowid();";
                 AddRecordFormParameters(insertCommand, record, now);
-                insertCommand.Parameters.AddWithValue("$status", "Mới tiếp nhận");
+                insertCommand.Parameters.AddWithValue("$status", originalId.HasValue ? RecordStatuses.ResubmittedResolved : "Mới tiếp nhận");
+                insertCommand.Parameters.AddWithValue("$senderId", senderId);
+                insertCommand.Parameters.AddWithValue("$originalCode", NormalizeDbText(record.OriginalRecordCode));
+                insertCommand.Parameters.AddWithValue("$resubmissionReason", NormalizeDbText(record.ResubmissionReason));
                 insertCommand.Parameters.AddWithValue("$processor", AuthContext.IsOfficer ? AuthContext.CurrentDisplayName : NormalizeDbText(record.ReceiverName));
                 insertCommand.Parameters.AddWithValue("$createdAt", now);
                 var insertedId = Convert.ToInt32(insertCommand.ExecuteScalar(), CultureInfo.InvariantCulture);
                 ReplaceAttachments(connection, transaction, insertedId, record.Attachments);
-                WriteDatabaseLog(connection, transaction, "Hồ sơ", "Thêm", savedRecordCode, $"Thêm mới hồ sơ {savedRecordCode}.");
+                WriteDatabaseLog(connection, transaction, "Hồ sơ", "Thêm", savedRecordCode,
+                    originalId.HasValue ? $"Lưu hồ sơ gửi lại {savedRecordCode}, tham chiếu {record.OriginalRecordCode}; không xác minh lại." : $"Thêm mới hồ sơ {savedRecordCode}.");
             }
 
             transaction.Commit();
@@ -1997,6 +2169,7 @@ SELECT last_insert_rowid();";
 
             using var connection = OpenConnection();
             using var transaction = connection.BeginTransaction();
+            EnsureNoLinkedResubmissions(connection, transaction, recordCode);
             using var deleteRecordCommand = connection.CreateCommand();
             deleteRecordCommand.Transaction = transaction;
             deleteRecordCommand.CommandText = @"
@@ -2047,6 +2220,7 @@ FROM Records WHERE DeletedAt <> '' ORDER BY DeletedAt DESC, Id DESC;";
 
             using var connection = OpenConnection();
             using var transaction = connection.BeginTransaction();
+            EnsureNoLinkedResubmissions(connection, transaction, recordCode);
             using var select = connection.CreateCommand();
             select.Transaction = transaction;
             select.CommandText = "SELECT Id FROM Records WHERE RecordCode = $code AND DeletedAt <> '' AND DeletionBatchId = $batch;";
@@ -2315,6 +2489,10 @@ WHERE RecordCode = $code AND DeletedAt <> '' AND DeletionBatchId = $batch;";
                 ExpectedResultDate = FormatDate(reader.GetString(18)),
                 Note = reader.GetString(19),
                 AdditionalNote = reader.GetString(20),
+                SenderId = reader.GetString(21),
+                OriginalRecordCode = reader.GetString(22),
+                ResubmissionReason = reader.GetString(23),
+                Status = reader.GetString(24),
                 Attachments = GetAttachments(connection, recordId)
             };
         }
@@ -2326,7 +2504,7 @@ WHERE RecordCode = $code AND DeletedAt <> '' AND DeletionBatchId = $batch;";
             command.CommandText = @"
 SELECT Id, RecordCode, ReceivedDate, ReceiveSource, ReceiverName, SenderName, SenderPhone, ContactAddress,
        AreaName, IncidentAddress, Content, CaseType, ContentGroup, Field, RelatedPerson,
-       ExpectedHandlingMethod, SenderExpectedHandlingMethod, SeverityLevel, ExpectedResultDate, Note, AdditionalNote
+       ExpectedHandlingMethod, SenderExpectedHandlingMethod, SeverityLevel, ExpectedResultDate, Note, AdditionalNote, SenderId, OriginalRecordCode, ResubmissionReason, Status
 FROM (SELECT * FROM Records WHERE DeletedAt = '') AS Records
 WHERE Id = $recordId
 LIMIT 1;";
@@ -2345,7 +2523,7 @@ LIMIT 1;";
             using var command = connection.CreateCommand();
             var conditions = new List<string>
             {
-                string.IsNullOrWhiteSpace(recordCode) ? "Status <> 'Đã giải quyết'" : "RecordCode = $recordCode"
+                string.IsNullOrWhiteSpace(recordCode) ? "Status NOT IN ('Đã giải quyết', 'Đã giải quyết — hồ sơ gửi lại')" : "RecordCode = $recordCode"
             };
             ApplyUserRecordScope(command, conditions);
             command.CommandText = $@"
@@ -2448,6 +2626,17 @@ LIMIT 1;";
             }
 
             EnsureCanEditRecord(connection, transaction, recordId.Value);
+            using (var check = connection.CreateCommand())
+            {
+                check.Transaction = transaction;
+                check.CommandText = "SELECT OriginalRecordCode FROM Records WHERE Id = $id;";
+                check.Parameters.AddWithValue("$id", recordId.Value);
+                if (!string.IsNullOrEmpty(Convert.ToString(check.ExecuteScalar())))
+                    throw new InvalidOperationException("Hồ sơ gửi lại đã tham chiếu kết quả giải quyết; không được đưa vào xác minh lại.");
+            }
+            if (status == RecordStatuses.ResubmittedResolved)
+                throw new InvalidOperationException("Chỉ có thể đánh dấu hồ sơ gửi lại khi tạo hồ sơ và liên kết hồ sơ đã giải quyết.");
+            if (status != "Đã giải quyết") EnsureNoLinkedResubmissions(connection, transaction, recordCode);
             EnsureCanUpdateProcessingStatus(status);
 
             using var updateCommand = connection.CreateCommand();
@@ -2567,7 +2756,7 @@ WHERE Id = $recordId;";
             using var connection = OpenConnection();
             var result = new List<ProcessingQueueRecord>();
             using var command = connection.CreateCommand();
-            var conditions = new List<string> { "Status <> 'Đã giải quyết'" };
+            var conditions = new List<string> { "Status NOT IN ('Đã giải quyết', 'Đã giải quyết — hồ sơ gửi lại')" };
             ApplyUserRecordScope(command, conditions);
             AddProcessingCardFilter(command, conditions, cardFilterKey);
 
@@ -2660,7 +2849,7 @@ LIMIT $take OFFSET $skip;";
 
             using var connection = OpenConnection();
             using var command = connection.CreateCommand();
-            var conditions = new List<string> { "Status <> 'Đã giải quyết'" };
+            var conditions = new List<string> { "Status NOT IN ('Đã giải quyết', 'Đã giải quyết — hồ sơ gửi lại')" };
             ApplyUserRecordScope(command, conditions);
             AddProcessingCardFilter(command, conditions, cardFilterKey);
 
@@ -3055,6 +3244,8 @@ LIMIT $take;";
         {
             var connection = new SqliteConnection(_connectionString);
             connection.Open();
+            connection.CreateFunction<string, string>("normalize_sender", NormalizeSenderText, isDeterministic: true);
+            connection.CreateFunction<string, string>("normalize_phone", NormalizeSenderPhone, isDeterministic: true);
             return connection;
         }
 
@@ -3240,8 +3431,18 @@ CREATE TABLE IF NOT EXISTS Users (
             EnsureRecordTrashSchema(connection);
         }
 
+        private static void EnsureSenderRecordSchema(SqliteConnection connection)
+        {
+            TryAddColumn(connection, "Records", "SenderId", "TEXT NOT NULL DEFAULT ''");
+            TryAddColumn(connection, "Records", "OriginalRecordCode", "TEXT NOT NULL DEFAULT ''");
+            TryAddColumn(connection, "Records", "ResubmissionReason", "TEXT NOT NULL DEFAULT ''");
+            ExecuteNonQuery(connection, "CREATE INDEX IF NOT EXISTS IX_Records_SenderId ON Records(SenderId);");
+            ExecuteNonQuery(connection, "CREATE INDEX IF NOT EXISTS IX_Records_OriginalRecordCode ON Records(OriginalRecordCode);");
+        }
+
         private static void EnsureRecordTrashSchema(SqliteConnection connection)
         {
+            EnsureSenderRecordSchema(connection);
             TryAddColumn(connection, "Records", "DeletedAt", "TEXT NOT NULL DEFAULT ''");
             TryAddColumn(connection, "Records", "DeletedBy", "TEXT NOT NULL DEFAULT ''");
             TryAddColumn(connection, "Records", "DeletionBatchId", "TEXT NOT NULL DEFAULT ''");
@@ -4777,7 +4978,7 @@ AreaName IN (
         private static int CountOpenProcessingRecords(SqliteConnection connection)
         {
             using var command = connection.CreateCommand();
-            command.CommandText = $"SELECT COUNT(*) FROM (SELECT * FROM Records WHERE DeletedAt = '') AS Records WHERE Status <> 'Đã giải quyết'{BuildUserRecordCondition(command)};";
+            command.CommandText = $"SELECT COUNT(*) FROM (SELECT * FROM Records WHERE DeletedAt = '') AS Records WHERE Status NOT IN ('Đã giải quyết', 'Đã giải quyết — hồ sơ gửi lại'){BuildUserRecordCondition(command)};";
             return Convert.ToInt32(command.ExecuteScalar(), CultureInfo.InvariantCulture);
         }
 
@@ -4787,7 +4988,7 @@ AreaName IN (
             command.CommandText = @"
 SELECT COUNT(*)
 FROM (SELECT * FROM Records WHERE DeletedAt = '') AS Records
-WHERE Status <> 'Đã giải quyết'
+WHERE Status NOT IN ('Đã giải quyết', 'Đã giải quyết — hồ sơ gửi lại')
   AND ExpectedResultDate <> ''
   AND ExpectedResultDate >= $today
   AND ExpectedResultDate <= $dueSoon" + BuildUserRecordCondition(command) + ";";
@@ -4802,7 +5003,7 @@ WHERE Status <> 'Đã giải quyết'
             command.CommandText = @"
 SELECT COUNT(*)
 FROM (SELECT * FROM Records WHERE DeletedAt = '') AS Records
-WHERE Status <> 'Đã giải quyết'
+WHERE Status NOT IN ('Đã giải quyết', 'Đã giải quyết — hồ sơ gửi lại')
   AND SeverityLevel IN ('Nghiêm trọng', 'Rất nghiêm trọng', 'Đặc biệt nghiêm trọng')" + BuildUserRecordCondition(command) + ";";
             return Convert.ToInt32(command.ExecuteScalar(), CultureInfo.InvariantCulture);
         }
@@ -4829,7 +5030,7 @@ WHERE Status <> 'Đã giải quyết'
             command.CommandText = @"
 SELECT COUNT(*)
 FROM (SELECT * FROM Records WHERE DeletedAt = '') AS Records
-WHERE Status <> 'Đã giải quyết'
+WHERE Status NOT IN ('Đã giải quyết', 'Đã giải quyết — hồ sơ gửi lại')
   AND ExpectedResultDate <> ''
   AND ExpectedResultDate < $today" + BuildUserRecordCondition(command) + ";";
             command.Parameters.AddWithValue("$today", DateTime.Today.ToString("O", CultureInfo.InvariantCulture));
@@ -5015,6 +5216,7 @@ WHERE Status <> 'Đã giải quyết'
 
         private static string GetStatusColor(string status)
         {
+            if (status == RecordStatuses.ResubmittedResolved) return "#1FA24A";
             return status switch
             {
                 "Đã giải quyết" => "#24A148",

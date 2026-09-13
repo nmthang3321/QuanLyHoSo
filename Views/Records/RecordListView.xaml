@@ -461,12 +461,13 @@
                                     <DataTemplate>
                                         <Border Background="{Binding Status, Converter={StaticResource StatusToBrushConverter}}"
                                                 CornerRadius="4"
-                                                Height="22"
+                                                MinHeight="22"
                                                 Padding="7,1"
                                                 VerticalAlignment="Center"
                                                 HorizontalAlignment="Left">
                                             <TextBlock Text="{Binding Status}"
                                                        FontSize="12"
+                                                       MaxWidth="210" TextWrapping="Wrap"
                                                        FontWeight="SemiBold"
                                                        Foreground="{Binding Status, Converter={StaticResource StatusToBrushConverter}, ConverterParameter=Foreground}" />
                                         </Border>
@@ -736,6 +737,32 @@
                                     </StackPanel>
                                 </Border>
                             </Grid>
+
+                            <Border Background="#F8FAFD" BorderBrush="{StaticResource LineBrush}" BorderThickness="1"
+                                    CornerRadius="6" Padding="12" Margin="0,0,0,12">
+                                <StackPanel>
+                                    <TextBlock Text="{Binding SelectedRecordDetail.Status}" FontWeight="Bold" />
+                                    <TextBlock Text="{Binding SelectedRecordDetail.Relationship}" Margin="0,6,0,0" />
+                                    <TextBlock Text="{Binding SelectedRecordDetail.ResubmissionReason}" TextWrapping="Wrap" Margin="0,6,0,12" />
+                                    <TextBlock Text="Hồ sơ gốc và các lần gửi lại" Style="{StaticResource SubsectionTitleText}" />
+                                    <ItemsControl ItemsSource="{Binding SelectedRecordDetail.SenderHistory}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <StackPanel Margin="0,0,0,10">
+                                                    <Button Content="{Binding RecordCode}" HorizontalAlignment="Left"
+                                                            Command="{Binding DataContext.OpenSenderRecordCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                            CommandParameter="{Binding RecordCode}" />
+                                                    <TextBlock Text="{Binding ReceivedDate}" Margin="0,4,0,0" />
+                                                    <TextBlock Text="{Binding CaseType}" />
+                                                    <TextBlock Text="{Binding Status}" TextWrapping="Wrap" />
+                                                    <TextBlock Text="{Binding Relationship}" />
+                                                    <TextBlock Text="{Binding ResolutionSummary}" TextWrapping="Wrap" Margin="0,4,0,0" />
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </Border>
 
                             <Border Background="#F8FAFD"
                                     BorderBrush="{StaticResource LineBrush}"

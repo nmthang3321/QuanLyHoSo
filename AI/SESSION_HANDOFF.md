@@ -16,6 +16,28 @@ Routing chinh:
 - Infra/DB/build/LAN: `AI/infra/*.md`
 - Automated tests: `AI/infra/TESTING.md`
 
+## Điều chỉnh 2026-09-13 - Nhóm hồ sơ trong nút Xem
+
+- Chi tiết danh sách chỉ hiển thị hồ sơ gốc và các lần gửi lại liên kết cùng gốc. Hồ sơ tiếp nhận mới độc lập có nhóm riêng, kể cả cùng người gửi.
+- Popup nhập vẫn tra toàn bộ lịch sử để cán bộ chọn đúng hồ sơ gốc; không tự gộp hồ sơ mới.
+- Verify mới: `run-all.ps1 -IncludeUI` pass 75 ca (40 unit/ViewModel + 34 integration + 1 UI smoke).
+
+## Điều chỉnh 2026-09-13 - Popup đối chiếu
+
+- Đã đổi đối chiếu từ Window sang popup overlay ngay trong trang nhập, không dùng ShowDialog.
+- Tự chọn hồ sơ gốc đủ điều kiện; nút gửi lại có binding command và lý do rõ khi hồ sơ chưa giải quyết/khác vụ việc/chính là hồ sơ gửi lại. Hủy giữ form, lưu thành công đóng popup, lỗi giữ popup.
+- `run-all.ps1 -IncludeUI` pass 74 ca: 40 unit/ViewModel + 33 integration + 1 UI smoke; harness render WPF kiểm tra binding, chọn hồ sơ và lưu bằng service giả. Chi tiết `AI/features/RECORD_RESUBMISSION.md`.
+
+## Snapshot 2026-09-13 - Hồ sơ gửi lại
+
+- Đã triển khai phương án người dùng duyệt: nhập mới đối chiếu lịch sử người gửi không giới hạn ngày; cán bộ chọn lưu như hồ sơ mới hoặc gửi lại hồ sơ đã giải quyết, bắt buộc ghi lý do.
+- Hồ sơ gửi lại giữ mã/ngày nhận/nội dung/tài liệu riêng, trạng thái `Đã giải quyết — hồ sơ gửi lại`, liên kết hồ sơ gốc; không vào hàng chờ, không tăng giải quyết/KPI, không tạo lịch sử xác minh giả. Có lịch sử người gửi và liên kết xem từng hồ sơ trong chi tiết danh sách.
+- Có chuẩn hóa tên/điện thoại và SenderId do server xác định; tên đơn lẻ không đủ nhận diện. Chưa có chức năng hợp nhất người gửi khi thay tên/số điện thoại.
+- Schema thêm 3 cột metadata và 2 index, migration lặp lại an toàn. Client/server phải cập nhật cùng nhau; route mới `records/sender-history`, `records/save-resubmission`.
+- Server bảo vệ liên kết khi sửa/xóa/mở lại; hồ sơ gốc còn tham chiếu không được xóa/đổi mã/đổi người gửi hoặc vụ việc/mở lại xử lý.
+- Verify mới: Release solution build pass; `run-all.ps1 -IncludeUI` pass 71 ca (37 unit/ViewModel + 33 integration + 1 UI smoke); copied legacy DB migration và `PRAGMA quick_check = ok`; render dialog/detail bằng dữ liệu tổng hợp. UI smoke chỉ bảo vệ startup/login; chưa tự động click-through luồng mới có đăng nhập.
+- Chi tiết: `AI/features/RECORD_RESUBMISSION.md`; test inventory: `tests/TEST_MATRIX.md`.
+
 ## Snapshot 2026-09-13 - Automated regression tests
 
 - Da them 3 test projects vao solution, tach biet trong `tests/`: UnitTests, IntegrationTests, UITests. Framework: xUnit, Moq, Coverlet, FlaUI UIA3; test projects target .NET 8, app target .NET 5 khong doi.

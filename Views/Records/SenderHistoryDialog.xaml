@@ -1,0 +1,44 @@
+<UserControl x:Class="QuanLyHoSo.Views.Records.SenderHistoryDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        KeyboardNavigation.TabNavigation="Cycle" Loaded="OnLoaded">
+    <Grid Background="White">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/><RowDefinition Height="2*"/>
+            <RowDefinition Height="2*"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        <TextBlock Text="Chọn hồ sơ trước để đối chiếu. Chỉ đánh dấu gửi lại khi cùng vụ việc đã giải quyết và không có tình tiết mới."
+                   TextWrapping="Wrap" Margin="0,0,0,12"/>
+        <DataGrid x:Name="HistoryGrid" Grid.Row="1" IsReadOnly="True" AutoGenerateColumns="False"
+                  SelectionMode="Single" SelectionUnit="FullRow"
+                  ItemsSource="{Binding SenderRecords}" SelectedItem="{Binding SelectedSenderRecord, Mode=TwoWay}">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Mã hồ sơ" Binding="{Binding RecordCode}" Width="140"/>
+                <DataGridTextColumn Header="Ngày nhận" Binding="{Binding ReceivedDate}" Width="100"/>
+                <DataGridTextColumn Header="Loại vụ việc" Binding="{Binding CaseType}" Width="120"/>
+                <DataGridTextColumn Header="Địa bàn" Binding="{Binding AreaName}" Width="180"/>
+                <DataGridTextColumn Header="Trạng thái" Binding="{Binding Status}" Width="220"/>
+            </DataGrid.Columns>
+        </DataGrid>
+        <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" Margin="0,12">
+            <StackPanel DataContext="{Binding SelectedItem, ElementName=HistoryGrid}">
+                <TextBlock Text="{Binding Relationship}" FontWeight="Bold"/>
+                <TextBlock Text="Nội dung hồ sơ trước" FontWeight="Bold" Margin="0,8,0,4"/>
+                <TextBlock Text="{Binding Content}" TextWrapping="Wrap"/>
+                <TextBlock Text="Lịch sử / kết quả xử lý" FontWeight="Bold" Margin="0,12,0,4"/>
+                <TextBlock Text="{Binding ResolutionSummary}" TextWrapping="Wrap"/>
+            </StackPanel>
+        </ScrollViewer>
+        <StackPanel Grid.Row="3">
+            <TextBlock Text="{Binding ResubmissionAvailability}" TextWrapping="Wrap" Foreground="#075CE8" Margin="0,0,0,8"/>
+            <TextBlock Text="Lý do xác nhận gửi lại (bắt buộc khi liên kết):"/>
+            <TextBox x:Name="ReasonBox" Text="{Binding ResubmissionReason, UpdateSourceTrigger=PropertyChanged}" MinHeight="52" TextWrapping="Wrap" AcceptsReturn="True" Margin="0,6,0,12"/>
+            <TextBlock Text="{Binding SenderHistoryError}" Foreground="#D42D16" TextWrapping="Wrap" Margin="0,0,0,8"/>
+        </StackPanel>
+        <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Content="Hủy lưu" Command="{Binding CloseSenderHistoryCommand}" Padding="14,8" Margin="0,0,8,0"/>
+            <Button Content="Lưu và xử lý như hồ sơ mới" Command="{Binding SaveAsNewRecordCommand}" Padding="14,8" Margin="0,0,8,0"/>
+            <Button x:Name="LinkButton" Content="Lưu là hồ sơ gửi lại" Command="{Binding SaveResubmissionCommand}" Padding="14,8"/>
+        </StackPanel>
+    </Grid>
+</UserControl>

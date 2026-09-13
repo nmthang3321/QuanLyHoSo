@@ -49,6 +49,7 @@ Session handoff nam tai `AI/SESSION_HANDOFF.md`. Context AI chi dung cac file tr
 
 - Area selector: `AI/features/AREA_SELECTOR.md`
 - Attachments: `AI/features/ATTACHMENTS.md`
+- Hồ sơ gửi lại / lịch sử người gửi: `AI/features/RECORD_RESUBMISSION.md`
 - Thung rac / khoi phuc ho so: `AI/features/RECORD_TRASH.md`
 - Audit/system log: `AI/features/AUDIT_LOG.md`
 - Backup/restore: `AI/features/BACKUP_RESTORE.md`
