@@ -184,10 +184,20 @@
                                                        VerticalAlignment="Center" />
                                         </Border>
                                         <StackPanel Grid.Column="1">
-                                            <TextBlock Text="{Binding Title}"
+                                            <DockPanel LastChildFill="False">
+                                                <Button DockPanel.Dock="Right" Style="{StaticResource MetricInfoButton}">
+                                                    <Button.ToolTip>
+                                                        <ToolTip Placement="Bottom">
+                                                            <TextBlock Width="320" TextWrapping="Wrap"
+                                                                       Text="{Binding Converter={StaticResource MetricDescriptionConverter}, ConverterParameter=Staff}" />
+                                                        </ToolTip>
+                                                    </Button.ToolTip>
+                                                </Button>
+                                                <TextBlock Text="{Binding Title}"
                                                        FontSize="13"
                                                        FontWeight="SemiBold"
-                                                       Foreground="{Binding AccentColor}" />
+                                                       Foreground="{Binding AccentColor}" TextWrapping="Wrap" />
+                                            </DockPanel>
                                             <TextBlock Text="{Binding Value}"
                                                        FontSize="28"
                                                        FontWeight="Bold"
@@ -277,7 +287,21 @@
                                 <DataGridTextColumn Header="Hoàn thành" Binding="{Binding CompletedCount}" Width="0.75*" />
                                 <DataGridTextColumn Header="Sắp hạn" Binding="{Binding DueSoonCount}" Width="0.65*" />
                                 <DataGridTextColumn Header="Quá hạn" Binding="{Binding OverdueCount}" Width="0.65*" />
-                                <DataGridTemplateColumn Header="Tỷ lệ đúng hạn" Width="0.9*">
+                                <DataGridTemplateColumn Header="Tỷ lệ đúng hạn" Width="0.9*" MinWidth="145">
+                                    <DataGridTemplateColumn.HeaderTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                <TextBlock Text="Tỷ lệ đúng hạn" TextWrapping="NoWrap" VerticalAlignment="Center" />
+                                                <Button Style="{StaticResource MetricInfoButton}" Width="18" Height="18" Margin="4,0,0,0" AutomationProperties.Name="Giải thích Tỷ lệ đúng hạn">
+                                                    <Button.ToolTip>
+                                                        <ToolTip Placement="Bottom">
+                                                            <TextBlock Width="320" TextWrapping="Wrap" Text="Tỷ lệ đúng hạn = số hồ sơ đã giải quyết đúng hạn / tổng số hồ sơ có ngày dự kiến trả kết quả × 100%, làm tròn đến phần trăm nguyên. Đúng hạn khi thời điểm cập nhật giải quyết không muộn hơn ngày dự kiến trả kết quả. Mẫu số gồm cả hồ sơ chưa giải quyết. Nếu chưa có hồ sơ theo dõi hạn, hệ thống tính 100%. Thống kê theo ngày tiếp nhận trong kỳ đang chọn, không tính hồ sơ gửi lại và hồ sơ trong thùng rác." />
+                                                        </ToolTip>
+                                                    </Button.ToolTip>
+                                                </Button>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.HeaderTemplate>
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
                                             <TextBlock Text="{Binding OnTimeRateText}"
@@ -288,6 +312,20 @@
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
                                 <DataGridTemplateColumn Header="KPI" Width="1.05*">
+                                    <DataGridTemplateColumn.HeaderTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                <TextBlock Text="KPI" TextWrapping="Wrap" MaxWidth="70" VerticalAlignment="Center" />
+                                                <Button Style="{StaticResource MetricInfoButton}" Width="18" Height="18" Margin="4,0,0,0" AutomationProperties.Name="Giải thích KPI">
+                                                    <Button.ToolTip>
+                                                        <ToolTip Placement="Bottom">
+                                                            <TextBlock Width="320" TextWrapping="Wrap" Text="KPI trong bảng hiện bằng tỷ lệ đúng hạn, giới hạn từ 0% đến 100%. Thanh tiến độ thể hiện tỷ lệ này. Chỉ tiêu KPI do lãnh đạo đặt chưa được dùng để tính cột này. Nếu chưa có hồ sơ theo dõi hạn, KPI được tính là 100%." />
+                                                        </ToolTip>
+                                                    </Button.ToolTip>
+                                                </Button>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.HeaderTemplate>
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
                                             <Grid>
@@ -310,6 +348,20 @@
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
                                 <DataGridTemplateColumn Header="Trạng thái" Width="1.0*">
+                                    <DataGridTemplateColumn.HeaderTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                <TextBlock Text="Trạng thái" TextWrapping="Wrap" MaxWidth="70" VerticalAlignment="Center" />
+                                                <Button Style="{StaticResource MetricInfoButton}" Width="18" Height="18" Margin="4,0,0,0" AutomationProperties.Name="Giải thích Trạng thái">
+                                                    <Button.ToolTip>
+                                                        <ToolTip Placement="Bottom">
+                                                            <TextBlock Width="320" TextWrapping="Wrap" Text="Trạng thái đánh giá theo tỷ lệ đúng hạn đã làm tròn: từ 90% trở lên là Tốt; từ 80% đến dưới 90% là Khá; dưới 80% là Cần cải thiện. Đây là đánh giá hiệu suất cán bộ trong kỳ đang chọn. Nếu chưa có hồ sơ theo dõi hạn, tỷ lệ 100% sẽ được đánh giá Tốt." />
+                                                        </ToolTip>
+                                                    </Button.ToolTip>
+                                                </Button>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.HeaderTemplate>
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
                                             <Border Background="{Binding KpiStatusBackground}"

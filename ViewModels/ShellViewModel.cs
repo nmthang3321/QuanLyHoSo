@@ -269,7 +269,7 @@ namespace QuanLyHoSo.ViewModels
             RaiseNavigationCommandStates();
             UpdateStaffNotificationBadge();
             _notificationBadgeRefreshTimer.Start();
-            NavigateTo(AuthContext.IsOfficer ? "RecordList" : "Dashboard");
+            NavigateTo("Dashboard");
         }
 
         private void SignOut()

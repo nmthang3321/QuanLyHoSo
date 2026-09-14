@@ -21,4 +21,4 @@
 | Full authenticated workflows | High | UI | Login, navigation, create/edit/search/status/logout | Gap; interactive / P1 |
 | File failure handling | High | Integration | Locked/read-only/invalid/long paths | Partial (invalid backup path) / P1 |
 | Concurrency | High | Integration | Double save/delete, simultaneous reads/writes, shutdown during save | Gap / P1 |
-| Document generation | Medium | Integration | Correct templates/content/Unicode/failure paths | Gap / P2 |
+| Document generation | Medium | Integration | All 3 templates: transfer number/dates, sender/content, highlights removed, repeat generation skipped; required fields rollback; LAN details serialization | Partial / P2; authenticated popup and file locks remain gaps |

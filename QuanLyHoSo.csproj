@@ -33,6 +33,7 @@
     <Compile Remove="Models\AreaSelectionModels.cs" />
     <Compile Remove="Models\DashboardModels.cs" />
     <Compile Remove="Models\RecordModels.cs" />
+    <Compile Remove="Models\InitialResultDocumentDetails.cs" />
     <Compile Remove="Models\SettingsModels.cs" />
     <Compile Remove="Models\StaffTrackingModels.cs" />
     <Compile Remove="QuanLyHoSo.Core\**\*.cs" />

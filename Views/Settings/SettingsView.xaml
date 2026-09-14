@@ -682,15 +682,6 @@
                                        Margin="0,4,0,0" />
                         </StackPanel>
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top">
-                            <Button Style="{StaticResource SecondaryButton}"
-                                    Command="{Binding RefreshSystemLogsCommand}"
-                                    Padding="18,0"
-                                    Margin="0,0,10,0">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="&#xE72C;" FontFamily="Segoe MDL2 Assets" Foreground="{StaticResource PrimaryBrush}" Margin="0,0,8,0" />
-                                    <TextBlock Text="Làm mới" />
-                                </StackPanel>
-                            </Button>
                             <Button Style="{StaticResource PopupIconButton}"
                                     Foreground="{StaticResource MutedTextBrush}"
                                     Command="{Binding CloseSystemLogDialogCommand}"

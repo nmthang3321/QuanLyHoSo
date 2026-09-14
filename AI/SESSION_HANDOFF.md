@@ -2,6 +2,8 @@
 
 Cap nhat: 2026-09-13
 
+Kiểm tra tổng kết phiên 2026-09-14: Release solution build và `tests/Scripts/run-all.ps1 -IncludeUI` pass 80 ca (40 unit + 39 integration + 1 UI smoke) trước khi commit toàn bộ thay đổi.
+
 File nay nam trong `AI/` de gom toan bo context cho AI vao mot cho. Khi bat dau analyse:
 
 1. Doc `AI/INDEX.md`.
@@ -15,6 +17,49 @@ Routing chinh:
 - Chuc nang dung chung: `AI/features/*.md`
 - Infra/DB/build/LAN: `AI/infra/*.md`
 - Automated tests: `AI/infra/TESTING.md`
+
+## Điều chỉnh 2026-09-14 - Thông tin phiếu chuyển đơn
+
+- Bước Kết quả xử lý ban đầu -> Cập nhật -> đồng ý tạo tài liệu: mở overlay nhập Phiếu chuyển đơn số, Ngày phiếu chuyển đơn, Chuyển đơn tố cáo đề ngày. Cả ba bắt buộc; Hủy giữ form, Xác nhận mới lưu/tạo phiếu còn thiếu, lỗi giữ popup.
+- Popup thêm xem trước chỉ đọc: Đơn ghi tên (SenderName), Nguồn đơn (ReceiveSource), Tóm tắt nội dung (Content), Nhận xét (Note, dùng ProcessingNote nếu đang nhập ghi chú mới), Đề xuất (AdditionalNote). Tải từ hồ sơ qua service; nội dung dài cuộn riêng, nút Xác nhận/Hủy luôn hiện dưới popup. Đã render/xem ảnh popup và chạy lại 5 ca smoke pass.
+- Phần xem trước bổ sung Địa chỉ liên hệ (ContactAddress) chỉ đọc, đúng địa chỉ người gửi sẽ được điền vào phiếu.
+- `InitialResultDocumentDetails` truyền qua service/LAN tới generator. Ánh xạ vùng tô vàng của cả 3 mẫu đã sửa theo số phiếu và 2 ngày riêng; giữ mẫu gốc, kiểu chữ của run và dữ liệu hồ sơ khác.
+- Client/server phải dùng bản mới cùng nhau. Không thay schema. Thông tin nhập chỉ dùng cho lần tạo tài liệu, chưa lưu riêng thành trường hồ sơ.
+- Verify: Debug client/server build riêng và Release solution build pass; full noninteractive suite 79 ca pass (40 unit + 39 integration). Thêm 5 ca kiểm thử tài liệu/validation/LAN serialization; render và xem ảnh popup WPF bằng dữ liệu tổng hợp. Chưa click-through luồng có đăng nhập.
+
+## Điều chỉnh 2026-09-14 - Tên bước 6
+
+- Thêm tooltip hướng dẫn tiếng Việt cho cả 7 icon quy trình trong `RecordProcessingView.xaml`, theo StepNumber; mô tả thao tác và làm rõ bước 5 hiện dùng trạng thái Đang chờ bổ sung tài liệu.
+- Tooltip chỉ gắn vào vòng tròn icon, không gắn vào Grid chứa dây nối; glyph không nhận hit-test để rê ngay trên hình vẫn hiện tooltip.
+- Quy trình trong trang chi tiết phân loại & xử lý: bước 6 hiển thị `Chờ kết quả` thay cho `Kết thúc`, bằng XAML trigger theo StepNumber. Không thay khóa tiêu đề lịch sử đã lưu hay ánh xạ trạng thái.
+- Sửa lỗi mã hóa nhãn bước 6 mất dấu, đặt font Segoe UI. Cơ quan chuyển đến có dấu `*` đỏ khi chọn Chuyển cơ quan khác; validation form hiện có chặn lưu nếu chưa chọn cơ quan.
+- Verify sau sửa: Debug client build và Release solution build pass; 5 ca smoke pass.
+
+## Điều chỉnh 2026-09-14 - Thanh nút form cố định
+
+- `RecordInputView.xaml`: chuyển thanh Lưu/Hủy bỏ/Xóa ra ngoài vùng cuộn, cố định ở cạnh dưới trang; áp dụng cả nhập mới và cập nhật hồ sơ dùng chung form.
+- Nội dung cuộn trong hàng riêng; overlay địa bàn và đối chiếu phủ cả hai hàng. Thanh nút bị vô hiệu hóa khi popup đối chiếu mở.
+- Verify: Debug client/server build riêng, Release solution build và 5 ca smoke pass. Chưa kiểm tra bố cục trực tiếp trong ứng dụng.
+
+## Điều chỉnh 2026-09-14 - Bắt buộc Thông tin chung
+
+- Trang nhập dữ liệu: toàn bộ trường trong mục Thông tin chung có dấu `*` đỏ và được kiểm tra trước khi lưu. Bổ sung bắt buộc Số điện thoại, Địa chỉ liên hệ, Địa chỉ xảy ra vụ việc và kiểm tra số hồ sơ tự sinh.
+- Giá trị rỗng/chỉ khoảng trắng bị chặn bằng thông báo liệt kê trường thiếu; áp dụng khi nhập mới và sửa trong form. Các mục khác giữ nguyên quy tắc hiện tại.
+- Verify: Debug client/server build riêng, Release solution build và 5 ca smoke pass. Chưa kiểm tra thao tác form trực tiếp.
+
+## Điều chỉnh 2026-09-14 - Chú thích card thống kê
+
+- Lãnh đạo có icon Xem chi tiết xử lý (chỉ xem) ở bảng hồ sơ thường, dùng luồng mở từ danh sách hiện có. Form xử lý vẫn bị vô hiệu hóa theo CanUpdateProcessing, lệnh lưu và server vẫn chặn sửa của Leader. Thêm kiểm thử quyền icon/không sửa/không xóa; Release solution build và 6 ca smoke pass.
+- Điều hướng đăng nhập trong ShellViewModel.CompleteSignIn: mọi vai trò, gồm Officer, vào Dashboard trước theo yêu cầu mới nhất. Luồng đổi mật khẩu bắt buộc cũng gọi CompleteSignIn nên cùng quy tắc.
+- Double-click ô chữ trong bảng hồ sơ chọn toàn bộ nội dung ô. Card Việc cần xử lý thu vùng TextBox theo chữ; kiểm tra vị trí ký tự để chỉ hiện I-beam trên chữ, phần trắng hiện Hand và click mở chi tiết. Kéo chọn chữ vẫn được giữ khi con trỏ đi ra khoảng trắng.
+- Danh sách hồ sơ và card Việc cần xử lý: nội dung dùng TextBox chỉ đọc với style SelectableDisplayText, cho bôi đen và copy từng phần bằng Ctrl+C/menu chuột phải. DataGridCopyBehavior nhường Ctrl+C khi đang chọn chữ; template cột giữ ClipboardContentBinding/SortMemberPath. Focus ô chữ vẫn chọn/tô sáng hàng. Build và 5 ca smoke pass; chưa kiểm tra kéo chuột trực tiếp.
+- Danh sách hồ sơ chọn dòng bằng click: SelectionUnit FullRow/SelectionMode Single, tô nền xanh nhạt và chữ xanh giống bảng cán bộ. Checkbox chọn nhiều hồ sơ vẫn dùng IsSelected riêng của dữ liệu. Release solution build và 5 ca smoke pass.
+- Header Tỷ lệ đúng hạn không xuống dòng, cột có MinWidth 145; glyph icon info dùng FontWeight Normal trong style dùng chung.
+- Bảng danh sách cán bộ: thêm icon info cạnh header Tỷ lệ đúng hạn, KPI và Trạng thái. Tooltip giải thích mẫu số gồm cả hồ sơ chưa giải quyết có hạn, làm tròn phần trăm, mặc định 100% nếu không có hồ sơ theo dõi hạn; KPI bằng tỷ lệ này, trạng thái theo ngưỡng 90%/80%. Chỉ icon hiện tooltip, không đổi công thức. Verify: client build và 5 ca smoke pass.
+- Thêm icon info cạnh tiêu đề card ở Tổng quan, Phân loại & xử lý và Theo dõi cán bộ; rê chuột hiển thị giải thích tiếng Việt.
+- Nội dung bám cách đếm hiện tại, phân biệt trạng thái giữa các trang và số hồ sơ/số cán bộ theo vai trò. Chỉ bổ sung giao diện, không đổi truy vấn hay bộ lọc.
+- Dùng chung style `MetricInfoButton` trong `App.xaml` và `Presentation/Converters/MetricDescriptionConverter.cs`.
+- Verify: Debug client/server build output riêng và Release solution build pass; `tests/Scripts/run-smoke.ps1` pass 5 ca (1 unit + 4 integration). Chưa kiểm tra rê chuột trực tiếp trong phiên này.
 
 ## Điều chỉnh 2026-09-13 - Nhóm hồ sơ trong nút Xem
 

@@ -2340,10 +2340,10 @@ WHERE RecordCode = $code AND DeletedAt <> '' AND DeletionBatchId = $batch;";
             int recordId,
             string recordCode,
             DateTime processedAt,
-            IReadOnlyList<AttachmentDraft> attachments)
+            IReadOnlyList<AttachmentDraft> attachments, InitialResultDocumentDetails documentDetails = null)
         {
             var result = new List<AttachmentDraft>(attachments ?? Array.Empty<AttachmentDraft>());
-            foreach (var attachment in BuildInitialResultDocuments(connection, transaction, recordId, recordCode, processedAt.ToString("O", CultureInfo.InvariantCulture), result))
+            foreach (var attachment in BuildInitialResultDocuments(connection, transaction, recordId, recordCode, processedAt.ToString("O", CultureInfo.InvariantCulture), result, documentDetails))
             {
                 var existingIndex = result.FindIndex(item => string.Equals(item.FileName, attachment.FileName, StringComparison.OrdinalIgnoreCase));
                 if (existingIndex >= 0)
@@ -2367,16 +2367,17 @@ WHERE RecordCode = $code AND DeletedAt <> '' AND DeletionBatchId = $batch;";
             }
         }
 
-        private IReadOnlyList<AttachmentDraft> BuildInitialResultDocuments(SqliteConnection connection, SqliteTransaction transaction, int recordId, string recordCode, string processingDate, IReadOnlyList<AttachmentDraft> existingAttachments = null)
+        private IReadOnlyList<AttachmentDraft> BuildInitialResultDocuments(SqliteConnection connection, SqliteTransaction transaction, int recordId, string recordCode, string processingDate, IReadOnlyList<AttachmentDraft> existingAttachments = null, InitialResultDocumentDetails documentDetails = null)
         {
             try
             {
                 var record = ReadRecordFormById(connection, transaction, recordId);
-                return InitialResultDocumentGenerator.Generate(record, recordCode, processingDate, GetGeneratedDocumentsRoot(), existingAttachments);
+                return InitialResultDocumentGenerator.Generate(record, recordCode, processingDate, GetGeneratedDocumentsRoot(), existingAttachments, documentDetails);
             }
             catch (Exception ex)
             {
                 AppLogger.Error("Documents", "GenerateInitialResultDocuments", ex, "Failed to generate initial result Word documents.", recordCode);
+                if (documentDetails != null) throw;
                 return Array.Empty<AttachmentDraft>();
             }
         }
@@ -2592,7 +2593,7 @@ LIMIT 1;";
             };
         }
 
-        public void UpdateProcessingRecord(string recordCode, string status, DateTime processedAt, string processorName, string content, string note, string transferAreaName, IReadOnlyList<AttachmentDraft> attachments, bool generateInitialResultDocuments = false)
+        public void UpdateProcessingRecord(string recordCode, string status, DateTime processedAt, string processorName, string content, string note, string transferAreaName, IReadOnlyList<AttachmentDraft> attachments, bool generateInitialResultDocuments = false, InitialResultDocumentDetails documentDetails = null)
         {
             if (AppPathSettings.Current.IsClientMode)
             {
@@ -2606,7 +2607,8 @@ LIMIT 1;";
                     Note = note,
                     TransferAreaName = transferAreaName,
                     Attachments = attachments,
-                    GenerateInitialResultDocuments = generateInitialResultDocuments
+                    GenerateInitialResultDocuments = generateInitialResultDocuments,
+                    DocumentDetails = documentDetails
                 });
                 return;
             }
@@ -2638,6 +2640,11 @@ LIMIT 1;";
                 throw new InvalidOperationException("Chỉ có thể đánh dấu hồ sơ gửi lại khi tạo hồ sơ và liên kết hồ sơ đã giải quyết.");
             if (status != "Đã giải quyết") EnsureNoLinkedResubmissions(connection, transaction, recordCode);
             EnsureCanUpdateProcessingStatus(status);
+            if (generateInitialResultDocuments && GetProcessStepNumber(status) == 5)
+            {
+                var validation = documentDetails?.GetValidationMessage() ?? "Vui lòng nhập thông tin phiếu chuyển đơn trước khi tạo tài liệu.";
+                if (!string.IsNullOrEmpty(validation)) throw new InvalidOperationException(validation);
+            }
 
             using var updateCommand = connection.CreateCommand();
             updateCommand.Transaction = transaction;
@@ -2657,7 +2664,7 @@ WHERE Id = $recordId;";
             updateCommand.Parameters.AddWithValue("$updatedAt", processedAt.ToString("O", CultureInfo.InvariantCulture));
             updateCommand.ExecuteNonQuery();
             var attachmentsToSave = generateInitialResultDocuments && GetProcessStepNumber(status) == 5
-                ? MergeInitialResultDocuments(connection, transaction, recordId.Value, recordCode, processedAt, attachments)
+                ? MergeInitialResultDocuments(connection, transaction, recordId.Value, recordCode, processedAt, attachments, documentDetails)
                 : attachments;
             ReplaceAttachments(connection, transaction, recordId.Value, attachmentsToSave);
 

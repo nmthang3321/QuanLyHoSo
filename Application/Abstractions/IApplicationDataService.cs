@@ -58,7 +58,7 @@ namespace QuanLyHoSo.ApplicationServices.Abstractions
         bool PermanentlyDeleteRecord(string recordCode, string deletionBatchId);
         bool RestoreRecord(string recordCode, string deletionBatchId);
         ProcessingRecordDetail GetProcessingRecordDetail(string recordCode = null);
-        void UpdateProcessingRecord(string recordCode, string status, DateTime processedAt, string processorName, string content, string note, string transferAreaName, IReadOnlyList<AttachmentDraft> attachments, bool generateInitialResultDocuments = false);
+        void UpdateProcessingRecord(string recordCode, string status, DateTime processedAt, string processorName, string content, string note, string transferAreaName, IReadOnlyList<AttachmentDraft> attachments, bool generateInitialResultDocuments = false, InitialResultDocumentDetails documentDetails = null);
         IReadOnlyList<DashboardMetric> GetProcessingQueueMetrics();
         IReadOnlyList<ProcessingQueueRecord> GetProcessingQueueRecords(string searchText, string status, string areaName, string severityLevel, string cardFilterKey, int skip = 0, int take = 20);
         int CountProcessingQueueRecords(string searchText, string status, string areaName, string severityLevel, string cardFilterKey);

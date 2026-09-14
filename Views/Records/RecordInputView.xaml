@@ -40,6 +40,10 @@
         </Style>
     </UserControl.Resources>
     <Grid PreviewMouseDown="RootGrid_PreviewMouseDown">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
     <ScrollViewer x:Name="InputScrollViewer"
                   VerticalScrollBarVisibility="Auto"
                   ScrollChanged="InputScrollViewer_ScrollChanged">
@@ -124,11 +128,11 @@
                             <TextBox Text="{Binding SenderName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                         </StackPanel>
                         <StackPanel Grid.Row="1" Grid.Column="1" Margin="0,0,14,14">
-                            <TextBlock Text="Số điện thoại" Style="{StaticResource InputLabelText}" />
+                            <TextBlock Style="{StaticResource InputLabelText}"><Run Text="Số điện thoại" /><Run Text=" *" Foreground="#E11414" /></TextBlock>
                             <TextBox Text="{Binding SenderPhone, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                         </StackPanel>
                         <StackPanel Grid.Row="1" Grid.Column="2" Grid.ColumnSpan="2" Margin="0,0,0,14">
-                            <TextBlock Text="Địa chỉ liên hệ" Style="{StaticResource InputLabelText}" />
+                            <TextBlock Style="{StaticResource InputLabelText}"><Run Text="Địa chỉ liên hệ" /><Run Text=" *" Foreground="#E11414" /></TextBlock>
                             <TextBox Text="{Binding ContactAddress, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                         </StackPanel>
 
@@ -160,7 +164,7 @@
                             </Button>
                         </StackPanel>
                         <StackPanel Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="3" Margin="0,0,0,14">
-                            <TextBlock Text="Địa chỉ xảy ra vụ việc" Style="{StaticResource InputLabelText}" />
+                            <TextBlock Style="{StaticResource InputLabelText}"><Run Text="Địa chỉ xảy ra vụ việc" /><Run Text=" *" Foreground="#E11414" /></TextBlock>
                             <TextBox Text="{Binding IncidentAddress, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                         </StackPanel>
 
@@ -356,7 +360,22 @@
                 </Grid>
             </Border>
 
-            <Grid Margin="0,12,0,0">
+
+        </StackPanel>
+    </ScrollViewer>
+        <Border Grid.Row="1" Background="{StaticResource SurfaceBrush}"
+                BorderBrush="{StaticResource LineBrush}" BorderThickness="0,1,0,0"
+                Padding="0,12,0,0" Margin="0,12,0,0">
+            <Border.Style>
+                <Style TargetType="Border">
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsSenderHistoryOpen}" Value="True">
+                            <Setter Property="IsEnabled" Value="False" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Border.Style>
+            <Grid>
                 <Button MinWidth="118"
                         HorizontalAlignment="Left"
                         Command="{Binding DeleteCommand}">
@@ -391,9 +410,8 @@
                             Command="{Binding CancelCommand}" />
                 </StackPanel>
             </Grid>
-        </StackPanel>
-    </ScrollViewer>
-        <Canvas x:Name="AreaOverlayCanvas"
+        </Border>
+        <Canvas x:Name="AreaOverlayCanvas" Grid.RowSpan="2"
                 Background="Transparent"
                 IsHitTestVisible="False"
                 Panel.ZIndex="999">
@@ -433,7 +451,7 @@
                 </StackPanel>
             </Border>
         </Canvas>
-        <Grid Background="#9906164A" Panel.ZIndex="1000"
+        <Grid Grid.RowSpan="2" Background="#9906164A" Panel.ZIndex="1000"
               Visibility="{Binding IsSenderHistoryOpen, Converter={StaticResource BooleanToVisibilityConverter}}">
             <Grid.InputBindings>
                 <KeyBinding Key="Escape" Command="{Binding CloseSenderHistoryCommand}"/>

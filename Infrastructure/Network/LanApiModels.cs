@@ -165,6 +165,7 @@ namespace QuanLyHoSo.Infrastructure.Network
         public string TransferAreaName { get; set; }
         public IReadOnlyList<AttachmentDraft> Attachments { get; set; }
         public bool GenerateInitialResultDocuments { get; set; }
+        public InitialResultDocumentDetails DocumentDetails { get; set; }
     }
 
     public sealed class StaffActiveRecordsRequest : DateRangeRequest

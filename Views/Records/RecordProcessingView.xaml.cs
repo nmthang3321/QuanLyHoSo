@@ -21,6 +21,25 @@ namespace QuanLyHoSo.Views.Records
             InitializeComponent();
         }
 
+        private void SelectableTaskText_MouseMove(object sender, MouseEventArgs e)
+        {
+            if (sender is TextBox textBox)
+                textBox.Cursor = textBox.IsMouseCaptured || textBox.GetCharacterIndexFromPoint(e.GetPosition(textBox), false) >= 0
+                    ? Cursors.IBeam : Cursors.Hand;
+        }
+
+        private void SelectableTaskText_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (sender is TextBox textBox
+                && textBox.GetCharacterIndexFromPoint(e.GetPosition(textBox), false) < 0
+                && DataContext is RecordProcessingViewModel vm
+                && vm.ViewRecordCommand.CanExecute(textBox.DataContext))
+            {
+                e.Handled = true;
+                vm.ViewRecordCommand.Execute(textBox.DataContext);
+            }
+        }
+
         private void TransferAreaDropDownButton_Click(object sender, RoutedEventArgs e)
         {
             if (TransferAreaPanel.Visibility == Visibility.Visible)

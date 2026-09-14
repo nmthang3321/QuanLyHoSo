@@ -604,11 +604,15 @@ namespace QuanLyHoSo.ViewModels
         {
             var missingFields = new[]
             {
+                (Name: "Số hồ sơ / Số đơn", IsMissing: string.IsNullOrWhiteSpace(RecordCode)),
                 (Name: "Ngày tiếp nhận", IsMissing: !SelectedReceivedDate.HasValue),
                 (Name: "Nguồn tiếp nhận", IsMissing: string.IsNullOrWhiteSpace(ReceiveSource)),
                 (Name: "Người tiếp nhận", IsMissing: string.IsNullOrWhiteSpace(ReceiverName)),
                 (Name: "Người gửi đơn / Người tố giác", IsMissing: string.IsNullOrWhiteSpace(SenderName)),
+                (Name: "Số điện thoại", IsMissing: string.IsNullOrWhiteSpace(SenderPhone)),
+                (Name: "Địa chỉ liên hệ", IsMissing: string.IsNullOrWhiteSpace(ContactAddress)),
                 (Name: "Địa bàn (xã/phường/đặc khu)", IsMissing: string.IsNullOrWhiteSpace(AreaName)),
+                (Name: "Địa chỉ xảy ra vụ việc", IsMissing: string.IsNullOrWhiteSpace(IncidentAddress)),
                 (Name: "Nội dung đơn / Nội dung vụ việc", IsMissing: string.IsNullOrWhiteSpace(Content)),
                 (Name: "Loại vụ việc", IsMissing: string.IsNullOrWhiteSpace(CaseType)),
                 (Name: "Nhóm nội dung", IsMissing: string.IsNullOrWhiteSpace(ContentGroup)),

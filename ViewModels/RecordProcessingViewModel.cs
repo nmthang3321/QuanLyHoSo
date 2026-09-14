@@ -50,6 +50,12 @@ namespace QuanLyHoSo.ViewModels
         private string _selectedStatus;
         private bool _shouldReturnToPreviousPage;
         private bool _isProcessingUpdateBusy;
+        private bool _isDocumentDetailsOpen;
+        private string _documentTransferNumber;
+        private DateTime? _documentTransferDate;
+        private DateTime? _documentComplaintDate;
+        private string _documentDetailsError;
+        private RecordFormDraft _documentPreviewRecord;
         private int _totalPages = 1;
         private string _totalRecordsText;
 
@@ -100,6 +106,8 @@ namespace QuanLyHoSo.ViewModels
             CloseDetailCommand = new RelayCommand(CloseDetail);
             BackToQueueCommand = new RelayCommand(BackToQueue);
             SaveProcessingCommand = new RelayCommand(async () => await SaveProcessingAsync(), () => CanUpdateProcessing && !IsProcessingUpdateBusy);
+            ConfirmDocumentDetailsCommand = new RelayCommand(async () => await ConfirmDocumentDetailsAsync(), () => CanUpdateProcessing && !IsProcessingUpdateBusy);
+            CancelDocumentDetailsCommand = new RelayCommand(() => IsDocumentDetailsOpen = false, () => !IsProcessingUpdateBusy);
             RemoveAttachmentCommand = new RelayCommand(RemoveAttachment);
             OpenAttachmentCommand = new RelayCommand(OpenAttachment);
             DownloadAttachmentCommand = new RelayCommand(DownloadAttachment);
@@ -134,6 +142,14 @@ namespace QuanLyHoSo.ViewModels
         public ICommand CloseDetailCommand { get; }
         public ICommand BackToQueueCommand { get; }
         public ICommand SaveProcessingCommand { get; }
+        public ICommand ConfirmDocumentDetailsCommand { get; }
+        public ICommand CancelDocumentDetailsCommand { get; }
+        public bool IsDocumentDetailsOpen { get => _isDocumentDetailsOpen; private set => SetProperty(ref _isDocumentDetailsOpen, value); }
+        public string DocumentTransferNumber { get => _documentTransferNumber; set => SetProperty(ref _documentTransferNumber, value); }
+        public DateTime? DocumentTransferDate { get => _documentTransferDate; set => SetProperty(ref _documentTransferDate, value); }
+        public DateTime? DocumentComplaintDate { get => _documentComplaintDate; set => SetProperty(ref _documentComplaintDate, value); }
+        public string DocumentDetailsError { get => _documentDetailsError; private set => SetProperty(ref _documentDetailsError, value); }
+        public RecordFormDraft DocumentPreviewRecord { get => _documentPreviewRecord; private set => SetProperty(ref _documentPreviewRecord, value); }
         public ICommand RemoveAttachmentCommand { get; }
         public ICommand OpenAttachmentCommand { get; }
         public ICommand DownloadAttachmentCommand { get; }
@@ -190,6 +206,8 @@ namespace QuanLyHoSo.ViewModels
                 if (SetProperty(ref _isProcessingUpdateBusy, value))
                 {
                     (SaveProcessingCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                    (ConfirmDocumentDetailsCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                    (CancelDocumentDetailsCommand as RelayCommand)?.RaiseCanExecuteChanged();
                 }
             }
         }
@@ -525,6 +543,12 @@ namespace QuanLyHoSo.ViewModels
                 return;
             }
 
+            IsDocumentDetailsOpen = false;
+            DocumentTransferNumber = string.Empty;
+            DocumentTransferDate = null;
+            DocumentComplaintDate = null;
+            DocumentDetailsError = string.Empty;
+            DocumentPreviewRecord = null;
             SelectedProcessingDetail = _dataService.GetProcessingRecordDetail(recordCode);
             ReplaceItems(ProcessorNames, _dataService.GetProcessorNames());
             ReplaceItems(ProcessSteps, SelectedProcessingDetail.Steps);
@@ -579,6 +603,8 @@ namespace QuanLyHoSo.ViewModels
 
         public void PrepareQueue()
         {
+            IsDocumentDetailsOpen = false;
+            DocumentPreviewRecord = null;
             _shouldReturnToPreviousPage = false;
             SelectedRecordDetail = null;
             SelectedProcessingDetail = null;
@@ -601,7 +627,20 @@ namespace QuanLyHoSo.ViewModels
             Reload();
         }
 
-        private async Task SaveProcessingAsync()
+        private async Task ConfirmDocumentDetailsAsync()
+        {
+            var details = new InitialResultDocumentDetails
+            {
+                TransferNumber = DocumentTransferNumber,
+                TransferDate = DocumentTransferDate,
+                ComplaintDate = DocumentComplaintDate
+            };
+            DocumentDetailsError = details.GetValidationMessage();
+            if (!string.IsNullOrEmpty(DocumentDetailsError)) return;
+            await SaveProcessingAsync(details);
+        }
+
+        private async Task SaveProcessingAsync(InitialResultDocumentDetails documentDetails = null)
         {
             if (!CanUpdateProcessing)
             {
@@ -653,12 +692,35 @@ namespace QuanLyHoSo.ViewModels
             }
 
             var recordCode = SelectedProcessingDetail.RecordCode;
-            var generateInitialResultDocuments = ShouldOfferInitialResultDocuments()
+            var generateInitialResultDocuments = documentDetails != null || (ShouldOfferInitialResultDocuments()
                 && MessageBox.Show(
                     "Hồ sơ chưa có đủ phiếu đề xuất, phiếu hướng dẫn và thông báo. Bạn có muốn tạo các file còn thiếu không?",
                     "Tạo tài liệu kết quả xử lý ban đầu",
                     MessageBoxButton.YesNo,
-                    MessageBoxImage.Question) == MessageBoxResult.Yes;
+                    MessageBoxImage.Question) == MessageBoxResult.Yes);
+            if (generateInitialResultDocuments && documentDetails == null)
+            {
+                try
+                {
+                    IsProcessingUpdateBusy = true;
+                    var preview = await Task.Run(() => _dataService.GetRecordForm(recordCode));
+                    if (preview == null) throw new InvalidOperationException("Không tìm thấy thông tin hồ sơ để xem trước.");
+                    if (!string.IsNullOrWhiteSpace(ProcessingNote)) preview.Note = ProcessingNote.Trim();
+                    DocumentPreviewRecord = preview;
+                    DocumentDetailsError = string.Empty;
+                    IsDocumentDetailsOpen = true;
+                }
+                catch (Exception ex)
+                {
+                    AppLogger.Error("Documents", "PreviewInitialResultDocuments", ex, "Failed to load document preview.", recordCode);
+                    MessageBox.Show("Không thể tải thông tin xem trước. Vui lòng thử lại.", "Tạo tài liệu", MessageBoxButton.OK, MessageBoxImage.Warning);
+                }
+                finally
+                {
+                    IsProcessingUpdateBusy = false;
+                }
+                return;
+            }
             var attachmentsToSave = Attachments.ToList();
             try
             {
@@ -675,13 +737,15 @@ namespace QuanLyHoSo.ViewModels
                         ProcessingNote,
                         string.Equals(ProcessingStatus, "Chuyển cơ quan khác", StringComparison.Ordinal) ? TransferAreaName : null,
                         attachmentsToSave,
-                        generateInitialResultDocuments);
+                        generateInitialResultDocuments,
+                        documentDetails);
 
                     refreshedDetail = _dataService.GetProcessingRecordDetail(recordCode);
                 });
 
                 AppLogger.Info("Processing", "UpdateProcessingRecord", "Processing record updated.", recordCode);
                 ApplyProcessingDetail(refreshedDetail);
+                IsDocumentDetailsOpen = false;
                 MessageBox.Show(
                     generateInitialResultDocuments ? "Đã cập nhật xử lý hồ sơ và tạo tài liệu liên quan." : "Đã cập nhật xử lý hồ sơ.",
                     "Cập nhật xử lý",

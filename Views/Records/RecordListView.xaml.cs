@@ -20,6 +20,24 @@ namespace QuanLyHoSo.Views.Records
             InitializeComponent();
         }
 
+        private void SelectableCell_PreviewMouseDoubleClick(object sender, MouseButtonEventArgs e)
+        {
+            if (sender is TextBox textBox && e.ChangedButton == MouseButton.Left)
+            {
+                textBox.Focus();
+                textBox.SelectAll();
+                e.Handled = true;
+            }
+        }
+
+        private void SelectableCell_GotKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
+        {
+            var current = sender as DependencyObject;
+            while (current != null && current is not DataGridRow)
+                current = VisualTreeHelper.GetParent(current);
+            if (current is DataGridRow row) row.IsSelected = true;
+        }
+
         private void RecordListScrollViewer_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
         {
             if (sender is ScrollViewer scrollViewer && e.Source is not ScrollViewer)

@@ -19,4 +19,4 @@ Behavior:
 - Mat khau do chinh user doi se set `MustChangePassword = 0`.
 - Client khong ping server khi mo app; chi ket noi khi nguoi dung dang nhap.
 - Loi dang nhap/ket noi server hien qua `ErrorMessage`/`HasError` trong form, khong hien MessageBox.
-- Quen mat khau huong dan lien he Admin; neu Admin cung mat quyen truy cap thi reset built-in `admin` tai may Server.
+- Quên mật khẩu chỉ hiện: `Vui lòng liên hệ Admin để cấp lại mật khẩu.`

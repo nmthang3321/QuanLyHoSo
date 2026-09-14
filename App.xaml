@@ -16,6 +16,7 @@
         <converters:NumberToVisibilityConverter x:Key="NumberToVisibilityConverter" />
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
         <converters:InverseBooleanToVisibilityConverter x:Key="InverseBooleanToVisibilityConverter" />
+        <converters:MetricDescriptionConverter x:Key="MetricDescriptionConverter" />
 
         <Color x:Key="PrimaryColor">#0B5CFF</Color>
         <Color x:Key="PrimaryDarkColor">#062A63</Color>
@@ -44,6 +45,56 @@
         <SolidColorBrush x:Key="LineBrush" Color="{StaticResource LineColor}" />
         <SolidColorBrush x:Key="SurfaceBrush" Color="{StaticResource SurfaceColor}" />
         <SolidColorBrush x:Key="AppBackgroundBrush" Color="{StaticResource AppBackgroundColor}" />
+
+        <Style x:Key="SelectableDisplayText" TargetType="TextBox">
+            <Setter Property="IsReadOnly" Value="True" />
+            <Setter Property="IsReadOnlyCaretVisible" Value="False" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Height" Value="Auto" />
+            <Setter Property="MinHeight" Value="0" />
+            <Setter Property="FontFamily" Value="Segoe UI" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <ScrollViewer x:Name="PART_ContentHost" Focusable="False" />
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="MetricInfoButton" TargetType="Button">
+            <Setter Property="FontWeight" Value="Normal" />
+            <Setter Property="Width" Value="22" />
+            <Setter Property="Height" Value="22" />
+            <Setter Property="Margin" Value="5,-3,0,-3" />
+            <Setter Property="Foreground" Value="{StaticResource MutedTextBrush}" />
+            <Setter Property="Cursor" Value="Help" />
+            <Setter Property="ToolTipService.InitialShowDelay" Value="150" />
+            <Setter Property="ToolTipService.ShowDuration" Value="30000" />
+            <Setter Property="AutomationProperties.Name" Value="Giải thích số liệu" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="InfoBackground" Background="Transparent" CornerRadius="11">
+                            <TextBlock Text="&#xE946;" FontFamily="Segoe MDL2 Assets" FontSize="14" FontWeight="Normal"
+                                       Foreground="{TemplateBinding Foreground}"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="InfoBackground" Property="Background" Value="#EAF2FF" />
+                                <Setter Property="Foreground" Value="{StaticResource PrimaryBrush}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
 
         <Style TargetType="TextBlock">
             <Setter Property="Foreground" Value="{StaticResource TextBrush}" />

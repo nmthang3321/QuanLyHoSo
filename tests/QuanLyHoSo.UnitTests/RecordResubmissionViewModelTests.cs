@@ -88,6 +88,7 @@ namespace QuanLyHoSo.UnitTests
         private static Mock<IApplicationDataService> NewService()
         {
             var service = new Mock<IApplicationDataService>();
+            service.Setup(x => x.GetNextRecordCode()).Returns("HS-TEST-NEW");
             service.Setup(x => x.GetCatalogValues(It.IsAny<string>(), It.IsAny<bool>())).Returns(Array.Empty<string>());
             service.Setup(x => x.GetProcessorNames(It.IsAny<bool>())).Returns(Array.Empty<string>());
             service.Setup(x => x.GetAreaNames(It.IsAny<bool>())).Returns(Array.Empty<string>());
@@ -100,6 +101,7 @@ namespace QuanLyHoSo.UnitTests
             {
                 SelectedReceivedDate = new DateTime(2026, 9, 13), ReceiveSource = "Trực tiếp", ReceiverName = "Test Admin",
                 SenderName = "Nguyễn Văn An", SenderPhone = "0909123456", AreaName = "Phường Long Xuyên",
+                ContactAddress = "Phường Long Xuyên", IncidentAddress = "Đường Trần Hưng Đạo",
                 CaseType = "Khiếu nại", Content = "Nội dung mới", ContentGroup = "Đất đai", Field = "Hành chính"
             };
         }

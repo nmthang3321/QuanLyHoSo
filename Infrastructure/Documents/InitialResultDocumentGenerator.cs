@@ -45,12 +45,14 @@ namespace QuanLyHoSo.Infrastructure.Documents
             });
         }
 
-        public static IReadOnlyList<AttachmentDraft> Generate(RecordFormDraft record, string recordCode, string processingDate, string outputRoot, IReadOnlyList<AttachmentDraft> existingAttachments = null)
+        public static IReadOnlyList<AttachmentDraft> Generate(RecordFormDraft record, string recordCode, string processingDate, string outputRoot, IReadOnlyList<AttachmentDraft> existingAttachments = null, InitialResultDocumentDetails documentDetails = null)
         {
             if (record == null || string.IsNullOrWhiteSpace(recordCode))
             {
                 return Array.Empty<AttachmentDraft>();
             }
+            if (documentDetails != null && !string.IsNullOrEmpty(documentDetails.GetValidationMessage()))
+                throw new InvalidOperationException(documentDetails.GetValidationMessage());
 
             var templateRoot = GetTemplateRoot();
             if (!Directory.Exists(templateRoot))
@@ -76,7 +78,7 @@ namespace QuanLyHoSo.Infrastructure.Documents
                 }
 
                 var outputPath = GetWritableOutputPath(outputFolder, template.OutputFileName);
-                CreateWordDocument(templatePath, outputPath, BuildReplacementValues(template.Kind, record, recordCode, processingDate));
+                CreateWordDocument(templatePath, outputPath, BuildReplacementValues(template.Kind, record, recordCode, processingDate, documentDetails));
 
                 generated.Add(new AttachmentDraft
                 {
@@ -118,6 +120,8 @@ namespace QuanLyHoSo.Infrastructure.Documents
                 ReplaceHighlightedRuns(document, replacements, ref replacementIndex);
                 SaveXml(archive, entry, document);
             }
+            if (replacementIndex != replacements.Count)
+                throw new InvalidOperationException("Mẫu tài liệu thiếu vùng tô vàng cần điền. Vui lòng kiểm tra lại mẫu phiếu.");
         }
 
         private static bool IsWordXmlPart(ZipArchiveEntry entry)
@@ -249,9 +253,12 @@ namespace QuanLyHoSo.Infrastructure.Documents
             }
         }
 
-        private static IReadOnlyList<string> BuildReplacementValues(TemplateKind kind, RecordFormDraft record, string recordCode, string processingDate)
+        private static IReadOnlyList<string> BuildReplacementValues(TemplateKind kind, RecordFormDraft record, string recordCode, string processingDate, InitialResultDocumentDetails documentDetails)
         {
             var dateText = NormalizeDate(processingDate);
+            var transferNumber = documentDetails?.TransferNumber?.Trim() ?? recordCode;
+            var transferDate = documentDetails?.TransferDate?.ToString("dd/MM/yyyy", CultureInfo.GetCultureInfo("vi-VN")) ?? dateText;
+            var complaintDate = documentDetails?.ComplaintDate?.ToString("dd/MM/yyyy", CultureInfo.GetCultureInfo("vi-VN")) ?? dateText;
             var senderName = record.SenderName ?? string.Empty;
             var contactAddress = record.ContactAddress ?? string.Empty;
             var receiveSource = record.ReceiveSource ?? string.Empty;
@@ -263,8 +270,9 @@ namespace QuanLyHoSo.Infrastructure.Documents
             {
                 TemplateKind.Proposal => new[]
                 {
-                    dateText,
-                    dateText,
+                    transferNumber,
+                    transferDate,
+                    complaintDate,
                     senderName,
                     contactAddress,
                     receiveSource,
@@ -275,9 +283,9 @@ namespace QuanLyHoSo.Infrastructure.Documents
                 TemplateKind.Guidance => new[]
                 {
                     senderName,
-                    recordCode,
-                    dateText,
-                    dateText,
+                    transferNumber,
+                    transferDate,
+                    complaintDate,
                     senderName,
                     contactAddress,
                     receiveSource,
@@ -286,8 +294,9 @@ namespace QuanLyHoSo.Infrastructure.Documents
                 },
                 _ => new[]
                 {
-                    dateText,
-                    dateText,
+                    transferNumber,
+                    transferDate,
+                    complaintDate,
                     senderName,
                     contactAddress,
                     receiveSource,

@@ -323,7 +323,7 @@ namespace QuanLyHoSo.Infrastructure.Network
                         return _dataService.GetProcessingRecordDetail(ReadData<RecordCodeRequest>(body).RecordCode);
                     case "processing/update":
                         var update = ReadData<UpdateProcessingRequest>(body);
-                        _dataService.UpdateProcessingRecord(update.RecordCode, update.Status, update.ProcessedAt, update.ProcessorName, update.Content, update.Note, update.TransferAreaName, update.Attachments, update.GenerateInitialResultDocuments);
+                        _dataService.UpdateProcessingRecord(update.RecordCode, update.Status, update.ProcessedAt, update.ProcessorName, update.Content, update.Note, update.TransferAreaName, update.Attachments, update.GenerateInitialResultDocuments, update.DocumentDetails);
                         return true;
                     case "staff/performance":
                         var staffPerformance = ReadData<DateRangeRequest>(body);

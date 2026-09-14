@@ -12,7 +12,7 @@ State/commands:
 - `IsSystemLogDialogOpen`
 - `OpenSystemLogDialogCommand`
 - `CloseSystemLogDialogCommand`
-- `RefreshSystemLogsCommand`; nut Lam moi nam o header, canh nut dong popup.
+- `RefreshSystemLogsCommand` vẫn có trong ViewModel; nút Làm mới đã bỏ khỏi popup theo yêu cầu 2026-09-14.
 
 Notes:
 - DB bang `SystemLogs`.

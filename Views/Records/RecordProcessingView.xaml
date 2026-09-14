@@ -2,6 +2,12 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <UserControl.Resources>
+        <Style x:Key="SelectableTaskText" TargetType="TextBox" BasedOn="{StaticResource SelectableDisplayText}">
+            <Setter Property="HorizontalAlignment" Value="Left" />
+            <Setter Property="MinWidth" Value="0" />
+            <EventSetter Event="MouseMove" Handler="SelectableTaskText_MouseMove" />
+            <EventSetter Event="PreviewMouseLeftButtonDown" Handler="SelectableTaskText_PreviewMouseLeftButtonDown" />
+        </Style>
         <Style x:Key="QueueIconButton" TargetType="Button">
             <Setter Property="Width" Value="32" />
             <Setter Property="MinWidth" Value="32" />
@@ -144,7 +150,17 @@
                                                        VerticalAlignment="Center" />
                                         </Border>
                                         <StackPanel Grid.Column="1">
-                                            <TextBlock Text="{Binding Title}" FontSize="13" FontWeight="SemiBold" Foreground="{Binding AccentColor}" />
+                                            <DockPanel LastChildFill="False">
+                                                <Button DockPanel.Dock="Right" Style="{StaticResource MetricInfoButton}">
+                                                    <Button.ToolTip>
+                                                        <ToolTip Placement="Bottom">
+                                                            <TextBlock Width="320" TextWrapping="Wrap"
+                                                                       Text="{Binding Converter={StaticResource MetricDescriptionConverter}, ConverterParameter=Processing}" />
+                                                        </ToolTip>
+                                                    </Button.ToolTip>
+                                                </Button>
+                                                <TextBlock Text="{Binding Title}" FontSize="13" FontWeight="SemiBold" Foreground="{Binding AccentColor}" TextWrapping="Wrap" />
+                                            </DockPanel>
                                             <TextBlock Text="{Binding Value}" FontSize="28" FontWeight="Bold" Margin="0,6,0,4" />
                                             <TextBlock Text="{Binding Delta}" Style="{StaticResource MutedText}" FontSize="12" TextTrimming="CharacterEllipsis" />
                                         </StackPanel>
@@ -225,7 +241,7 @@
                                                     CornerRadius="17"
                                                     Background="#EAF2FF"
                                                     VerticalAlignment="Top">
-                                                <TextBlock Text="{Binding Index}"
+                                                <TextBox Style="{StaticResource SelectableTaskText}" Text="{Binding Index, Mode=OneWay}"
                                                            Foreground="{StaticResource PrimaryBrush}"
                                                            FontWeight="Bold"
                                                            HorizontalAlignment="Center"
@@ -233,7 +249,7 @@
                                             </Border>
                                             <StackPanel Grid.Column="1" Margin="0,0,16,0">
                                                 <StackPanel Orientation="Horizontal">
-                                                    <TextBlock Text="{Binding WorkLabel}"
+                                                    <TextBox Style="{StaticResource SelectableTaskText}" Text="{Binding WorkLabel, Mode=OneWay}"
                                                                FontSize="15"
                                                                FontWeight="SemiBold"
                                                                Foreground="{StaticResource TextBrush}"
@@ -242,32 +258,32 @@
                                                             CornerRadius="4"
                                                             Height="22"
                                                             Padding="7,1">
-                                                        <TextBlock Text="{Binding Status}"
+                                                        <TextBox Style="{StaticResource SelectableTaskText}" Text="{Binding Status, Mode=OneWay}"
                                                                    Foreground="{Binding Status, Converter={StaticResource StatusToBrushConverter}, ConverterParameter=Foreground}"
                                                                    FontSize="12"
                                                                    FontWeight="SemiBold" />
                                                     </Border>
                                                 </StackPanel>
-                                                <TextBlock Text="{Binding RecordCode}"
+                                                <TextBox Style="{StaticResource SelectableTaskText}" Text="{Binding RecordCode, Mode=OneWay}"
                                                            FontSize="18"
                                                            FontWeight="Bold"
                                                            Margin="0,5,0,4" />
-                                                <TextBlock Text="{Binding CaseType}"
-                                                           Style="{StaticResource MutedText}"
+                                                <TextBox Style="{StaticResource SelectableTaskText}" Text="{Binding CaseType, Mode=OneWay}"
+                                                           Foreground="{StaticResource MutedTextBrush}"
                                                            TextWrapping="Wrap" />
                                             </StackPanel>
                                             <StackPanel Grid.Column="2" Margin="0,0,16,0">
                                                 <TextBlock Text="Người gửi" Style="{StaticResource FieldLabelText}" />
-                                                <TextBlock Text="{Binding SenderName}"
+                                                <TextBox Style="{StaticResource SelectableTaskText}" Text="{Binding SenderName, Mode=OneWay}"
                                                            FontWeight="SemiBold"
                                                            TextWrapping="Wrap" />
-                                                <TextBlock Text="{Binding ReceivedDate, StringFormat=Tiếp nhận: {0}}"
-                                                           Style="{StaticResource MutedText}"
+                                                <TextBox Style="{StaticResource SelectableTaskText}" Text="{Binding ReceivedDate, StringFormat=Tiếp nhận: {0}}"
+                                                           Foreground="{StaticResource MutedTextBrush}"
                                                            Margin="0,5,0,0" />
                                             </StackPanel>
                                             <StackPanel Grid.Column="3" Margin="0,0,16,0">
                                                 <TextBlock Text="Theo dõi" Style="{StaticResource FieldLabelText}" />
-                                                <TextBlock Text="{Binding AreaName}"
+                                                <TextBox Style="{StaticResource SelectableTaskText}" Text="{Binding AreaName, Mode=OneWay}"
                                                            FontWeight="SemiBold"
                                                            TextWrapping="Wrap" />
                                                 <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
@@ -275,7 +291,7 @@
                                                                FontFamily="Segoe MDL2 Assets"
                                                                Foreground="{Binding DeadlineBrush}"
                                                                Margin="0,0,6,0" />
-                                                    <TextBlock Text="{Binding DeadlineText}"
+                                                    <TextBox Style="{StaticResource SelectableTaskText}" Text="{Binding DeadlineText, Mode=OneWay}"
                                                                Foreground="{Binding DeadlineBrush}"
                                                                FontWeight="SemiBold" />
                                                 </StackPanel>
@@ -289,7 +305,7 @@
                                                         Padding="8,2"
                                                         HorizontalAlignment="Right"
                                                         Margin="0,0,0,10">
-                                                    <TextBlock Text="{Binding SeverityLevel}"
+                                                    <TextBox Style="{StaticResource SelectableTaskText}" Text="{Binding SeverityLevel, Mode=OneWay}"
                                                                FontSize="12"
                                                                FontWeight="SemiBold"
                                                                Foreground="#8A5200" />
@@ -486,6 +502,7 @@
                                 <DataTemplate>
                                     <StackPanel HorizontalAlignment="Stretch">
                                         <Grid Height="58">
+
                                             <Border Height="2"
                                                     HorizontalAlignment="Stretch"
                                                     VerticalAlignment="Center"
@@ -518,7 +535,42 @@
                                                     </Style>
                                                 </Border.Style>
                                             </Border>
-                                            <Border CornerRadius="29" BorderThickness="1">
+                                            <Border CornerRadius="29" BorderThickness="1"
+                                                    ToolTipService.InitialShowDelay="150"
+                                                    ToolTipService.ShowDuration="30000">
+                                            <Border.ToolTip>
+                                                <ToolTip Placement="Bottom">
+                                                    <TextBlock Width="320" TextWrapping="Wrap" FontFamily="Segoe UI">
+                                                        <TextBlock.Style>
+                                                            <Style TargetType="TextBlock">
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding StepNumber}" Value="1">
+                                                                        <Setter Property="Text" Value="Tiếp nhận: Admin tiếp nhận đơn, nhập thông tin người gửi, nội dung vụ việc và tài liệu kèm theo vào hệ thống." />
+                                                                    </DataTrigger>
+                                                                    <DataTrigger Binding="{Binding StepNumber}" Value="2">
+                                                                        <Setter Property="Text" Value="Phân loại: Admin xác định loại vụ việc, nhóm nội dung và lĩnh vực để hồ sơ được xử lý phù hợp." />
+                                                                    </DataTrigger>
+                                                                    <DataTrigger Binding="{Binding StepNumber}" Value="3">
+                                                                        <Setter Property="Text" Value="Phân công: Admin giao hồ sơ cho cán bộ phụ trách. Cán bộ nhận hồ sơ để tiến hành xác minh." />
+                                                                    </DataTrigger>
+                                                                    <DataTrigger Binding="{Binding StepNumber}" Value="4">
+                                                                        <Setter Property="Text" Value="Xác minh: Cán bộ làm rõ vụ việc với người gửi đơn. Nếu chuyển cơ quan khác, phải chọn cơ quan chuyển đến và theo dõi phản hồi để có cơ sở ghi kết quả xử lý ban đầu." />
+                                                                    </DataTrigger>
+                                                                    <DataTrigger Binding="{Binding StepNumber}" Value="5">
+                                                                        <Setter Property="Text" Value="Kết quả xử lý ban đầu: Ghi nội dung xử lý ban đầu dựa trên xác minh hoặc phản hồi của cơ quan nhận chuyển; bổ sung tài liệu liên quan. Hiện bước này tương ứng trạng thái Đang chờ bổ sung tài liệu trong hệ thống." />
+                                                                    </DataTrigger>
+                                                                    <DataTrigger Binding="{Binding StepNumber}" Value="6">
+                                                                        <Setter Property="Text" Value="Chờ kết quả: Theo dõi kết quả giải quyết tiếp theo sau khi đã ghi kết quả xử lý ban đầu. Hồ sơ ở bước này vẫn chưa được tính là đã giải quyết." />
+                                                                    </DataTrigger>
+                                                                    <DataTrigger Binding="{Binding StepNumber}" Value="7">
+                                                                        <Setter Property="Text" Value="Lưu hồ sơ: Khi có kết quả giải quyết, cập nhật nội dung và tài liệu cuối cùng, chọn trạng thái Đã giải quyết rồi lưu để hoàn tất hồ sơ." />
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBlock.Style>
+                                                    </TextBlock>
+                                                </ToolTip>
+                                            </Border.ToolTip>
                                                 <Border.Style>
                                                     <Style TargetType="Border">
                                                         <Setter Property="Width" Value="58" />
@@ -539,7 +591,7 @@
                                                     </Style>
                                                 </Border.Style>
                                             </Border>
-                                            <TextBlock Text="{Binding IconGlyph}" FontFamily="Segoe MDL2 Assets" FontSize="22" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                            <TextBlock IsHitTestVisible="False" Text="{Binding IconGlyph}" FontFamily="Segoe MDL2 Assets" FontSize="22" HorizontalAlignment="Center" VerticalAlignment="Center">
                                                 <TextBlock.Style>
                                                     <Style TargetType="TextBlock">
                                                         <Setter Property="Foreground" Value="#151B2B" />
@@ -558,7 +610,7 @@
                                                     </Style>
                                                 </TextBlock.Style>
                                             </TextBlock>
-                                            <TextBlock Text="&#xEF3E;"
+                                            <TextBlock IsHitTestVisible="False" Text="&#xEF3E;"
                                                        FontFamily="pack://application:,,,/Assets/Fonts/#Material Symbols Outlined"
                                                        FontSize="22"
                                                        HorizontalAlignment="Center"
@@ -598,11 +650,15 @@
                                                     </Style>
                                                 </TextBlock.Style>
                                             </TextBlock>
-                                            <TextBlock Text="{Binding Title}" FontWeight="SemiBold">
+                                            <TextBlock FontWeight="SemiBold" FontFamily="Segoe UI">
                                                 <TextBlock.Style>
                                                     <Style TargetType="TextBlock">
+                                                        <Setter Property="Text" Value="{Binding Title}" />
                                                         <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
                                                         <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding StepNumber}" Value="6">
+                                                                <Setter Property="Text" Value="Chờ kết quả" />
+                                                            </DataTrigger>
                                                             <DataTrigger Binding="{Binding IsDone}" Value="True">
                                                                 <Setter Property="Foreground" Value="#24A148" />
                                                             </DataTrigger>
@@ -759,7 +815,7 @@
                                 </StackPanel>
                             </Grid>
                             <StackPanel Margin="0,0,0,12">
-                                <TextBlock Text="Cơ quan chuyển đến" Style="{StaticResource FieldLabelText}" />
+                                <TextBlock Style="{StaticResource FieldLabelText}"><Run Text="Cơ quan chuyển đến" /><Run Text=" *" Foreground="#E11414" /></TextBlock>
                                 <Button x:Name="TransferAreaDropDownButton"
                                         Click="TransferAreaDropDownButton_Click"
                                         HorizontalContentAlignment="Stretch"
@@ -1077,6 +1133,69 @@
                     <Button Grid.Row="2" Style="{StaticResource SecondaryButton}" Foreground="{StaticResource PrimaryBrush}" BorderBrush="{StaticResource PrimaryBrush}" HorizontalAlignment="Right" Margin="0,14,0,0" Command="{Binding CloseDetailCommand}">
                         <TextBlock Text="Đóng" Foreground="{StaticResource PrimaryBrush}" />
                     </Button>
+                </Grid>
+            </Border>
+        </Grid>
+        <Grid Background="#9906164A" Panel.ZIndex="1100"
+              Visibility="{Binding IsDocumentDetailsOpen, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <Grid.InputBindings>
+                <KeyBinding Key="Escape" Command="{Binding CancelDocumentDetailsCommand}" />
+            </Grid.InputBindings>
+            <Border Background="White" BorderBrush="{StaticResource LineBrush}" BorderThickness="1"
+                    CornerRadius="6" Padding="24" Width="720" MaxHeight="780" Margin="20"
+                    HorizontalAlignment="Center" VerticalAlignment="Center">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <StackPanel>
+                    <TextBlock Text="THÔNG TIN PHIẾU CHUYỂN ĐƠN" Style="{StaticResource SectionTitleText}" />
+                    <TextBlock Text="Thông tin này được điền vào phiếu đề xuất, phiếu hướng dẫn và thông báo còn thiếu."
+                               TextWrapping="Wrap" Style="{StaticResource MutedText}" Margin="0,8,0,18" />
+                    </StackPanel>
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel Margin="0,0,12,0">
+                    <TextBlock Style="{StaticResource FieldLabelText}"><Run Text="Phiếu chuyển đơn số" /><Run Text=" *" Foreground="#E11414" /></TextBlock>
+                    <TextBox Text="{Binding DocumentTransferNumber, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,12"
+                             AutomationProperties.Name="Phiếu chuyển đơn số" />
+                    <TextBlock Style="{StaticResource FieldLabelText}"><Run Text="Ngày phiếu chuyển đơn" /><Run Text=" *" Foreground="#E11414" /></TextBlock>
+                    <DatePicker SelectedDate="{Binding DocumentTransferDate, UpdateSourceTrigger=PropertyChanged}"
+                                Language="vi-VN" Margin="0,0,0,12" AutomationProperties.Name="Ngày phiếu chuyển đơn" />
+                    <TextBlock Style="{StaticResource FieldLabelText}"><Run Text="Chuyển đơn tố cáo đề ngày" /><Run Text=" *" Foreground="#E11414" /></TextBlock>
+                    <DatePicker SelectedDate="{Binding DocumentComplaintDate, UpdateSourceTrigger=PropertyChanged}"
+                                Language="vi-VN" Margin="0,0,0,12" AutomationProperties.Name="Chuyển đơn tố cáo đề ngày" />
+                    <Border Background="#F5F8FC" BorderBrush="{StaticResource LineBrush}" BorderThickness="1" CornerRadius="4" Padding="14" Margin="0,4,0,0">
+                        <StackPanel>
+                            <TextBlock Text="NỘI DUNG ĐIỀN VÀO PHIẾU" FontWeight="SemiBold" Margin="0,0,0,4" />
+                            <TextBlock Text="Thông tin lấy từ hồ sơ, chỉ xem tại đây." Style="{StaticResource MutedText}" Margin="0,0,0,12" />
+                            <TextBlock Text="Đơn ghi tên" Style="{StaticResource FieldLabelText}" />
+                            <TextBox Text="{Binding DocumentPreviewRecord.SenderName, Mode=OneWay}" IsReadOnly="True" Margin="0,0,0,12" />
+                            <TextBlock Text="Địa chỉ liên hệ" Style="{StaticResource FieldLabelText}" />
+                            <TextBox Text="{Binding DocumentPreviewRecord.ContactAddress, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" MinHeight="34" MaxHeight="100" VerticalScrollBarVisibility="Auto" Margin="0,0,0,12" />
+                            <TextBlock Text="Nguồn đơn" Style="{StaticResource FieldLabelText}" />
+                            <TextBox Text="{Binding DocumentPreviewRecord.ReceiveSource, Mode=OneWay}" IsReadOnly="True" Margin="0,0,0,12" />
+                            <TextBlock Text="Tóm tắt nội dung" Style="{StaticResource FieldLabelText}" />
+                            <TextBox Text="{Binding DocumentPreviewRecord.Content, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" MinHeight="64" MaxHeight="130" VerticalScrollBarVisibility="Auto" Margin="0,0,0,12" />
+                            <TextBlock Text="Nhận xét" Style="{StaticResource FieldLabelText}" />
+                            <TextBox Text="{Binding DocumentPreviewRecord.Note, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" MinHeight="64" MaxHeight="130" VerticalScrollBarVisibility="Auto" Margin="0,0,0,12" />
+                            <TextBlock Text="Đề xuất" Style="{StaticResource FieldLabelText}" />
+                            <TextBox Text="{Binding DocumentPreviewRecord.AdditionalNote, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" MinHeight="64" MaxHeight="130" VerticalScrollBarVisibility="Auto" />
+                        </StackPanel>
+                    </Border>
+                    </StackPanel>
+                    </ScrollViewer>
+                    <StackPanel Grid.Row="2" Margin="0,12,0,0">
+                    <TextBlock Text="{Binding DocumentDetailsError}" Foreground="#E11414" TextWrapping="Wrap" Margin="0,0,0,12" />
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button Content="Hủy bỏ" Style="{StaticResource SecondaryButton}" Margin="0,0,12,0"
+                                Command="{Binding CancelDocumentDetailsCommand}" />
+                        <Button Style="{StaticResource PrimaryButton}" Command="{Binding ConfirmDocumentDetailsCommand}">
+                            <TextBlock Text="Xác nhận" Foreground="White" />
+                        </Button>
+                    </StackPanel>
+                </StackPanel>
                 </Grid>
             </Border>
         </Grid>

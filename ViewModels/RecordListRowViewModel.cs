@@ -27,7 +27,9 @@ namespace QuanLyHoSo.ViewModels
             UpdatedAt = record.UpdatedAt;
             ProcessorName = record.ProcessorName;
             CanEdit = AuthContext.CanEditRecord(record.ProcessorName);
-            CanClassify = record.Status != RecordStatuses.ResubmittedResolved && AuthContext.CanEditRecord(record.ProcessorName);
+            CanClassify = record.Status != RecordStatuses.ResubmittedResolved
+                && (AuthContext.IsLeader || AuthContext.CanEditRecord(record.ProcessorName));
+            ProcessingActionToolTip = AuthContext.IsLeader ? "Xem chi tiết xử lý (chỉ xem)" : "Phân loại / xử lý";
             CanDelete = AuthContext.CanDeleteRecord;
             ViewCommand = viewCommand;
             EditCommand = editCommand;
@@ -47,6 +49,7 @@ namespace QuanLyHoSo.ViewModels
         public string ProcessorName { get; }
         public bool CanEdit { get; }
         public bool CanClassify { get; }
+        public string ProcessingActionToolTip { get; }
         public bool CanDelete { get; }
         public ICommand ViewCommand { get; }
         public ICommand EditCommand { get; }

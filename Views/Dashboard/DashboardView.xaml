@@ -118,7 +118,17 @@
                                                VerticalAlignment="Center" />
                                 </Border>
                                 <StackPanel Grid.Column="1">
-                                    <TextBlock Text="{Binding Title}" FontSize="14" FontWeight="SemiBold" Foreground="{Binding AccentColor}" />
+                                    <DockPanel LastChildFill="False">
+                                                <Button DockPanel.Dock="Right" Style="{StaticResource MetricInfoButton}">
+                                                    <Button.ToolTip>
+                                                        <ToolTip Placement="Bottom">
+                                                            <TextBlock Width="320" TextWrapping="Wrap"
+                                                                       Text="{Binding Converter={StaticResource MetricDescriptionConverter}, ConverterParameter=Dashboard}" />
+                                                        </ToolTip>
+                                                    </Button.ToolTip>
+                                                </Button>
+                                                <TextBlock Text="{Binding Title}" FontSize="14" FontWeight="SemiBold" Foreground="{Binding AccentColor}" TextWrapping="Wrap" />
+                                            </DockPanel>
                                     <TextBlock Text="{Binding Value}" FontSize="30" FontWeight="Bold" Margin="0,8,0,8" />
                                     <Grid>
                                         <Grid.ColumnDefinitions>

@@ -46,6 +46,11 @@ namespace QuanLyHoSo.Presentation
 
         private static void DataGrid_PreviewKeyDown(object sender, KeyEventArgs e)
         {
+            if (e.OriginalSource is TextBox textBox && textBox.SelectionLength > 0)
+            {
+                // Let the text box copy the exact text selected with the mouse.
+                return;
+            }
             if (sender is not DataGrid dataGrid ||
                 e.Key != Key.C ||
                 (Keyboard.Modifiers & ModifierKeys.Control) != ModifierKeys.Control)

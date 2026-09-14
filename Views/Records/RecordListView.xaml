@@ -4,6 +4,10 @@
              xmlns:presentation="clr-namespace:QuanLyHoSo.Presentation"
              xmlns:records="clr-namespace:QuanLyHoSo.Views.Records">
     <UserControl.Resources>
+        <Style x:Key="SelectableRecordCellText" TargetType="TextBox" BasedOn="{StaticResource SelectableDisplayText}">
+            <EventSetter Event="GotKeyboardFocus" Handler="SelectableCell_GotKeyboardFocus" />
+            <EventSetter Event="PreviewMouseDoubleClick" Handler="SelectableCell_PreviewMouseDoubleClick" />
+        </Style>
         <presentation:BindingProxy x:Key="ViewModelProxy" Data="{Binding}" />
 
         <Style x:Key="IconActionButton" TargetType="Button">
@@ -401,7 +405,32 @@
                               PreviewMouseWheel="RecordListDataGrid_PreviewMouseWheel"
                               GridLinesVisibility="All"
                               VerticalGridLinesBrush="#ECF1F8"
+                              SelectionMode="Single"
+                              SelectionUnit="FullRow"
                               IsReadOnly="True">
+                        <DataGrid.RowStyle>
+                            <Style TargetType="DataGridRow">
+                                <Style.Triggers>
+                                    <Trigger Property="IsSelected" Value="True">
+                                        <Setter Property="Background" Value="#EAF2FF" />
+                                        <Setter Property="BorderBrush" Value="#7EA8FF" />
+                                        <Setter Property="Foreground" Value="#0B5CFF" />
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </DataGrid.RowStyle>
+                        <DataGrid.CellStyle>
+                            <Style TargetType="DataGridCell">
+                                <Setter Property="BorderThickness" Value="0" />
+                                <Setter Property="Padding" Value="8,0" />
+                                <Style.Triggers>
+                                    <Trigger Property="IsSelected" Value="True">
+                                        <Setter Property="Background" Value="#EAF2FF" />
+                                        <Setter Property="Foreground" Value="#0B5CFF" />
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </DataGrid.CellStyle>
                         <DataGrid.Columns>
                             <DataGridTemplateColumn Header="Chọn" Width="58" CanUserResize="False"
                                                     Visibility="{Binding Data.IsSelectionMode, Source={StaticResource ViewModelProxy}, Converter={StaticResource BooleanToVisibilityConverter}}">
@@ -414,43 +443,85 @@
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
-                            <DataGridTextColumn Header="STT"
-                                                Binding="{Binding Index}"
+                            <DataGridTemplateColumn Header="STT"
+
                                                 Width="58"
                                                 MinWidth="48"
-                                                MaxWidth="72" />
-                            <DataGridTextColumn Header="Số hồ sơ"
-                                                Binding="{Binding RecordCode}"
+                                                MaxWidth="72"  ClipboardContentBinding="{Binding Index}" SortMemberPath="Index">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBox Style="{StaticResource SelectableRecordCellText}" Text="{Binding Index, Mode=OneWay}" />
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTemplateColumn Header="Số hồ sơ"
+
                                                 Width="0.75*"
                                                 MinWidth="105"
-                                                MaxWidth="155" />
-                            <DataGridTextColumn Header="Người gửi / Tổ chức"
-                                                Binding="{Binding SenderName}"
+                                                MaxWidth="155"  ClipboardContentBinding="{Binding RecordCode}" SortMemberPath="RecordCode">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBox Style="{StaticResource SelectableRecordCellText}" Text="{Binding RecordCode, Mode=OneWay}" />
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTemplateColumn Header="Người gửi / Tổ chức"
+
                                                 Width="1.55*"
                                                 MinWidth="180"
-                                                MaxWidth="420" />
-                            <DataGridTextColumn Header="Địa bàn"
-                                                Binding="{Binding AreaName}"
+                                                MaxWidth="420"  ClipboardContentBinding="{Binding SenderName}" SortMemberPath="SenderName">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBox Style="{StaticResource SelectableRecordCellText}" Text="{Binding SenderName, Mode=OneWay}" />
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTemplateColumn Header="Địa bàn"
+
                                                 Width="1.05*"
                                                 MinWidth="130"
                                                 MaxWidth="280"
-                                                Visibility="{Binding Data.IsAreaColumnVisible, Source={StaticResource ViewModelProxy}, Converter={StaticResource BooleanToVisibilityConverter}}" />
-                            <DataGridTextColumn Header="Loại vụ việc"
-                                                Binding="{Binding CaseType}"
+                                                Visibility="{Binding Data.IsAreaColumnVisible, Source={StaticResource ViewModelProxy}, Converter={StaticResource BooleanToVisibilityConverter}}"  ClipboardContentBinding="{Binding AreaName}" SortMemberPath="AreaName">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBox Style="{StaticResource SelectableRecordCellText}" Text="{Binding AreaName, Mode=OneWay}" />
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTemplateColumn Header="Loại vụ việc"
+
                                                 Width="1.0*"
                                                 MinWidth="140"
-                                                Visibility="{Binding Data.IsCaseTypeColumnVisible, Source={StaticResource ViewModelProxy}, Converter={StaticResource BooleanToVisibilityConverter}}" />
-                            <DataGridTextColumn Header="Lĩnh vực"
-                                                Binding="{Binding Field}"
+                                                Visibility="{Binding Data.IsCaseTypeColumnVisible, Source={StaticResource ViewModelProxy}, Converter={StaticResource BooleanToVisibilityConverter}}"  ClipboardContentBinding="{Binding CaseType}" SortMemberPath="CaseType">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBox Style="{StaticResource SelectableRecordCellText}" Text="{Binding CaseType, Mode=OneWay}" />
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTemplateColumn Header="Lĩnh vực"
+
                                                 Width="1.0*"
                                                 MinWidth="140"
-                                                Visibility="{Binding Data.IsFieldColumnVisible, Source={StaticResource ViewModelProxy}, Converter={StaticResource BooleanToVisibilityConverter}}" />
-                            <DataGridTextColumn Header="Ngày tiếp nhận"
-                                                Binding="{Binding ReceivedDate}"
+                                                Visibility="{Binding Data.IsFieldColumnVisible, Source={StaticResource ViewModelProxy}, Converter={StaticResource BooleanToVisibilityConverter}}"  ClipboardContentBinding="{Binding Field}" SortMemberPath="Field">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBox Style="{StaticResource SelectableRecordCellText}" Text="{Binding Field, Mode=OneWay}" />
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTemplateColumn Header="Ngày tiếp nhận"
+
                                                 Width="0.9*"
                                                 MinWidth="130"
                                                 MaxWidth="180"
-                                                Visibility="{Binding Data.IsReceivedDateColumnVisible, Source={StaticResource ViewModelProxy}, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                                Visibility="{Binding Data.IsReceivedDateColumnVisible, Source={StaticResource ViewModelProxy}, Converter={StaticResource BooleanToVisibilityConverter}}"  ClipboardContentBinding="{Binding ReceivedDate}" SortMemberPath="ReceivedDate">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBox Style="{StaticResource SelectableRecordCellText}" Text="{Binding ReceivedDate, Mode=OneWay}" />
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
                             <DataGridTemplateColumn Header="Trạng thái"
                                                     Width="1.0*"
                                                     MinWidth="145"
@@ -465,7 +536,7 @@
                                                 Padding="7,1"
                                                 VerticalAlignment="Center"
                                                 HorizontalAlignment="Left">
-                                            <TextBlock Text="{Binding Status}"
+                                            <TextBox Style="{StaticResource SelectableRecordCellText}" Text="{Binding Status, Mode=OneWay}"
                                                        FontSize="12"
                                                        MaxWidth="210" TextWrapping="Wrap"
                                                        FontWeight="SemiBold"
@@ -474,17 +545,29 @@
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
-                            <DataGridTextColumn Header="Cập nhật cuối"
-                                                Binding="{Binding UpdatedAt}"
+                            <DataGridTemplateColumn Header="Cập nhật cuối"
+
                                                 Width="1.0*"
                                                 MinWidth="135"
                                                 MaxWidth="220"
-                                                Visibility="{Binding Data.IsUpdatedAtColumnVisible, Source={StaticResource ViewModelProxy}, Converter={StaticResource BooleanToVisibilityConverter}}" />
-                            <DataGridTextColumn Header="Người xử lý"
-                                                Binding="{Binding ProcessorName}"
+                                                Visibility="{Binding Data.IsUpdatedAtColumnVisible, Source={StaticResource ViewModelProxy}, Converter={StaticResource BooleanToVisibilityConverter}}"  ClipboardContentBinding="{Binding UpdatedAt}" SortMemberPath="UpdatedAt">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBox Style="{StaticResource SelectableRecordCellText}" Text="{Binding UpdatedAt, Mode=OneWay}" />
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTemplateColumn Header="Người xử lý"
+
                                                 Width="0.9*"
                                                 MinWidth="120"
-                                                Visibility="{Binding Data.IsProcessorNameColumnVisible, Source={StaticResource ViewModelProxy}, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                                Visibility="{Binding Data.IsProcessorNameColumnVisible, Source={StaticResource ViewModelProxy}, Converter={StaticResource BooleanToVisibilityConverter}}"  ClipboardContentBinding="{Binding ProcessorName}" SortMemberPath="ProcessorName">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBox Style="{StaticResource SelectableRecordCellText}" Text="{Binding ProcessorName, Mode=OneWay}" />
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
                             <DataGridTemplateColumn Header="Thao tác"
                                                     Width="162"
                                                     MinWidth="162"
@@ -509,7 +592,7 @@
                                             <Button Style="{StaticResource IconActionButton}"
                                                     Command="{Binding ClassifyCommand}"
                                                     Visibility="{Binding CanClassify, Converter={StaticResource BooleanToVisibilityConverter}}"
-                                                    ToolTip="Phân loại / xử lý"
+                                                    ToolTip="{Binding ProcessingActionToolTip}"
                                                     Foreground="#159A72">
                                                 <TextBlock Text="&#xE72C;"
                                                            FontFamily="pack://application:,,,/Assets/Fonts/#Material Symbols Outlined"
