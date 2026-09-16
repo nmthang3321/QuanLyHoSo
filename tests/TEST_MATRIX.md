@@ -8,7 +8,7 @@
 | Resubmitted resolved records | Very high | Integration + ViewModel | Intake/reference/reopen/attachments, no extra resolution/work, invalid links, sender normalization/access/edit identity, copied legacy migration, authenticated LAN round trip, form reference refresh, popup original selection/reason/continuation/cancel, detail isolates independent intake groups | Automated; full dialog click-through remains manual / P0 |
 | Record persistence | Very high | Integration | Create/read/update/reopen, attachments, Unicode, failed-update rollback | Automated / P0 |
 | Trash / restore | Very high | Integration | Soft delete, matching batch restore, stale undo, permanent delete | Automated / P0 |
-| Backup / restore | Very high | Integration | Backup, modify, restore, safety backup, corrupt input, invalid destination | Automated / P0 |
+| Backup / restore | Very high | Integration | Backup, modify, restore, safety backup, corrupt input, invalid destination, automatic 7-day interval and 10-file retention | Automated / P0 |
 | Password change | High | ViewModel unit | Required fields, min length, mismatch, reuse, wrong current, success, cancel | Automated / P1 |
 | Search | High | Unit + integration | Exact, partial, case-insensitive, Unicode, no results | Automated / P1 |
 | Pagination | High | Integration | Consecutive pages with page size 1 | Automated / P1 |

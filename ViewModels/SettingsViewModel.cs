@@ -497,8 +497,18 @@ namespace QuanLyHoSo.ViewModels
         public string RestoreFilePath
         {
             get => _restoreFilePath;
-            set => SetProperty(ref _restoreFilePath, value);
+            set
+            {
+                if (SetProperty(ref _restoreFilePath, value))
+                {
+                    OnPropertyChanged(nameof(RestoreFileDisplayText));
+                }
+            }
         }
+
+        public string RestoreFileDisplayText => string.IsNullOrWhiteSpace(RestoreFilePath)
+            ? "Chưa chọn file sao lưu"
+            : RestoreFilePath;
 
         public string BackupStatus
         {

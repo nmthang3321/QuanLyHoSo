@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
@@ -20,6 +21,7 @@ namespace QuanLyHoSo.Server
     {
         private readonly AppDataService _dataService;
         private readonly DispatcherTimer _timer;
+        private readonly DispatcherTimer _automaticBackupTimer;
         private readonly Forms.NotifyIcon _trayIcon;
         private readonly Forms.ToolStripMenuItem _trayToggleItem;
         private readonly System.Drawing.Icon _trayAppIcon;
@@ -27,6 +29,7 @@ namespace QuanLyHoSo.Server
         private bool _statusPulseRunning;
         private bool _allowClose;
         private bool _trayHintShown;
+        private bool _automaticBackupCheckRunning;
 
         public ServerWindow(AppDataService dataService)
         {
@@ -54,6 +57,11 @@ namespace QuanLyHoSo.Server
             _timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
             _timer.Tick += (_, __) => UpdateStatus();
             _timer.Start();
+
+            _automaticBackupTimer = new DispatcherTimer { Interval = TimeSpan.FromHours(1) };
+            _automaticBackupTimer.Tick += AutomaticBackupTimer_Tick;
+            _automaticBackupTimer.Start();
+            _ = CheckAutomaticBackupAsync();
 
             LoadServerInformation();
             UpdateStatus();
@@ -135,6 +143,37 @@ namespace QuanLyHoSo.Server
                 HeaderStatusDot.BeginAnimation(OpacityProperty, null);
                 HeaderStatusDot.Opacity = 1;
                 _statusPulseRunning = false;
+            }
+        }
+
+        private async void AutomaticBackupTimer_Tick(object sender, EventArgs e)
+        {
+            await CheckAutomaticBackupAsync();
+        }
+
+        private async Task CheckAutomaticBackupAsync()
+        {
+            if (_automaticBackupCheckRunning)
+            {
+                return;
+            }
+
+            _automaticBackupCheckRunning = true;
+            try
+            {
+                var backupPath = await Task.Run(() => _dataService.CreateAutomaticBackupIfDue());
+                if (!string.IsNullOrWhiteSpace(backupPath))
+                {
+                    AppLogger.Info("Server", "AutomaticBackup", $"Automatic backup created at {backupPath}.");
+                }
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Error("Server", "AutomaticBackup", ex, "Automatic backup failed.");
+            }
+            finally
+            {
+                _automaticBackupCheckRunning = false;
             }
         }
 
@@ -242,6 +281,8 @@ namespace QuanLyHoSo.Server
             }
 
             _timer.Stop();
+            _automaticBackupTimer.Stop();
+            _automaticBackupTimer.Tick -= AutomaticBackupTimer_Tick;
             _trayIcon.Visible = false;
             _trayIcon.Dispose();
             _trayAppIcon.Dispose();

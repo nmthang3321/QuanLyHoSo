@@ -91,5 +91,41 @@ namespace QuanLyHoSo.IntegrationTests
 
             Assert.Throws<ArgumentException>(() => database.Service.BackupDatabase(destination));
         }
+
+        [Fact]
+        [Trait("Category", "Backup")]
+        [Trait("Category", "Regression")]
+        public void AutomaticBackup_ShouldRunEverySevenDaysAndKeepOnlyTenNewestFiles()
+        {
+            using var database = new TestDatabase();
+            var backupFolder = Path.Combine(database.RootPath, "automatic-backups");
+            var firstCheck = new DateTime(2026, 1, 1, 8, 0, 0, DateTimeKind.Utc);
+            Directory.CreateDirectory(backupFolder);
+            var legacyBackup = Path.Combine(backupFolder, "quanlyhoso_backup_20251201_080000.db");
+            var safetyBackup = Path.Combine(backupFolder, "quanlyhoso_before_restore_20251208_080000.db");
+            File.WriteAllText(legacyBackup, "legacy");
+            File.WriteAllText(safetyBackup, "safety");
+            File.SetLastWriteTimeUtc(legacyBackup, firstCheck.AddDays(-31));
+            File.SetLastWriteTimeUtc(safetyBackup, firstCheck.AddDays(-24));
+
+            var firstBackup = database.Service.CreateAutomaticBackupIfDue(firstCheck, backupFolder);
+            var earlyBackup = database.Service.CreateAutomaticBackupIfDue(firstCheck.AddDays(6), backupFolder);
+
+            Assert.True(File.Exists(firstBackup));
+            Assert.Null(earlyBackup);
+
+            for (var index = 1; index <= 11; index++)
+            {
+                var createdPath = database.Service.CreateAutomaticBackupIfDue(firstCheck.AddDays(index * 7), backupFolder);
+                Assert.True(File.Exists(createdPath));
+            }
+
+            var retainedBackups = Directory.GetFiles(backupFolder, "quanlyhoso_*.db");
+            Assert.Equal(10, retainedBackups.Length);
+            Assert.DoesNotContain(firstBackup, retainedBackups);
+            Assert.DoesNotContain(legacyBackup, retainedBackups);
+            Assert.DoesNotContain(safetyBackup, retainedBackups);
+            Assert.DoesNotContain(retainedBackups, path => Path.GetFileName(path).Contains("20260108"));
+        }
     }
 }

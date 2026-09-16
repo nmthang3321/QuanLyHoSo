@@ -18,6 +18,14 @@ Routing chinh:
 - Infra/DB/build/LAN: `AI/infra/*.md`
 - Automated tests: `AI/infra/TESTING.md`
 
+## Điều chỉnh 2026-09-16 - Sao lưu tự động
+
+- Server kiểm tra sao lưu tự động khi khởi động và mỗi giờ trong lúc chạy. Nếu bản tự động mới nhất đã đủ 7 ngày thì tạo bản mới bằng SQLite online backup API.
+- File tự động có dạng `quanlyhoso_auto_yyyyMMdd_HHmmss.db` trong `%LocalAppData%\QuanLyHoSo\Backup` trên máy server.
+- Thư mục backup chỉ giữ 10 file `quanlyhoso_*.db` mới nhất, tính chung bản tự động, thủ công, legacy và safety backup trước khôi phục. Cleanup chạy ở mỗi lần kiểm tra tự động.
+- Card Sao lưu dữ liệu đã thiết kế lại thành 3 khối rõ ràng: trạng thái tự động, sao lưu thủ công và khôi phục; đường dẫn dài có ellipsis/tooltip, nút chọn dùng nhãn chữ, vùng khôi phục có màu cảnh báo nhẹ. Không đổi command hay luồng nghiệp vụ.
+- Layout Admin: card Sao lưu nằm bên trái card Thao tác nhanh; Thao tác nhanh `VerticalAlignment=Top` nên chỉ cao theo nội dung, không bị kéo giãn bằng card sao lưu. Layout Officer/Leader vẫn đặt Thao tác nhanh ở cột trái hàng đầu.
+
 ## Điều chỉnh 2026-09-14 - Thông tin phiếu chuyển đơn
 
 - Bước Kết quả xử lý ban đầu -> Cập nhật -> đồng ý tạo tài liệu: mở overlay nhập Phiếu chuyển đơn số, Ngày phiếu chuyển đơn, Chuyển đơn tố cáo đề ngày. Cả ba bắt buộc; Hủy giữ form, Xác nhận mới lưu/tạo phiếu còn thiếu, lỗi giữ popup.

@@ -238,14 +238,16 @@
                             </StackPanel>
                         </Border>
 
-                        <Border Grid.Column="0">
+                        <Border VerticalAlignment="Top">
                             <Border.Style>
                                 <Style TargetType="Border" BasedOn="{StaticResource SettingsCardBorder}">
                                     <Setter Property="Grid.Row" Value="2" />
-                                    <Setter Property="Margin" Value="0,0,6,0" />
+                                    <Setter Property="Grid.Column" Value="1" />
+                                    <Setter Property="Margin" Value="6,0,0,0" />
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding CanEditSettings}" Value="False">
                                             <Setter Property="Grid.Row" Value="0" />
+                                            <Setter Property="Grid.Column" Value="0" />
                                             <Setter Property="Margin" Value="0,0,6,12" />
                                         </DataTrigger>
                                     </Style.Triggers>
@@ -424,11 +426,11 @@
                         </Border>
 
                         <Border Grid.Row="2"
-                                Grid.Column="1"
+                                Grid.Column="0"
                                 Style="{StaticResource AdminOnlyCardBorder}"
-                                Margin="6,0,0,0">
+                                Margin="0,0,6,0">
                             <StackPanel>
-                                <Grid Margin="0,0,0,16">
+                                <Grid Margin="0,0,0,14">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="5" />
                                         <ColumnDefinition Width="50" />
@@ -438,104 +440,150 @@
                                     <Border Grid.Column="1" Width="38" Height="38" CornerRadius="19" Background="#FFF1DF">
                                         <TextBlock Text="&#xE777;" FontFamily="Segoe MDL2 Assets" FontSize="18" Foreground="#D96F00" HorizontalAlignment="Center" VerticalAlignment="Center" />
                                     </Border>
-                                    <TextBlock Grid.Column="2" Text="SAO LƯU DỮ LIỆU" Style="{StaticResource SectionTitleText}" Foreground="#B85E00" VerticalAlignment="Center" />
+                                    <StackPanel Grid.Column="2" VerticalAlignment="Center">
+                                        <TextBlock Text="SAO LƯU DỮ LIỆU" Style="{StaticResource SectionTitleText}" Foreground="#B85E00" />
+                                        <TextBlock Text="Bảo vệ và khôi phục dữ liệu hệ thống" Style="{StaticResource MutedText}" Margin="0,3,0,0" />
+                                    </StackPanel>
                                 </Grid>
-                                <TextBlock Text="Lưu bản sao về máy hiện tại hoặc chọn file để khôi phục dữ liệu trên server"
-                                           Style="{StaticResource MutedText}"
-                                           TextWrapping="Wrap"
-                                           Margin="0,0,0,16" />
 
-                                <TextBlock Text="Thư mục lưu bản sao"
-                                           Style="{StaticResource SettingsLabel}"
-                                           Margin="0,0,0,6" />
-                                <Grid Margin="0,0,0,12">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <TextBox Text="{Binding BackupFolder, Mode=OneWay}"
-                                             IsReadOnly="True"
-                                             ToolTip="{Binding BackupFolder}"
-                                             VerticalContentAlignment="Center" />
-                                    <Button Grid.Column="1"
-                                            Style="{StaticResource CompactIconButton}"
-                                            Command="{Binding ChooseBackupFolderCommand}"
-                                            ToolTip="Chọn thư mục lưu bản sao"
-                                            Margin="8,0,0,0">
-                                        <Border Width="32" Height="32" CornerRadius="16" Background="#EAF2FF">
-                                            <Viewbox Width="19" Height="19" HorizontalAlignment="Center" VerticalAlignment="Center">
-                                                <Grid Width="960" Height="960">
-                                                    <Path Data="M160-160q-33 0-56.5-23.5T80-240v-480q0-33 23.5-56.5T160-800h207q16 0 30.5 6t25.5 17l57 57h360q17 0 28.5 11.5T880-680q0 17-11.5 28.5T840-640H447l-80-80H160v480l79-263q8-26 29.5-41.5T316-560h516q41 0 64.5 32.5T909-457l-72 240q-8 26-29.5 41.5T760-160H160Zm84-80h516l72-240H316l-72 240Zm-84-262v-218 218Zm84 262 72-240-72 240Z"
-                                                          Fill="#0B5CFF">
-                                                        <Path.RenderTransform>
-                                                            <TranslateTransform Y="960" />
-                                                        </Path.RenderTransform>
-                                                    </Path>
-                                                </Grid>
-                                            </Viewbox>
+                                <Border Background="#F1FBF6"
+                                        BorderBrush="#CDEEDF"
+                                        BorderThickness="1"
+                                        CornerRadius="6"
+                                        Padding="12"
+                                        Margin="0,0,0,14">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="34" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <Border Width="26" Height="26" CornerRadius="13" Background="#DDF5E9" VerticalAlignment="Center">
+                                            <TextBlock Text="&#xE73E;" FontFamily="Segoe MDL2 Assets" FontSize="13" Foreground="#13885A" HorizontalAlignment="Center" VerticalAlignment="Center" />
                                         </Border>
-                                    </Button>
-                                </Grid>
-
-                                <TextBlock Text="File dùng để khôi phục"
-                                           Style="{StaticResource SettingsLabel}"
-                                           Margin="0,0,0,6" />
-                                <Grid Margin="0,0,0,12">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <TextBox Text="{Binding RestoreFilePath, Mode=OneWay}"
-                                             IsReadOnly="True"
-                                             ToolTip="{Binding RestoreFilePath}"
-                                             VerticalContentAlignment="Center" />
-                                    <Button Grid.Column="1"
-                                            Style="{StaticResource CompactIconButton}"
-                                            Command="{Binding ChooseRestoreFileCommand}"
-                                            ToolTip="Chọn file sao lưu để khôi phục"
-                                            Margin="8,0,0,0">
-                                        <Border Width="32" Height="32" CornerRadius="16" Background="#FFF1DF">
-                                            <Viewbox Width="19" Height="19" HorizontalAlignment="Center" VerticalAlignment="Center">
-                                                <Grid Width="960" Height="960">
-                                                    <Path Data="M388-530q17-18 41-29t51-11q54 0 92 38t38 92q0 54-38 92t-92 38q-36 0-65.5-18T368-375q-6-11-17.5-14.5T328-388q-12 5-16.5 17.5T314-347q24 44 68 70.5t98 26.5q78 0 134-56t56-134q0-78-56-134t-134-56q-38 0-71 14t-59 38v-32q0-13-8.5-21.5T320-640q-13 0-21.5 8.5T290-610v110q0 13 8.5 21.5T320-470h110q13 0 21.5-8.5T460-500q0-13-8.5-21.5T430-530h-42ZM240-80q-33 0-56.5-23.5T160-160v-640q0-33 23.5-56.5T240-880h287q16 0 30.5 6t25.5 17l194 194q11 11 17 25.5t6 30.5v447q0 33-23.5 56.5T720-80H240Zm0-80h480v-446L526-800H240v640Zm0 0v-640 640Z"
-                                                          Fill="#D96F00">
-                                                        <Path.RenderTransform>
-                                                            <TranslateTransform Y="960" />
-                                                        </Path.RenderTransform>
-                                                    </Path>
-                                                </Grid>
-                                            </Viewbox>
-                                        </Border>
-                                    </Button>
-                                </Grid>
-
-                                <Border Background="#F8FAFE" CornerRadius="6" Padding="12" Margin="0,0,0,14">
-                                    <StackPanel>
-                                        <StackPanel Margin="0,0,0,8">
-                                            <TextBlock Text="Lần sao lưu gần nhất" Foreground="{StaticResource MutedTextBrush}" />
-                                            <TextBlock Text="{Binding LastBackupText}" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,4,0,0" />
+                                        <StackPanel Grid.Column="1">
+                                            <TextBlock Text="Sao lưu tự động đang bật" FontWeight="SemiBold" Foreground="#11744D" />
+                                            <TextBlock Text="Mỗi 7 ngày · thư mục giữ 10 bản gần nhất"
+                                                       Foreground="#40745E"
+                                                       FontSize="12"
+                                                       TextWrapping="Wrap"
+                                                       Margin="0,3,0,0" />
                                         </StackPanel>
-                                        <TextBlock Text="{Binding BackupStatus}" Foreground="{StaticResource PrimaryBrush}" TextWrapping="Wrap" />
+                                    </Grid>
+                                </Border>
+
+                                <Border Background="#F8FBFF"
+                                        BorderBrush="#DCE7F6"
+                                        BorderThickness="1"
+                                        CornerRadius="6"
+                                        Padding="12"
+                                        Margin="0,0,0,12">
+                                    <StackPanel>
+                                        <Grid Margin="0,0,0,10">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel>
+                                                <TextBlock Text="Sao lưu thủ công" FontWeight="SemiBold" Foreground="{StaticResource StrongTextBrush}" />
+                                                <TextBlock Text="Lưu thêm một bản sao về máy đang sử dụng"
+                                                           Foreground="{StaticResource MutedTextBrush}"
+                                                           FontSize="12"
+                                                           Margin="0,3,0,0" />
+                                            </StackPanel>
+                                            <TextBlock Grid.Column="1" Text="&#xE74E;" FontFamily="Segoe MDL2 Assets" FontSize="18" Foreground="{StaticResource PrimaryBrush}" VerticalAlignment="Center" />
+                                        </Grid>
+
+                                        <TextBlock Text="THƯ MỤC LƯU" Style="{StaticResource SettingsLabel}" Margin="0,0,0,5" />
+                                        <Border Background="White" BorderBrush="#D8E4F3" BorderThickness="1" CornerRadius="4" Padding="10,8" Margin="0,0,0,10">
+                                            <TextBlock Text="{Binding BackupFolder}"
+                                                       Foreground="{StaticResource TextBrush}"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       ToolTip="{Binding BackupFolder}" />
+                                        </Border>
+
+                                        <Grid Margin="0,0,0,10">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel VerticalAlignment="Center">
+                                                <TextBlock Text="Lần sao lưu gần nhất" Foreground="{StaticResource MutedTextBrush}" FontSize="12" />
+                                                <TextBlock Text="{Binding LastBackupText}" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,3,8,0" />
+                                            </StackPanel>
+                                            <Button Grid.Column="1"
+                                                    Content="Chọn thư mục"
+                                                    Style="{StaticResource SecondaryButton}"
+                                                    Command="{Binding ChooseBackupFolderCommand}"
+                                                    MinWidth="110" />
+                                        </Grid>
+
+                                        <Button Style="{StaticResource PrimaryButton}"
+                                                Command="{Binding BackupNowCommand}"
+                                                HorizontalAlignment="Stretch">
+                                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                                <TextBlock Text="&#xE74E;" FontFamily="Segoe MDL2 Assets" Margin="0,0,8,0" />
+                                                <TextBlock Text="Sao lưu ngay" />
+                                            </StackPanel>
+                                        </Button>
                                     </StackPanel>
                                 </Border>
-                                <StackPanel Orientation="Horizontal">
-                                    <Button Style="{StaticResource PrimaryButton}" Command="{Binding BackupNowCommand}">
-                                        <StackPanel Orientation="Horizontal">
-                                            <TextBlock Text="&#xE74E;" FontFamily="Segoe MDL2 Assets" Foreground="White" Margin="0,0,8,0" />
-                                            <TextBlock Text="Sao lưu ngay" Foreground="White" />
-                                        </StackPanel>
-                                    </Button>
-                                    <Button Style="{StaticResource SecondaryButton}"
-                                            Command="{Binding RestoreDataCommand}"
-                                            BorderBrush="#D96F00"
-                                            Padding="20,0"
-                                            Margin="10,0,0,0">
-                                        <StackPanel Orientation="Horizontal">
-                                            <TextBlock Text="&#xE777;" FontFamily="Segoe MDL2 Assets" Foreground="#B85E00" Margin="0,0,8,0" />
-                                            <TextBlock Text="Khôi phục dữ liệu" Foreground="#B85E00" FontWeight="SemiBold" />
-                                        </StackPanel>
-                                    </Button>
-                                </StackPanel>
+
+                                <Border Background="#FFFAF3"
+                                        BorderBrush="#F2D8B6"
+                                        BorderThickness="1"
+                                        CornerRadius="6"
+                                        Padding="12">
+                                    <StackPanel>
+                                        <Grid Margin="0,0,0,10">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel>
+                                                <TextBlock Text="Khôi phục dữ liệu" FontWeight="SemiBold" Foreground="#9A570D" />
+                                                <TextBlock Text="Thay thế dữ liệu trên server từ một bản sao"
+                                                           Foreground="#8A6A45"
+                                                           FontSize="12"
+                                                           Margin="0,3,0,0" />
+                                            </StackPanel>
+                                            <TextBlock Grid.Column="1" Text="&#xE777;" FontFamily="Segoe MDL2 Assets" FontSize="18" Foreground="#D96F00" VerticalAlignment="Center" />
+                                        </Grid>
+
+                                        <TextBlock Text="FILE KHÔI PHỤC" Style="{StaticResource SettingsLabel}" Margin="0,0,0,5" />
+                                        <Border Background="White" BorderBrush="#E7CFB0" BorderThickness="1" CornerRadius="4" Padding="10,8" Margin="0,0,0,10">
+                                            <TextBlock Text="{Binding RestoreFileDisplayText}"
+                                                       Foreground="{StaticResource TextBrush}"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       ToolTip="{Binding RestoreFilePath}" />
+                                        </Border>
+
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <Button Content="Chọn file"
+                                                    Style="{StaticResource SecondaryButton}"
+                                                    Command="{Binding ChooseRestoreFileCommand}"
+                                                    HorizontalAlignment="Stretch"
+                                                    Margin="0,0,5,0" />
+                                            <Button Grid.Column="1"
+                                                    Style="{StaticResource SecondaryButton}"
+                                                    Command="{Binding RestoreDataCommand}"
+                                                    BorderBrush="#D96F00"
+                                                    HorizontalAlignment="Stretch"
+                                                    Margin="5,0,0,0">
+                                                <TextBlock Text="Khôi phục" Foreground="#B85E00" FontWeight="SemiBold" />
+                                            </Button>
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+
+                                <TextBlock Text="{Binding BackupStatus}"
+                                           Foreground="{StaticResource PrimaryBrush}"
+                                           FontSize="12"
+                                           TextWrapping="Wrap"
+                                           Margin="2,10,2,0" />
                             </StackPanel>
                         </Border>
 

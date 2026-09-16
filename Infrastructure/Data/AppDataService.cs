@@ -21,7 +21,12 @@ namespace QuanLyHoSo.Infrastructure.Data
     {
         private const string RecordCodePrefix = "HS";
         private const int RecordCodeSequenceWidth = 6;
+        private const string AutomaticBackupFilePattern = "quanlyhoso_auto_*.db";
+        private const string RetainedBackupFilePattern = "quanlyhoso_*.db";
+        private const int AutomaticBackupIntervalDays = 7;
+        private const int AutomaticBackupRetentionCount = 10;
         private static readonly Lazy<AppDataService> LazyInstance = new Lazy<AppDataService>(() => new AppDataService());
+        private readonly object _automaticBackupSync = new object();
         private readonly string _connectionString;
         private readonly LanDataClient _lanClient;
         private readonly LanDataServer _lanServer;
@@ -3070,6 +3075,88 @@ LIMIT $take;";
             }
 
             return CreateBackupFileCore(fileName);
+        }
+
+        public string CreateAutomaticBackupIfDue()
+        {
+            return CreateAutomaticBackupIfDue(DateTime.UtcNow, GetDefaultBackupFolder());
+        }
+
+        internal string CreateAutomaticBackupIfDue(DateTime utcNow, string backupFolder)
+        {
+            if (AppPathSettings.Current.IsClientMode)
+            {
+                throw new InvalidOperationException("Automatic backup is not available in client mode.");
+            }
+
+            if (string.IsNullOrWhiteSpace(backupFolder))
+            {
+                throw new ArgumentException("Backup folder is required.", nameof(backupFolder));
+            }
+
+            var checkTimeUtc = utcNow.Kind == DateTimeKind.Utc ? utcNow : utcNow.ToUniversalTime();
+            lock (_automaticBackupSync)
+            {
+                Directory.CreateDirectory(backupFolder);
+                var existingBackups = Directory
+                    .EnumerateFiles(backupFolder, AutomaticBackupFilePattern, SearchOption.TopDirectoryOnly)
+                    .Select(path => new FileInfo(path))
+                    .OrderByDescending(file => file.LastWriteTimeUtc)
+                    .ThenByDescending(file => file.Name, StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+
+                DeleteExpiredBackups(backupFolder);
+
+                if (existingBackups.Count > 0
+                    && checkTimeUtc - existingBackups[0].LastWriteTimeUtc < TimeSpan.FromDays(AutomaticBackupIntervalDays))
+                {
+                    return null;
+                }
+
+                var fileName = $"quanlyhoso_auto_{checkTimeUtc:yyyyMMdd_HHmmss}.db";
+                var destinationPath = Path.Combine(backupFolder, fileName);
+                var temporaryPath = Path.Combine(backupFolder, $".automatic_backup_{Guid.NewGuid():N}.tmp");
+                try
+                {
+                    BackupDatabase(temporaryPath);
+                    File.Move(temporaryPath, destinationPath);
+                }
+                finally
+                {
+                    try
+                    {
+                        if (File.Exists(temporaryPath))
+                        {
+                            File.Delete(temporaryPath);
+                        }
+                    }
+                    catch
+                    {
+                        // Best-effort cleanup must not hide the original backup result or error.
+                    }
+                }
+
+                File.SetLastWriteTimeUtc(destinationPath, checkTimeUtc);
+
+                DeleteExpiredBackups(backupFolder);
+
+                return destinationPath;
+            }
+        }
+
+        private static void DeleteExpiredBackups(string backupFolder)
+        {
+            var orderedBackups = Directory
+                .EnumerateFiles(backupFolder, RetainedBackupFilePattern, SearchOption.TopDirectoryOnly)
+                .Select(path => new FileInfo(path))
+                .OrderByDescending(file => file.LastWriteTimeUtc)
+                .ThenByDescending(file => file.Name, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            foreach (var expiredBackup in orderedBackups.Skip(AutomaticBackupRetentionCount))
+            {
+                File.Delete(expiredBackup.FullName);
+            }
         }
 
         private string CreateBackupFileCore(string fileName)
