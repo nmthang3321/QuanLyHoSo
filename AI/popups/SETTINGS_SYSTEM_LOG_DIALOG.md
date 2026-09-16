@@ -1,20 +1,7 @@
 # Popup - Settings system log
 
-Dung khi task lien quan nhat ky he thong.
+Files: Settings XAML/ViewModel/models and `AppDataService`.
 
-Files:
-- `Views\Settings\SettingsView.xaml`
-- `ViewModels\SettingsViewModel.cs`
-- `Models\SettingsModels.cs`
-- `Infrastructure\Data\AppDataService.cs`
+State/commands: `IsSystemLogDialogOpen`, open/close, and legacy `RefreshSystemLogsCommand`; the Refresh button was removed on 2026-09-14.
 
-State/commands:
-- `IsSystemLogDialogOpen`
-- `OpenSystemLogDialogCommand`
-- `CloseSystemLogDialogCommand`
-- `RefreshSystemLogsCommand` vẫn có trong ViewModel; nút Làm mới đã bỏ khỏi popup theo yêu cầu 2026-09-14.
-
-Notes:
-- DB bang `SystemLogs`.
-- Ghi log qua helper `WriteDatabaseLog(...)` trong `AppDataService.cs`.
-- Khong log thao tac doc/filter/xem chi tiet/export/backup refresh UI.
+Entries come from `SystemLogs` and are written through `WriteDatabaseLog(...)`. Read/filter/detail/export/backup/UI-refresh operations are not logged.

@@ -1,33 +1,12 @@
 # Popup - Settings user management
 
-Dung khi task lien quan quan ly user.
+Files: Settings XAML/ViewModel, auth models, `AppDataService`, and `AuthContext`.
 
-Files:
-- `Views\Settings\SettingsView.xaml`
-- `ViewModels\SettingsViewModel.cs`
-- `Models\AuthModels.cs`
-- `Infrastructure\Data\AppDataService.cs`
-- `Infrastructure\Security\AuthContext.cs`
+State/commands cover open/close, new/edit/save, and status toggle.
 
-State/commands:
-- `IsUserManagementDialogOpen`
-- `OpenUserManagementDialogCommand`
-- `CloseUserManagementDialogCommand`
-- `NewUserCommand`
-- `EditUserCommand`
-- `SaveUserCommand`
-- `ToggleUserStatusCommand`
-
-Rules:
-- Chi Admin thay/quan ly user (`CanManageUsers`).
-- Khong xoa/deactivate current user.
-- Tai khoan chi bi khoa bang `IsActive = 0`, khong xoa vinh vien.
-- Tai khoan bi khoa hien mo va nam cuoi danh sach; khong co cot thao tac rieng.
-- Nut trang thai cho phep khoa/mo khoa tai khoan dang chon.
-- Luon giu lai it nhat mot Admin dang hoat dong.
-- Bang nguoi dung hien luoi ngang va doc mau nhat de tach cot ro rang.
-- Tao user moi hoac nhap mat khau moi cho user dang sua se set `MustChangePassword = 1`; user phai doi mat khau o lan dang nhap tiep theo.
-- Khong cho trung `UserName` hoac `DisplayName` sau khi trim va so sanh khong phan biet hoa/thuong; khi trung tai khoan da khoa thi huong dan chon tai khoan cu de mo khoa.
-- Kiem tra trung duoc thuc hien ca trong `SettingsViewModel` de bao som va `AppDataService.SaveUser` de bao ve khi nhieu client cung thao tac.
-- Truong ten can bo la ComboBox bind `UserProcessorNames`, nap tu catalog active `ProcessorName`; khong nhap ten tu do.
-- Khi sua tai khoan cu co ten khong con active trong catalog, ten hien tai duoc them tam vao danh sach de tranh mat du lieu.
+- Only Admin can manage users (`CanManageUsers`).
+- Current user cannot be deleted/deactivated. Accounts are deactivated with `IsActive = 0`, not physically deleted; inactive rows are dimmed and sorted last.
+- At least one active Admin must remain.
+- Creating a user or assigning a new password sets `MustChangePassword = 1`.
+- Trimmed case-insensitive `UserName` and `DisplayName` must be unique. ViewModel validates early; `AppDataService.SaveUser` enforces again for concurrent clients.
+- Officer name is a ComboBox bound to active `ProcessorName` catalog values, not free text. When editing a legacy/inactive name, the current value is temporarily added so it is not lost.

@@ -93,19 +93,19 @@ namespace QuanLyHoSo.Infrastructure.Documents
 
         private static string GetTemplateRoot()
         {
-            var templateRoot = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "doc");
+            var templateRoot = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "doc", "templates");
             if (Directory.Exists(templateRoot))
             {
                 return templateRoot;
             }
 
-            templateRoot = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "doc");
+            templateRoot = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "doc", "templates");
             if (Directory.Exists(templateRoot))
             {
                 return templateRoot;
             }
 
-            return Path.Combine(Environment.CurrentDirectory, "doc");
+            return Path.Combine(Environment.CurrentDirectory, "doc", "templates");
         }
 
         private static void CreateWordDocument(string templatePath, string outputPath, IReadOnlyList<string> replacements)

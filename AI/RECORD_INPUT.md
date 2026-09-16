@@ -1,25 +1,13 @@
-# Nhap du lieu
+# Record intake
 
-Chi tiet theo chuc nang:
-- `AI/pages/RECORD_INPUT_FORM.md`
-- `AI/features/AREA_SELECTOR.md`
-- `AI/features/ATTACHMENTS.md`
+Detailed references: `AI/pages/RECORD_INPUT_FORM.md`, `AI/features/AREA_SELECTOR.md`, and `AI/features/ATTACHMENTS.md`.
 
-File can mo:
-- `ViewModels\RecordInputViewModel.cs`
-- `Views\Records\RecordInputView.xaml`
-- `Views\Records\RecordInputView.xaml.cs`
-- `Models\AreaSelectionModels.cs` neu cham toi dia ban.
-- `AI/AREA_SELECTOR.md` neu cham toi dia ban.
+Open `ViewModels\RecordInputViewModel.cs`, `Views\Records\RecordInputView.xaml[.cs]`, and `Models\AreaSelectionModels.cs` for area work.
 
-Service methods:
-- `GetNextRecordCode`
-- `FindSimilarRecord`
-- `SaveRecordForm`
-- `DeleteRecord`
+Service methods: `GetNextRecordCode`, `FindSimilarRecord`, `SaveRecordForm`, and `DeleteRecord`.
 
-Ghi chu:
-- App WPF mac dinh chay `Client`. Admin van vao trang Nhap du lieu va luu/sua/xoa ho so qua server API.
-- Can bo khong thay muc Nhap du lieu trong sidebar va khong duoc them/xoa ho so.
-- Area selector trang nay dung root overlay `AreaOverlayCanvas`, khong dung `Popup`/`ContextMenu`.
-- Attachment hien van luu `FilePath` text; chua co upload/copy file tu client len server.
+Notes:
+- WPF defaults to `Client`; Admin can still access intake and create/edit/delete through the server API.
+- Officers do not see the intake menu and cannot create or delete records.
+- The page uses root overlay `AreaOverlayCanvas`, not `Popup` or `ContextMenu`.
+- Attachments currently persist `FilePath` text only; physical client-to-server upload/copy is not implemented.

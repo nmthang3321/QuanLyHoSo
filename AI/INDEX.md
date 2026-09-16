@@ -1,79 +1,80 @@
 # AI index - QuanLyHoSo
 
-Canonical architecture and coding rules are now in `.ai/ARCHITECTURE.md`,
-`.ai/CODING_GUIDELINES.md`, and `.ai/AI_INSTRUCTIONS.md`. The files under
-`AI/` remain detailed historical feature maps and behavioral references.
+All AI/developer documentation is consolidated under `AI/`. Start with `AI/AI_INSTRUCTIONS.md`, `AI/SESSION_HANDOFF.md`, and `AI/RULES.md`, then use this index to open only task-relevant references.
 
-Cap nhat: 2026-09-13
+Updated: 2026-09-16
 
-Doc file nay truoc, sau do chi doc file dung voi task.
+Read this file first, then only the files relevant to the current task. The session handoff is `AI/SESSION_HANDOFF.md`.
 
-Session handoff nam tai `AI/SESSION_HANDOFF.md`. Context AI chi dung cac file trong thu muc `AI/`.
+## High-level routing
 
-## Routing tong quan
-
-- Tong quan repo, verify, role: `AI/COMMON.md`
-- LAN/client/server summary: `AI/LAN.md`
-- Dashboard summary: `AI/DASHBOARD.md`
-- Nhap du lieu summary: `AI/RECORD_INPUT.md`
-- Danh sach ho so summary: `AI/RECORD_LIST.md`
-- Phan loai & xu ly summary: `AI/PROCESSING.md`
-- Theo doi can bo summary: `AI/STAFF_TRACKING.md`
-- Cai dat summary: `AI/SETTINGS.md`
-- DB/schema summary: `AI/DATABASE.md`
-- Quy tac sua code/build/git: `AI/RULES.md`
+- AI working instructions: `AI/AI_INSTRUCTIONS.md`
+- Developer guide: `AI/DEVELOPER_GUIDE.md`
+- Current architecture: `AI/ARCHITECTURE.md`
+- Coding guidelines: `AI/CODING_GUIDELINES.md`
+- Refactoring decisions and technical debt: `AI/REFACTORING_NOTES.md`
+- Repository overview, verification, and roles: `AI/COMMON.md`
+- LAN/client/server: `AI/LAN.md`
+- Dashboard: `AI/DASHBOARD.md`
+- Record intake: `AI/RECORD_INPUT.md`
+- Record list: `AI/RECORD_LIST.md`
+- Classification and processing: `AI/PROCESSING.md`
+- Staff tracking: `AI/STAFF_TRACKING.md`
+- Settings: `AI/SETTINGS.md`
+- Database/schema: `AI/DATABASE.md`
+- Coding/build/git rules: `AI/RULES.md`
 
 ## Pages
 
 - Login: `AI/pages/LOGIN.md`
-- Dashboard overview: `AI/pages/DASHBOARD_OVERVIEW.md`
-- Nhap du lieu form: `AI/pages/RECORD_INPUT_FORM.md`
-- Danh sach bo loc: `AI/pages/RECORD_LIST_FILTERS.md`
-- Danh sach table: `AI/pages/RECORD_LIST_TABLE.md`
-- Xu ly queue: `AI/pages/PROCESSING_QUEUE.md`
-- Xu ly detail/update: `AI/pages/PROCESSING_DETAIL.md`
-- Theo doi can bo: `AI/pages/STAFF_TRACKING.md`
-- Cai dat home: `AI/pages/SETTINGS_HOME.md`
+- Dashboard: `AI/pages/DASHBOARD_OVERVIEW.md`
+- Record intake: `AI/pages/RECORD_INPUT_FORM.md`
+- Record-list filters/table: `AI/pages/RECORD_LIST_FILTERS.md`, `AI/pages/RECORD_LIST_TABLE.md`
+- Processing queue/detail: `AI/pages/PROCESSING_QUEUE.md`, `AI/pages/PROCESSING_DETAIL.md`
+- Staff tracking: `AI/pages/STAFF_TRACKING.md`
+- Settings home: `AI/pages/SETTINGS_HOME.md`
 
-## Popups/overlays
+## Popups and overlays
 
-- Dashboard custom date range: `AI/popups/DASHBOARD_DATE_RANGE.md`
-- Record detail modal: `AI/popups/RECORD_DETAIL_MODAL.md`
-- Settings catalog dialog: `AI/popups/SETTINGS_CATALOG_DIALOG.md`
-- Settings general dialog legacy/removed from WPF UI: `AI/popups/SETTINGS_GENERAL_DIALOG.md`
-- Settings guide page: `AI/popups/SETTINGS_GUIDE_DIALOG.md`
-- Settings system log dialog: `AI/popups/SETTINGS_SYSTEM_LOG_DIALOG.md`
-- Settings user management dialog: `AI/popups/SETTINGS_USER_DIALOG.md`
+- Dashboard date range: `AI/popups/DASHBOARD_DATE_RANGE.md`
+- Record details: `AI/popups/RECORD_DETAIL_MODAL.md`
+- Settings catalog: `AI/popups/SETTINGS_CATALOG_DIALOG.md`
+- Removed legacy general settings: `AI/popups/SETTINGS_GENERAL_DIALOG.md`
+- Settings guide: `AI/popups/SETTINGS_GUIDE_DIALOG.md`
+- System log: `AI/popups/SETTINGS_SYSTEM_LOG_DIALOG.md`
+- User management: `AI/popups/SETTINGS_USER_DIALOG.md`
 
 ## Features
 
 - Area selector: `AI/features/AREA_SELECTOR.md`
 - Attachments: `AI/features/ATTACHMENTS.md`
-- Hồ sơ gửi lại / lịch sử người gửi: `AI/features/RECORD_RESUBMISSION.md`
-- Thung rac / khoi phuc ho so: `AI/features/RECORD_TRASH.md`
-- Audit/system log: `AI/features/AUDIT_LOG.md`
+- Resubmitted records/sender history: `AI/features/RECORD_RESUBMISSION.md`
+- Record trash/restore: `AI/features/RECORD_TRASH.md`
+- Audit log: `AI/features/AUDIT_LOG.md`
 - Backup/restore: `AI/features/BACKUP_RESTORE.md`
 - Catalogs: `AI/features/CATALOGS.md`
-- Export Excel: `AI/features/EXPORT_EXCEL.md`
-- Navigation/back/sidebar: `AI/features/NAVIGATION.md`
+- Excel export: `AI/features/EXPORT_EXCEL.md`
+- Navigation: `AI/features/NAVIGATION.md`
 
-## Infra
+## Infrastructure
 
 - Build/git: `AI/infra/BUILD_GIT.md`
-- Automated tests, scripts, isolation va coverage gaps: `AI/infra/TESTING.md`
-- AppDataService routing: `AI/infra/DATA_SERVICE.md`
+- Tests and coverage gaps: `AI/infra/TESTING.md`
+- Test execution runbook: `AI/infra/TEST_RUNBOOK.md`
+- Risk-based test matrix: `AI/infra/TEST_MATRIX.md`
+- Sample database: `AI/infra/SAMPLE_DATA.md`
+- Data-service routing: `AI/infra/DATA_SERVICE.md`
 - Database schema: `AI/infra/DATABASE_SCHEMA.md`
 - LAN API: `AI/infra/LAN_API.md`
 
-## Luu y moi nhat
+## Current reminders
 
-- Da co bo automated tests trong `tests/`. Sau khi sua code, chay smoke; truoc merge/release, chay full noninteractive suite. Doc `AI/infra/TESTING.md` de chon lenh va biet coverage gaps.
-
-- Selector dia ban dang co thay doi UI quan trong, doc `AI/features/AREA_SELECTOR.md` neu task cham toi dia ban.
-- Build verify nen dung output rieng de tranh exe dang chay bi khoa:
+- Automated tests live under `tests/`. Run smoke after code changes and the full noninteractive suite before merge/release.
+- Read `AI/features/AREA_SELECTOR.md` before changing area UI.
+- Build to an isolated output directory to avoid locks from running executables:
 
 ```powershell
 dotnet build QuanLyHoSo.csproj -o .verify-builds/current
 ```
 
-- Warning `NETSDK1138` ve `.NET 5.0-windows` het support la warning cu. Build OK neu 0 error.
+- `NETSDK1138` about unsupported `.NET 5.0-windows` is an existing warning; a build succeeds when it has zero errors.

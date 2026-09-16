@@ -1,25 +1,10 @@
-# Page - Nhap du lieu form
+# Page - Record intake form
 
-Dung khi task lien quan form nhap/sua ho so.
+Files: `RecordInputView.xaml[.cs]`, `RecordInputViewModel.cs`, `RecordModels.cs`, and `AppDataService.cs`.
 
-Files:
-- `Views\Records\RecordInputView.xaml`
-- `Views\Records\RecordInputView.xaml.cs`
-- `ViewModels\RecordInputViewModel.cs`
-- `Models\RecordModels.cs`
-- `Infrastructure\Data\AppDataService.cs`
+Service methods: `GetNextRecordCode`, current `GetSenderRecords` matching, legacy `FindSimilarRecord`, `SaveRecordForm`, and `DeleteRecord`.
 
-Service methods:
-- `GetNextRecordCode`
-- `GetSenderRecords` (luồng đối chiếu hiện tại; không giới hạn ngày)
-- `FindSimilarRecord` (API cũ)
-- `SaveRecordForm`
-- `DeleteRecord`
-
-Notes:
-- Hồ sơ gửi lại: xem `AI/features/RECORD_RESUBMISSION.md`; form mới đối chiếu lịch sử người gửi trước khi lưu.
-- App WPF mac dinh chay `Client`. Admin van vao trang nhap/sua ho so; `FindSimilarRecord`, `SaveRecordForm`, `DeleteRecord` di qua LAN API khi client mode.
-- Can bo khong thay muc Nhap du lieu trong sidebar; chi xem/chinh sua/phan loai theo quyen xu ly.
-- Dia ban doc them `AI/features/AREA_SELECTOR.md`.
-- Attachment doc them `AI/features/ATTACHMENTS.md`.
-- Manual save/update `AreaName = $areaName` khong doi khi sua filter dia ban.
+- See `AI/features/RECORD_RESUBMISSION.md` for sender-history review before a new save.
+- WPF defaults to Client; Admin intake/edit/delete operations go through LAN APIs.
+- Officers do not see Intake and operate only within processing authorization.
+- See area and attachment feature docs. Manual save/update keeps `AreaName = $areaName` unchanged.

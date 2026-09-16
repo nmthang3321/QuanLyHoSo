@@ -44,9 +44,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="doc\phieu_de_xuat.docx" CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="doc\phieu_huong_dan.docx" CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="doc\thong_bao.docx" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="doc\templates\phieu_de_xuat.docx" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="doc\templates\phieu_huong_dan.docx" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="doc\templates\thong_bao.docx" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

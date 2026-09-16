@@ -1,30 +1,9 @@
-# Cai dat
+# Settings
 
-Chi tiet theo popup/chuc nang:
-- `AI/pages/SETTINGS_HOME.md`
-- `AI/popups/SETTINGS_CATALOG_DIALOG.md`
-- `AI/popups/SETTINGS_GUIDE_DIALOG.md`
-- `AI/popups/SETTINGS_SYSTEM_LOG_DIALOG.md`
-- `AI/popups/SETTINGS_USER_DIALOG.md`
-- `AI/features/BACKUP_RESTORE.md`
-- `AI/features/CATALOGS.md`
-- `AI/features/AUDIT_LOG.md`
+Detailed references: `AI/pages/SETTINGS_HOME.md`, the Settings popup files under `AI/popups/`, and `AI/features/BACKUP_RESTORE.md`, `CATALOGS.md`, and `AUDIT_LOG.md`.
 
-File can mo:
-- `ViewModels\SettingsViewModel.cs`
-- `Views\Settings\SettingsView.xaml`
-- `Models\SettingsModels.cs`
+Open `ViewModels\SettingsViewModel.cs`, `Views\Settings\SettingsView.xaml`, and `Models\SettingsModels.cs`. User, catalog, system-log, backup, restore, and update operations are implemented through `AppDataService`.
 
-Service methods:
-- user/catalog/system log/backup trong `AppDataService`.
+Current features include catalog management, user management, system logs, server-side backup/restore, and software updates.
 
-Dang co:
-- quan ly danh muc
-- popup quan ly user
-- system logs
-- backup DB server-side qua `CreateBackupFile` / route `settings/backup/create`
-- update software
-
-Khong con tren WPF Settings:
-- popup cai dat chung DB/log/url. DB/log/API URL cau hinh o server bang tham so chay hoac config server.
-- restore DB tu client. Restore nen thuc hien o server/bao tri.
+Removed from WPF Settings: the legacy database/log/API URL configuration dialog. Those values belong to server startup/configuration.

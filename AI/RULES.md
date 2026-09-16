@@ -1,44 +1,43 @@
 # Rules for AI work
 
-Chi tiet build/git: `AI/infra/BUILD_GIT.md`.
+See `AI/infra/BUILD_GIT.md` for build and Git details.
 
-## Doc context
+## Documentation context
 
-- Doc `AI/INDEX.md` truoc.
-- Sau do chi doc file md dung trang/chuc nang.
-- Chay `git status --short --branch` truoc khi sua.
-- Neu task UI: mo ViewModel + XAML cua trang do truoc.
-- Neu task LAN/client/server: mo `AppPathSettings`, `LanDataClient`, `LanDataServer`, `AppDataService`.
+- Read `AI/INDEX.md` first, then only the page/feature files relevant to the task.
+- Run `git status --short --branch` before editing.
+- For UI work, inspect the page ViewModel and XAML first.
+- For LAN/client/server work, inspect `AppPathSettings`, `LanDataClient`, `LanDataServer`, and the relevant `AppDataService` methods.
+- Files under `AI/` are written in English. The root `README.md` and customer-facing documents under `doc/` remain in Vietnamese unless explicitly requested otherwise.
 
-## Sua code
+## Code changes
 
-- Dung `rg` de tim method/binding.
-- Dung `apply_patch` khi edit.
-- Khong revert thay doi user.
-- Khong doc ca `AppDataService.cs`; tim method bang:
+- Use `rg` to locate methods and bindings.
+- Use `apply_patch` for edits.
+- Never revert user changes.
+- Do not read all of `AppDataService.cs`; locate the method first:
 
 ```powershell
 rg -n "MethodName" Infrastructure\Data\AppDataService.cs -C 5
 ```
 
-## UI button
+## UI buttons
 
-- Nut hanh dong chinh (them, luu, cap nhat, gui, khoi phuc, sao luu, xac nhan, quay lai/đong khi duoc dung lam CTA) phai dung `Style="{StaticResource PrimaryButton}"`.
-- Nut phu/huy dung `SecondaryButton`; hanh dong nguy hiem dung `DangerButton`.
-- Khong hard-code mau nen, hover, pressed hoac disabled cho nut thong thuong. Dung style chung trong `App.xaml`; `PrimaryButton` dung cung bang mau va hieu ung voi nut dang nhap (`ActionPrimaryBrush`), nhung giu goc vuong.
-- Style nut rieng chi dung cho icon, card hoac man hinh xac thuc co thiet ke dac thu; neu tao style rieng van phai co du `IsMouseOver`, `IsPressed`, `IsEnabled`.
+- Primary actions use `Style="{StaticResource PrimaryButton}"`.
+- Secondary/cancel actions use `SecondaryButton`; destructive actions use `DangerButton`.
+- Do not hard-code normal button background, hover, pressed, or disabled colors. Use shared `App.xaml` styles. `PrimaryButton` shares the login action palette (`ActionPrimaryBrush`) while keeping square corners.
+- Dedicated styles are allowed for icons, cards, or specialized authentication screens, but must define `IsMouseOver`, `IsPressed`, and `IsEnabled` states.
 
-## Build
+## Build and tests
 
-- Neu task thay doi code/logic, doc `AI/infra/TESTING.md` va chay `tests/Scripts/run-smoke.ps1` sau thay doi.
-- Truoc merge/release, chay `tests/Scripts/run-all.ps1`; UI tests tach rieng, can desktop Windows khong khoa.
-- Khong sua UI/business rules chi de test pass. Bao cao defect hien co va test fail; khong an failure bang rerun hoac assertion yeu.
-- Test code phai nam trong `tests/`; khong dung DB, credentials hay file ca nhan/production lam test data.
-
-Neu task build bi khoa exe, build ra output rieng:
+- For code or logic changes, read `AI/infra/TESTING.md` and run `tests/Scripts/run-smoke.ps1` afterward.
+- Before merge/release, run `tests/Scripts/run-all.ps1`; UI tests require an unlocked interactive Windows desktop.
+- Do not change UI or business behavior merely to make a test pass. Report existing defects and failures; do not hide them with reruns or weaker assertions.
+- Keep tests under `tests/` and never use production databases, credentials, or personal files as fixtures.
+- If running executables lock build output, use an isolated directory:
 
 ```powershell
 dotnet build QuanLyHoSo.csproj -o .verify-builds/current
 ```
 
-`.gitignore` da ignore `.verify-build/`, `.verify-build-*/`, `.verify-builds/`, `.lan-test-build/`.
+`.gitignore` excludes `.verify-build/`, `.verify-build-*/`, `.verify-builds/`, and `.lan-test-build/`.

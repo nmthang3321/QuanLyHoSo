@@ -1,30 +1,13 @@
-# Page - Cai dat home
+# Page - Settings home
 
-Dung khi task lien quan trang Cai dat tong.
+Files: `SettingsView.xaml[.cs]`, `SettingsViewModel.cs`, and `SettingsModels.cs`.
 
-Files:
-- `Views\Settings\SettingsView.xaml`
-- `Views\Settings\SettingsView.xaml.cs`
-- `ViewModels\SettingsViewModel.cs`
-- `Models\SettingsModels.cs`
+Commands open catalog, system-log, and user-management overlays; choose/create backup; and choose/restore a database. The former Guide button is removed, so `SettingsGuideViewModel/View` is currently unreachable from UI.
 
-Home cards/open commands:
-- catalog cards: `OpenCatalogDialogCommand`
-- system logs: `OpenSystemLogDialogCommand`
-- user management: `OpenUserManagementDialogCommand`
-- nut guide da duoc go khoi trang Cai dat; `SettingsGuideViewModel`/`SettingsGuideView` hien khong duoc mo tu UI.
-- backup: `ChooseBackupFolderCommand`, `BackupNowCommand`
-- restore: `ChooseRestoreFileCommand`, `RestoreDataCommand`
-
-Notes:
-- Cac dialog con lai nam chung trong `SettingsView.xaml` bang overlay `Grid Background="#6606164A"`; Huong dan khong con la dialog.
-- Drag/drop catalog values nam trong `SettingsView.xaml.cs`.
-- Khong con UI cai dat DB/log/url tren WPF. Cac thong so do thuoc server (`QuanLyHoSo.Server` args/config).
-- `Admin` thay toan bo card. `Officer` va `Leader` chi thay `Thong tin phan mem`, `Cap nhat phan mem`, `Thao tac nhanh`; card danh muc/sao luu va muc `Nguoi dung & phan quyen` bi an.
-- Card sao luu cua Admin cho chon thu muc luu ban sao tren may WPF, chon file `.db` de khoi phuc, va hien trang thai/lan sao luu gan nhat. Backup duoc tao tren server roi tai ve client; file khoi phuc duoc gui len server de xu ly.
-- Card sao luu tach ro 3 tang: trang thai sao luu tu dong, sao luu thu cong va khoi phuc. Duong dan dai rut gon tren mot dong va co tooltip; nut chon thu muc/file dung nhan chu ro rang. Khu khoi phuc dung nen cam nhat de phan biet voi thao tac sao luu chinh. Thu muc backup tren server giu toi da 10 file backup moi nhat tinh chung cac loai.
-- Voi Admin, card Sao luu du lieu nam cot trai va card Thao tac nhanh nam cot phai. Thao tac nhanh can tren va chi cao theo noi dung, khong stretch theo card sao luu dai hon. Voi Officer/Leader, Thao tac nhanh van ve cot trai hang dau nhu layout vai tro hien co.
-- Home dung Grid hai cot bang nhau. Voi `Officer`/`Leader`: hang dau la `Thao tac nhanh` ben trai va `Thong tin phan mem` ben phai, hai card can cung chieu cao; `Cap nhat phan mem` nam o hang tiep theo ben trai. Voi `Admin`, cac card quan tri van hien day du theo Grid.
-- Card settings dung vien ro, khong gan `DropShadowEffect` truc tiep len card de tranh lam mo chu trong WPF; header co thanh nhan/icon badge. Mau nhan: xanh duong cho thao tac/thong tin, xanh la cho cap nhat, cam cho sao luu. Quick action co hover nen xanh nhat.
-- `SettingsView` bat layout rounding va device-pixel snapping; khong ep che do render text rieng de title hien thi giong cac trang khac. Chu mo ta thao tac nhanh dung co 12 de dong bo voi format chu phu cua ung dung.
-- Do dam chu theo cap bac: noi dung `Medium`, title card/dialog dung `SectionTitleText` (`SemiBold`) nhu title `HO SO MOI NHAT`, title `CAI DAT` dung dung `PageTitleText` nhu header cac trang khac; van giu Segoe UI va co chu theo he thong chung.
+- Remaining dialogs are overlays inside `SettingsView.xaml`; catalog drag/drop is in code-behind.
+- DB/log/API URL configuration is server-owned and no longer exposed here.
+- Admin sees all cards. Officer/Leader see Software information, Software update, and Quick actions; catalog/backup/user administration is hidden.
+- The backup card has separate automatic-status, manual-backup, and restore sections. Long paths use ellipsis/tooltips; restore uses a light warning palette. The server folder retains ten newest backups across types.
+- Admin layout: Backup is left, Quick actions is right and top-aligned to content height. Officer/Leader keep Quick actions left and Software information right on the first row, with Update below.
+- Cards use clear borders rather than direct DropShadowEffect. Accent colors: blue for actions/info, green for updates, orange for backup/restore.
+- Layout rounding and pixel snapping are enabled. Typography follows shared `PageTitleText`, `SectionTitleText`, and Segoe UI hierarchy.

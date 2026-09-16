@@ -1,24 +1,19 @@
-# Infra - AppDataService
+# Infrastructure - AppDataService
 
-Dung khi task lien quan query SQLite/schema/seed/data access.
+Use for SQLite query, schema, seed, and data-access tasks. Main file: `Infrastructure\Data\AppDataService.cs`.
 
-File:
-- `Infrastructure\Data\AppDataService.cs`
-
-Rules:
-- Khong doc ca file neu khong can; tim method bang:
+Do not read the entire file unless necessary; locate methods first:
 
 ```powershell
 rg -n "MethodName" Infrastructure\Data\AppDataService.cs -C 5
 ```
 
-Important methods/areas:
-- schema/init: `Initialize`, `CreateSchema`, `TryAddColumn`, `CreateIndexes`
-- auth/users: `AuthenticateUser`, `GetUsers`, `SaveUser`, `DeleteUser`
-- catalogs: `GetCatalogValues`, `GetCatalogItems`, `AddCatalogItem`, `UpdateCatalogItem`, `DeleteCatalogItem`
-- record input: `GetNextRecordCode`, `FindSimilarRecord`, `SaveRecordForm`, `DeleteRecord`
-- list/filter/export: `GetFilteredRecords`, `CountFilteredRecords`, `GetExportPreview`, `BuildExportWhere`
-- processing: `GetProcessingQueueMetrics`, `GetProcessingQueueRecords`, `GetProcessingRecordDetail`, `UpdateProcessingRecord`
-- area: `GetAreaNames`, `EnsureStandardOrganizationAreas`, `AddOptionalAreaFilter`
-- backup: `BackupDatabase`, `RestoreDatabaseFromFile`
-
+Important areas:
+- Schema/init: `Initialize`, `CreateSchema`, `TryAddColumn`, `CreateIndexes`
+- Authentication/users: `AuthenticateUser`, `GetUsers`, `SaveUser`, `DeleteUser`
+- Catalogs: `GetCatalogValues`, `GetCatalogItems`, catalog CRUD
+- Intake: `GetNextRecordCode`, `FindSimilarRecord`, `SaveRecordForm`, `DeleteRecord`
+- List/filter/export: `GetFilteredRecords`, `CountFilteredRecords`, `GetExportPreview`, `BuildExportWhere`
+- Processing: queue metrics/list/detail and `UpdateProcessingRecord`
+- Areas: `GetAreaNames`, `EnsureStandardOrganizationAreas`, `AddOptionalAreaFilter`
+- Backup/restore: `BackupDatabase`, `RestoreDatabaseFromFile`

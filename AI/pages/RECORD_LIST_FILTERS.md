@@ -1,32 +1,11 @@
-# Page - Danh sach ho so filters
+# Page - Record-list filters
 
-Dung khi task lien quan bo loc tren trang Danh sach ho so.
+Files: `RecordListView.xaml[.cs]`, `RecordListViewModel.cs`, and `AppDataService.cs`.
 
-Files:
-- `Views\Records\RecordListView.xaml`
-- `Views\Records\RecordListView.xaml.cs`
-- `ViewModels\RecordListViewModel.cs`
-- `Infrastructure\Data\AppDataService.cs`
+Service methods: `GetFilteredRecords`, `CountFilteredRecords`, `BuildExportWhere`, and `AddOptionalAreaFilter`.
 
-Service methods:
-- `GetFilteredRecords`
-- `CountFilteredRecords`
-- `BuildExportWhere`
-- `AddOptionalAreaFilter`
+Filters: from/to date, status, case type, field, area, processor, keyword, and sort.
 
-Filters:
-- tu ngay/den ngay
-- trang thai
-- loai vu viec
-- linh vuc
-- dia ban
-- nguoi xu ly
-- tu khoa
-- sap xep
-
-Notes:
-- Nut `Bo loc` bind `IsFilterPanelOpen`.
-- Area filter doc `AI/features/AREA_SELECTOR.md`.
-- Nut `Xem du lieu` chay `ApplyFilterCommand`.
-- Nut `Dat lai` chay `ResetFilterCommand`.
-
+- `Bộ lọc` binds `IsFilterPanelOpen`.
+- `Xem dữ liệu` runs `ApplyFilterCommand`; `Đặt lại` runs `ResetFilterCommand`.
+- See `AI/features/AREA_SELECTOR.md` for the area overlay.

@@ -1,30 +1,18 @@
-# Feature - Navigation/back/sidebar
+# Feature - Navigation, back behavior, and sidebar state
 
-Dung khi task lien quan dieu huong, nut Back, sidebar highlight.
+Files: `ViewModels\ShellViewModel.cs`, `MainWindow.xaml`, and the source/destination page ViewModels.
 
-Files:
-- `ViewModels\ShellViewModel.cs`
-- `MainWindow.xaml`
-- cac ViewModel trang nguon/dich
-
-Flow can nho:
+Required flow:
 
 ```text
-Dung o Danh sach ho so
--> sidebar highlight Danh sach ho so
--> bam Chi tiet/Phan loai ho so
--> vao trang chi tiet/xu ly nhung sidebar van highlight Danh sach ho so
--> Back
--> ve Danh sach ho so va sidebar van highlight Danh sach ho so
+Record list selected in sidebar
+-> open details/classification from a row
+-> processing details open while Record list remains selected
+-> Back returns to Record list with the same sidebar selection
 ```
 
-Methods:
-- `ShellViewModel.NavigateTo(key, selectedNavigationKey)`
-- `ShellViewModel.ClassifyRecordFromList(...)`
-- `RecordProcessingViewModel.OpenRecord(recordCode, returnToPreviousPage: true)`
-- `RecordProcessingViewModel.BackToQueue()`
-- `RecordProcessingViewModel.PrepareQueue()`
+Relevant methods: `ShellViewModel.NavigateTo(key, selectedNavigationKey)`, `ClassifyRecordFromList(...)`, `RecordProcessingViewModel.OpenRecord(..., returnToPreviousPage: true)`, `BackToQueue()`, and `PrepareQueue()`.
 
-Khi bam sidebar Phan loai & Xu ly (`NavigateTo("Processing")` khong co selectedNavigationKey), luon goi `PrepareQueue()` de dong chi tiet/popup va xoa co quay ve trang nguon, sau do reload queue. Mo Phan loai tu Danh sach ho so van giu chi tiet va Back ve Danh sach ho so; neu da bam sidebar thi Back tu chi tiet mo trong queue chi ve queue, sidebar van chon Phan loai & Xu ly.
+Directly clicking the Processing sidebar calls `PrepareQueue()` to close details/popups, clear the return-to-source flag, and reload the queue. Opening classification from the record list preserves details and Back returns to the list. After a direct Processing sidebar click, Back from queue-opened details returns only to the queue.
 
-Moi lan bam truc tiep mot muc tren sidebar, `NavigateTo(..., resetPage: true)` tao lai ViewModel cua trang dich. Trang luon tro ve trang thai ban dau, dong popup/chi tiet va bo bo loc/trang thai tam cua lan mo truoc. Cac luong nghiep vu noi bo nhu Sua ho so, Phan loai tu danh sach va Back khong reset ViewModel.
+Every direct sidebar click uses `NavigateTo(..., resetPage: true)` and recreates the destination ViewModel, clearing filters and temporary dialog/detail state. Internal flows such as edit, classify-from-list, and Back do not reset the ViewModel.

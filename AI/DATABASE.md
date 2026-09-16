@@ -1,25 +1,16 @@
-# Database/schema
+# Database and schema
 
-Chi tiet hon:
-- `AI/infra/DATABASE_SCHEMA.md`
-- `AI/infra/DATA_SERVICE.md`
+Detailed references: `AI/infra/DATABASE_SCHEMA.md` and `AI/infra/DATA_SERVICE.md`.
 
-Bang chinh:
-- `Users`
-- `Areas`
-- `CatalogItems`
-- `Records`
-- `RecordAttachments`
-- `ProcessHistories`
-- `SystemLogs`
+Main tables: `Users`, `Areas`, `CatalogItems`, `Records`, `RecordAttachments`, `ProcessHistories`, and `SystemLogs`.
 
-Ghi chu:
-- Catalog `ProcessorName` duoc sync tu `Records.ProcessorName`.
-- `TryAddColumn` da doi sang check `PRAGMA table_info` truoc khi `ALTER TABLE`, de khong con warning lap lai `duplicate column name: FilePath`.
-- Neu task chi lien quan 1 query, khong doc ca `AppDataService.cs`; tim method bang `rg`.
+Notes:
+- The `ProcessorName` catalog is synchronized from `Records.ProcessorName`.
+- `TryAddColumn` checks `PRAGMA table_info` before `ALTER TABLE`, avoiding repeated `duplicate column name: FilePath` warnings.
+- For a task involving one query, do not read all of `AppDataService.cs`; locate the relevant method with `rg`.
 
-Dia ban:
-- `EnsureStandardOrganizationAreas(connection)` seed cac don vi cap tinh/bo/cong an tinh/ngoai tinh.
-- `AddOptionalAreaFilter()` xu ly group filter.
-- `Cap xa` map theo `AreaType` xa/phuong/dac khu.
-- Group khac map theo `AreaType` hoac tap `AreaName`.
+Areas:
+- `EnsureStandardOrganizationAreas(connection)` seeds province, ministry, provincial-police, and out-of-province organizations.
+- `AddOptionalAreaFilter()` handles group filters.
+- `Cấp xã` maps by `AreaType` for communes, wards, and special zones.
+- Other groups map by `AreaType` or a defined set of `AreaName` values.

@@ -1,45 +1,19 @@
-# Infra - LAN API
+# Infrastructure - LAN API
 
-Dung khi task lien quan client/server LAN.
+Use for client/server LAN tasks.
 
-Files:
-- `QuanLyHoSo.Server\Program.cs`
-- `QuanLyHoSo.Server\ServerWindow.xaml`
-- `QuanLyHoSo.Server\ServerWindow.xaml.cs`
-- `QuanLyHoSo.Core\QuanLyHoSo.Core.csproj`
-- `QuanLyHoSo.Shared\QuanLyHoSo.Shared.csproj`
-- `Infrastructure\Configuration\AppPathSettings.cs`
-- `Infrastructure\Network\LanApiModels.cs`
-- `Infrastructure\Network\LanDataClient.cs`
-- `Infrastructure\Network\LanDataServer.cs`
-- `Infrastructure\Network\LanServerUnavailableException.cs`
-- `Infrastructure\Data\AppDataService.cs`
-- `scripts\test-lan-local.ps1`
+Main files: server Program/Window/project, Core/Shared projects, `AppPathSettings`, LAN DTO/client/server/exception classes, `AppDataService`, and `scripts\test-lan-local.ps1`.
 
-Modes:
-- `AdminHost`
-- `Client`
+Modes: `AdminHost` and `Client`.
 
-Notes:
-- Client khong mo SQLite, goi HTTP API toi admin host.
-- Server API co the chay doc lap bang `QuanLyHoSo.Server`.
-- App WPF mac dinh la `Client`; chi ghi ro `AdminHost` neu muon chay don may/tuong thich cu.
-- Neu server tat/mat mang, client hien popup qua `LanServerUnavailableException`.
-- `LanDataClient` gui header `X-QuanLyHoSo-Client` bang machine name va heartbeat route `health` moi 30 giay.
-- `LanDataServer.ConnectedClientCount` dem machine duy nhat co heartbeat/request trong 90 giay gan nhat; stop server se clear danh sach.
+- Client never opens SQLite; it calls the server HTTP API.
+- `QuanLyHoSo.Server` can host the API independently.
+- WPF defaults to `Client`; use explicit `AdminHost` only for single-machine/legacy compatibility.
+- Connection failures surface through `LanServerUnavailableException`.
+- Client sends `X-QuanLyHoSo-Client` with the machine name and a 30-second `health` heartbeat.
+- `ConnectedClientCount` counts unique machines active in the last 90 seconds and clears on server stop.
 
-Routes dang co:
-- `auth/login`
-- `catalog/areas`, `catalog/values`, `catalog/processors`
-- `dashboard/metrics`, `dashboard/status`, `dashboard/areas`, `dashboard/trend`, `dashboard/recent`
-- `records/list`, `records/count`, `records/export-preview`, `records/export-count`, `records/detail`, `records/similar`, `records/save`, `records/delete`, `records/total`
-- `records/trash`, `records/trash/move`, `records/restore` (admin); `records/delete` la alias xoa mem va nhan them DeletionBatchId. Client moi goi trash/move de tranh xoa cung tren server cu.
-- `records/trash/delete-permanently` (admin): RecordCode + DeletionBatchId; chi xoa ho so trong thung rac, tra bool.
-- `processing/metrics`, `processing/list`, `processing/count`, `processing/detail`, `processing/update`
-- `staff/performance`, `staff/deadlines`, `staff/active-records`
-- `leadership-notices/latest`, `leadership-notices/save`
-- `settings/catalog-items`, `settings/catalog-counts`, `settings/catalog/add`, `settings/catalog/update`, `settings/catalog/delete`, `settings/catalog/reorder`
-- `settings/system-logs`, `settings/users`, `settings/users/save`, `settings/users/delete`, `settings/users/change-password`, `settings/backup/create`
+Route groups include authentication; catalogs; dashboard; record list/detail/save/resubmission/trash/restore; processing; staff performance/deadlines/active records; leadership notices/KPI; Settings catalog/log/user/password; backup/restore; and internal update discovery/download. Check `LanDataServer.Dispatch` for the exact current list.
 
 Run:
 
@@ -47,4 +21,4 @@ Run:
 dotnet run --project QuanLyHoSo.Server\QuanLyHoSo.Server.csproj -- --url http://0.0.0.0:5055
 ```
 
-Lenh tren mo giao dien WPF quan tri server. Dong/thu nho se dua app xuong system tray; `Thoat may chu` moi stop listener. Day chua phai Windows Service.
+This opens the WPF server console. Close/minimize sends it to the system tray; only `Thoát máy chủ` stops it. It is not a Windows Service.

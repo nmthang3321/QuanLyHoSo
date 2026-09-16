@@ -1,16 +1,7 @@
-# Page - Settings guide
+# Page - Settings guide (currently unreachable)
 
-Dung khi task lien quan trang Huong dan mo tu Cai dat.
+Files: `SettingsGuideView.xaml`, `SettingsGuideViewModel.cs`, `SettingsViewModel.cs`, and `ShellViewModel.cs`.
 
-Files:
-- `Views\Settings\SettingsGuideView.xaml`
-- `ViewModels\SettingsGuideViewModel.cs`
-- `ViewModels\SettingsViewModel.cs`
-- `ViewModels\ShellViewModel.cs`
+Historical flow: `OpenGuideCommand` called a Shell callback; Shell displayed `SettingsGuideViewModel` while keeping Settings selected; Back returned to Settings. Content was concise and role-specific for Admin, Leader, and Officer, covering filters, tracking, performance/on-time formulas, KPI, Admin safety, and assigned-record updates.
 
-Flow:
-- `SettingsViewModel.OpenGuideCommand` goi callback cua shell.
-- Shell hien `SettingsGuideViewModel`, giu sidebar `Settings` duoc chon.
-- `BackCommand` dieu huong ve trang `Settings`.
-- Noi dung ngan gon, moi muc chi giu muc dich, cach lam va luu y quan trong; duoc tao rieng theo role `Admin`, `Leader`, `Officer`.
-- Phan `Nhung dieu can biet` tom tat bo loc Danh sach ho so, bo loc Theo doi can bo, cong thuc hieu suat/dung han va cach dat KPI. Admin co them quan tri an toan; Officer co them cach cap nhat ho so duoc giao.
+The Settings Guide button is currently removed from the UI.

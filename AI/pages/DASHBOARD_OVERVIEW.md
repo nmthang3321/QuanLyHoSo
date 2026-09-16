@@ -1,23 +1,9 @@
 # Page - Dashboard overview
 
-Dung khi task lien quan trang Tong quan/Dashboard.
+Files: `DashboardView.xaml[.cs]`, `DashboardViewModel.cs`, and `DashboardModels.cs`.
 
-Files:
-- `Views\Dashboard\DashboardView.xaml`
-- `Views\Dashboard\DashboardView.xaml.cs`
-- `ViewModels\DashboardViewModel.cs`
-- `Models\DashboardModels.cs`
+Service methods: `GetDashboardMetrics`, `GetStatusStats`, `GetTopAreas`, `GetReceivedTrendStats`, `GetRecentRecords`, and `CountRecords`.
 
-Service methods:
-- `GetDashboardMetrics`
-- `GetStatusStats`
-- `GetTopAreas`
-- `GetReceivedTrendStats`
-- `GetRecentRecords`
-- `CountRecords`
-
-Notes:
-- Reload dashboard async/background.
-- Da fix `CalculateNiceAxisStep` tra 0 gay not responding.
-- Date filter menu nam trong code-behind `DashboardView.xaml.cs`.
-
+- Reload runs asynchronously in the background.
+- The `CalculateNiceAxisStep` zero-step hang has been fixed.
+- Date-filter menu behavior lives in `DashboardView.xaml.cs`.

@@ -1,58 +1,49 @@
-# Dia ban hierarchical selector
+# Hierarchical area selector
 
-Ban chi tiet moi nam o `AI/features/AREA_SELECTOR.md`. Uu tien doc file do khi sua code.
+The detailed reference is `AI/features/AREA_SELECTOR.md`. Read that file first when changing this feature.
 
-Dung khi task lien quan:
-- field `Dia ban` trong trang nhap lieu
-- bo loc `Dia ban` trong danh sach ho so
-- group dia ban/cap xa/cap tinh/cap bo/cong an tinh/ngoai tinh
+Use this map for tasks involving the `Địa bàn` field on record intake, the area filter on the record list, or the commune/province/ministry/provincial-police/out-of-province groups.
 
-File chinh:
+Main files:
 - `Models\AreaSelectionModels.cs`
 - `Infrastructure\Data\AppDataService.cs`
 - `ViewModels\RecordInputViewModel.cs`
 - `ViewModels\RecordListViewModel.cs`
 - `ViewModels\RecordProcessingViewModel.cs`
-- `Views\Records\RecordInputView.xaml`
-- `Views\Records\RecordInputView.xaml.cs`
-- `Views\Records\RecordListView.xaml`
-- `Views\Records\RecordListView.xaml.cs`
+- `Views\Records\RecordInputView.xaml[.cs]`
+- `Views\Records\RecordListView.xaml[.cs]`
 
-## Nhom dia ban
+## Area groups
 
-Thu tu tu cap nho den cap lon:
-- `Cap xa`: danh sach 102 xa/phuong/dac khu tu bang `Areas`.
-- `Cap tinh`: `Tinh uy An Giang`, `Uy ban nhan dan tinh`, `Ban Noi chinh Tinh uy`, `Thanh tra tinh`.
-- `Cap bo`: `C01`, `C02`, `C03`, `C04`, `X05`, `X06`.
-- `Cong an tinh`: `PC02`, `PC03`, `PC04`, `PX05`, `PX06`, `Don vi khac trong tinh`.
-- `Don vi trong nganh ngoai tinh`: 1 option cung ten.
+Ordered from the smallest to the largest scope:
+- `Cấp xã`: 102 communes, wards, and special zones from `Areas`.
+- `Cấp tỉnh`: `Tỉnh ủy An Giang`, `Ủy ban nhân dân tỉnh`, `Ban Nội chính Tỉnh ủy`, `Thanh tra tỉnh`.
+- `Cấp bộ`: `C01`, `C02`, `C03`, `C04`, `X05`, `X06`.
+- `Công an tỉnh`: `PC02`, `PC03`, `PC04`, `PX05`, `PX06`, `Đơn vị khác trong tỉnh`.
+- `Đơn vị trong ngành ngoài tỉnh`: one option with the same name.
 
-## Behavior hien tai
+## Current behavior
 
-Trang nhap lieu:
-- Button mo panel inline tren root overlay `AreaOverlayCanvas`.
-- Khong dung `Popup`/`ContextMenu` cho search vi bo go tieng Viet/IME co the hien edit box o goc trai man hinh.
-- Khong lam gian layout doc va khong bi card/section khac cat.
-- Code-behind tinh vi tri theo `AreaDropDownButton` bang `TransformToVisual(AreaOverlayCanvas)`.
-- Khong dung `TransformToAncestor` vi canvas la sibling, se crash.
-- Panel co textbox search, group header bung/thu bang click.
-- Khi dang search, group tu bung va chi hien item khop.
-- Chon item set `AreaName = option.FilterValue`.
+Record intake:
+- A button opens an inline panel on root `AreaOverlayCanvas`.
+- Do not use `Popup` or `ContextMenu` for search because Vietnamese IME composition may appear at the top-left of the screen.
+- The overlay does not stretch the page vertically and is not clipped by cards or sections.
+- Code-behind positions it from `AreaDropDownButton` with `TransformToVisual(AreaOverlayCanvas)`. Do not use `TransformToAncestor`; the canvas is a sibling and that call crashes.
+- The panel has search and clickable expandable group headers. Searching automatically expands groups and shows matching items only.
+- Selecting an item sets `AreaName = option.FilterValue`.
 
-Trang danh sach ho so:
-- Bo loc dia ban dung root overlay `AreaFilterOverlayCanvas`.
-- Co textbox search va group bung/thu nhu trang nhap lieu.
-- Co the chon `Tat ca`, group, hoac item con.
-- Click group vua set filter theo group vua bung/thu de xem item con.
+Record list:
+- The area filter uses root overlay `AreaFilterOverlayCanvas` with the same search and expandable groups.
+- Users can select `Tất cả`, a group, or a child item. Clicking a group applies the filter and toggles its children.
 
-Data/filter:
-- Trang nhap lieu va danh sach ho so dung `FilteredAreas`, `AreaSearchText`, `AreaSelectionOptions.Filter/Flatten`.
-- `AppDataService.Initialize()` goi `EnsureStandardOrganizationAreas(connection)`.
-- `GetAreaNames()` format xa/phuong/dac khu thanh `"AreaType Name"`; don vi to chuc tra ve `Name`.
-- Cac filter record/export/processing queue dung `AddOptionalAreaFilter()`.
-- Manual save/update `AreaName = $areaName` khong doi.
+Data/filter rules:
+- Intake and record-list pages use `FilteredAreas`, `AreaSearchText`, and `AreaSelectionOptions.Filter/Flatten`.
+- `AppDataService.Initialize()` calls `EnsureStandardOrganizationAreas(connection)`.
+- `GetAreaNames()` formats communes/wards/special zones as `"AreaType Name"`; organization units return `Name`.
+- Record, export, and processing-queue filters use `AddOptionalAreaFilter()`.
+- Manual save/update keeps `AreaName = $areaName` unchanged.
 
-Verify gan nhat:
+Latest verification:
 
 ```powershell
 dotnet build QuanLyHoSo.csproj -o .verify-builds/record-list-area-overlay

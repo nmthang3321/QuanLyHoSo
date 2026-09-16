@@ -1,19 +1,9 @@
-# Feature - Export Excel
+# Feature - Excel export
 
-Dung khi task lien quan xuat Excel/preview/export data.
+Files: `Views\Records\RecordListView.xaml`, `ViewModels\RecordListViewModel.cs`, and `Infrastructure\Data\AppDataService.cs`.
 
-Files:
-- `Views\Records\RecordListView.xaml`
-- `ViewModels\RecordListViewModel.cs`
-- `Infrastructure\Data\AppDataService.cs`
+Service methods: `GetExportPreview`, `BuildExportWhere`, and shared `GetFilteredRecords` filtering where appropriate.
 
-Service methods:
-- `GetExportPreview`
-- `BuildExportWhere`
-- `GetFilteredRecords` neu can dung chung filter
-
-Notes:
-- Export nam trong trang Danh sach ho so, page `Export` rieng da bo.
-- Export da chuyen async/background de tranh block UI.
-- `_isExporting` tranh bam lap khi dang export.
-
+- Export lives on the record-list page; the separate Export page was removed.
+- Export runs asynchronously in the background to avoid blocking the UI.
+- `_isExporting` prevents duplicate export clicks.

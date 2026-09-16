@@ -1,23 +1,11 @@
 # Dashboard
 
-Chi tiet theo trang/popup:
-- `AI/pages/DASHBOARD_OVERVIEW.md`
-- `AI/popups/DASHBOARD_DATE_RANGE.md`
+Detailed references: `AI/pages/DASHBOARD_OVERVIEW.md` and `AI/popups/DASHBOARD_DATE_RANGE.md`.
 
-File can mo:
-- `ViewModels\DashboardViewModel.cs`
-- `Views\Dashboard\DashboardView.xaml`
-- `Views\Dashboard\DashboardView.xaml.cs`
-- `Models\DashboardModels.cs`
+Open `ViewModels\DashboardViewModel.cs`, `Views\Dashboard\DashboardView.xaml[.cs]`, and `Models\DashboardModels.cs`.
 
-Service methods:
-- `GetDashboardMetrics`
-- `GetStatusStats`
-- `GetTopAreas`
-- `GetReceivedTrendStats`
-- `GetRecentRecords`
-- `CountRecords`
+Service methods: `GetDashboardMetrics`, `GetStatusStats`, `GetTopAreas`, `GetReceivedTrendStats`, `GetRecentRecords`, and `CountRecords`.
 
-Ghi chu:
-- Da fix not responding do `CalculateNiceAxisStep` tra 0.
-- Reload dashboard dang async/background.
+Notes:
+- A previous not-responding defect caused by `CalculateNiceAxisStep` returning zero has been fixed.
+- Dashboard reload runs asynchronously in the background.

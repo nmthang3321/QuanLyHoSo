@@ -1,29 +1,13 @@
-# Danh sach ho so
+# Record list
 
-Chi tiet theo chuc nang:
-- `AI/pages/RECORD_LIST_FILTERS.md`
-- `AI/pages/RECORD_LIST_TABLE.md`
-- `AI/popups/RECORD_DETAIL_MODAL.md`
-- `AI/features/AREA_SELECTOR.md`
-- `AI/features/EXPORT_EXCEL.md`
+Detailed references: `AI/pages/RECORD_LIST_FILTERS.md`, `AI/pages/RECORD_LIST_TABLE.md`, `AI/popups/RECORD_DETAIL_MODAL.md`, `AI/features/AREA_SELECTOR.md`, and `AI/features/EXPORT_EXCEL.md`.
 
-File can mo:
-- `ViewModels\RecordListViewModel.cs`
-- `ViewModels\RecordListRowViewModel.cs`
-- `Views\Records\RecordListView.xaml`
-- `Views\Records\RecordListView.xaml.cs`
-- `Models\AreaSelectionModels.cs` neu cham toi dia ban.
-- `AI/AREA_SELECTOR.md` neu cham toi dia ban.
+Open `ViewModels\RecordListViewModel.cs`, `ViewModels\RecordListRowViewModel.cs`, `Views\Records\RecordListView.xaml[.cs]`, and `Models\AreaSelectionModels.cs` for area work.
 
-Service methods:
-- `GetFilteredRecords`
-- `CountFilteredRecords`
-- `GetExportPreview`
-- `DeleteRecord`
-- `GetRecordForm`
+Service methods: `GetFilteredRecords`, `CountFilteredRecords`, `GetExportPreview`, `DeleteRecord`, and `GetRecordForm`.
 
-Ghi chu:
-- Export Excel nam trong trang nay. Page `Export` rieng da bo.
-- Bo loc dia ban dung root overlay `AreaFilterOverlayCanvas`, search text va group bung/thu.
-- Chon duoc `Tat ca`, group, hoac item con. Click group vua set filter theo group vua bung/thu de xem item con.
-- Nut sua ho so tren tung dong dua theo `AuthContext.CanEditRecord(record.ProcessorName)`, khong khoa theo client mode nua. Khi WPF chay `Client`, sua/luu ho so di qua LAN API.
+Notes:
+- Excel export belongs to this page; the separate Export page was removed.
+- The area filter uses root overlay `AreaFilterOverlayCanvas` with search and expandable groups.
+- Users can choose `Tất cả`, a group, or a child item; clicking a group applies it and toggles child visibility.
+- Per-row edit visibility uses `AuthContext.CanEditRecord(record.ProcessorName)` and is not blocked by client mode. Client-mode edit/save goes through the LAN API.

@@ -1,18 +1,17 @@
-# Infra - Build/Git
+# Infrastructure - Build and Git
 
-Build verify:
+Build verification:
 
 ```powershell
 dotnet build QuanLyHoSo.csproj -o .verify-builds/current
 dotnet build QuanLyHoSo.Server\QuanLyHoSo.Server.csproj -o .verify-builds/server
 ```
 
-Notes:
-- Dung output rieng de tranh exe trong `bin/Debug` bi khoa khi app dang chay.
-- `.gitignore` ignore `.verify-build/`, `.verify-build-*/`, `.verify-builds/`, `.lan-test-build/`.
-- Warning `NETSDK1138` ve `.NET 5.0-windows` la warning cu.
+- Use isolated output so a running app cannot lock `bin/Debug`.
+- `.gitignore` excludes `.verify-build/`, `.verify-build-*/`, `.verify-builds/`, and `.lan-test-build/`.
+- `NETSDK1138` for `.NET 5.0-windows` is an existing warning.
 
-Automated regression verification:
+Automated verification:
 
 ```powershell
 .\tests\Scripts\run-smoke.ps1
@@ -20,13 +19,13 @@ Automated regression verification:
 .\tests\Scripts\run-all.ps1 -IncludeUI
 ```
 
-- Scripts mac dinh build solution truoc khi test; khong test binary cu. `run-all` build mot lan roi goi cac suite voi `-SkipBuild`.
-- `run-all` mac dinh khong chay UI. `-IncludeUI` can desktop Windows interactive, khong khoa man hinh.
-- Test projects dung .NET 8; app van dung .NET 5. Can .NET 8 SDK va .NET 5 Desktop Runtime.
-- Reports TRX/coverage nam trong `tests/Reports/`, khong commit generated reports.
-- Chi tiet architecture/isolation/coverage gaps: `AI/infra/TESTING.md`.
+- Scripts build before testing; they do not silently test stale binaries. `run-all` builds once and invokes suites with `-SkipBuild`.
+- UI tests are excluded by default and require an unlocked interactive Windows desktop.
+- Test projects target .NET 8; production remains .NET 5. Install the .NET 8 SDK and .NET 5 Desktop Runtime.
+- Generated TRX/coverage reports under `tests/Reports/` are not committed.
+- See `AI/infra/TESTING.md` for architecture, isolation, and gaps.
 
-Git:
-- Luon chay `git status --short --branch` truoc khi sua/commit.
-- Khong revert thay doi user.
-- Neu commit, stage dung file lien quan task.
+Git rules:
+- Run `git status --short --branch` before editing or committing.
+- Never revert user changes.
+- Stage only files relevant to the task.

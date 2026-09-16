@@ -1,33 +1,9 @@
-# Popup - Settings catalog dialog
+# Popup - Settings catalog management
 
-Dung khi task lien quan popup quan ly danh muc.
+Files: Settings XAML/code-behind/ViewModel, Settings models, and `AppDataService`.
 
-Files:
-- `Views\Settings\SettingsView.xaml`
-- `Views\Settings\SettingsView.xaml.cs`
-- `ViewModels\SettingsViewModel.cs`
-- `Models\SettingsModels.cs`
-- `Infrastructure\Data\AppDataService.cs`
+State/commands: `IsCatalogDialogOpen`, open/close, save/cancel edit, select row, and delete row commands.
 
-State/commands:
-- `IsCatalogDialogOpen`
-- `OpenCatalogDialogCommand`
-- `CloseCatalogDialogCommand`
-- `SaveCatalogValueCommand`
-- `CancelCatalogEditCommand`
-- `SelectCatalogValueCommand`
-- `DeleteCatalogValueForRowCommand`
+Catalog groups: `ReceiveSource`, `CaseType`, `Field`, `ContentGroup`, `Priority`, `ProcessorName`, and `ExpectedHandlingMethod`.
 
-Catalog groups:
-- `ReceiveSource`
-- `CaseType`
-- `Field`
-- `ContentGroup`
-- `Priority`
-- `ProcessorName`
-- `ExpectedHandlingMethod`
-
-Notes:
-- ListBox `CatalogValuesListBox` ho tro keo tha sap xep trong code-behind.
-- `ProcessorName` duoc sync tu `Records.ProcessorName`.
-
+`CatalogValuesListBox` supports drag/drop ordering in code-behind. `ProcessorName` is synchronized from `Records.ProcessorName`.

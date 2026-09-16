@@ -1,43 +1,27 @@
-# LAN prototype
+# LAN client/server architecture
 
-Chi tiet hon: `AI/infra/LAN_API.md`.
+Detailed reference: `AI/infra/LAN_API.md`.
 
-Da co server WPF rieng: 1 may server giu DB va chay API LAN, client khong mo SQLite truc tiep. App WPF mac dinh la `Client`; `AdminHost` chi con la mode tuong thich/ky thuat neu can chay don may.
+A separate WPF server owns SQLite and hosts the LAN API; clients do not open SQLite directly. The WPF application defaults to `Client`. `AdminHost` remains only for single-machine/technical compatibility.
 
-File chinh:
-- `QuanLyHoSo.Server\Program.cs`
-- `QuanLyHoSo.Server\ServerWindow.xaml`
-- `QuanLyHoSo.Server\ServerWindow.xaml.cs`
-- `QuanLyHoSo.Server\QuanLyHoSo.Server.csproj`
-- `QuanLyHoSo.Core\QuanLyHoSo.Core.csproj`
-- `QuanLyHoSo.Shared\QuanLyHoSo.Shared.csproj`
-- `Infrastructure\Configuration\AppPathSettings.cs`
-- `Infrastructure\Network\LanApiModels.cs`
-- `Infrastructure\Network\LanDataClient.cs`
-- `Infrastructure\Network\LanDataServer.cs`
-- `Infrastructure\Network\LanServerUnavailableException.cs`
-- `Infrastructure\Data\AppDataService.cs`
-- `scripts\test-lan-local.ps1`
+Main files: the Server project, Core/Shared projects, `AppPathSettings`, LAN DTO/client/server/exception classes, `AppDataService`, and `scripts\test-lan-local.ps1`.
 
-Mode:
-- `AdminHost`: mo SQLite local, seed/schema, dong thoi bat API noi bo LAN tai `AdminServerUrl`.
-- `Client`: khong tao/mo SQLite, chi goi HTTP API toi may admin.
-- Default config khi thieu `DataAccessMode` la `Client`. Muon chay WPF don may moi can ghi ro `AdminHost`.
+Modes:
+- `AdminHost`: opens local SQLite, runs schema/seed, and hosts the API at `AdminServerUrl`.
+- `Client`: never opens SQLite; calls the server HTTP API.
+- Missing/unknown `DataAccessMode` normalizes to `Client`.
 
-Chay server rieng (mo giao dien quan tri):
+Run the server UI:
 
 ```powershell
 dotnet run --project QuanLyHoSo.Server\QuanLyHoSo.Server.csproj -- --url http://0.0.0.0:5055
 ```
 
-Luu y: `0.0.0.0` chi dung cho server listen moi card mang. Client khong ket noi bang `0.0.0.0`; client phai dung `http://localhost:5055` neu cung may hoac `http://IP-may-server:5055` neu may khac.
+`0.0.0.0` is a listen address only. Clients use `http://localhost:5055` on the same machine or the server IP/host name from another machine.
 
-Tham so tuy chon:
-- `--url http://0.0.0.0:5055`
-- `--database C:\QuanLyHoSo\Data\quanlyhoso.db`
-- `--log-folder C:\QuanLyHoSo\Logs`
+Optional arguments: `--url`, `--database`, `--log-folder`, and `--sample-data`.
 
-Config mau server:
+Example server settings:
 
 ```json
 {
@@ -49,50 +33,20 @@ Config mau server:
 }
 ```
 
-Config mau client:
+Example client settings use `DataAccessMode: "Client"` and a reachable server URL. When the server is unavailable, `LanServerUnavailableException` produces a user-facing prompt to start it, verify LAN connectivity, and open firewall port 5055.
 
-```json
-{
-  "DatabasePath": "",
-  "LogFolder": "C:\\QuanLyHoSo\\Logs",
-  "DataAccessMode": "Client",
-  "AdminMachineName": "MAY-ADMIN-01",
-  "AdminServerUrl": "http://192.168.1.10:5055"
-}
-```
+Local test: `.\scripts\test-lan-local.ps1`. It builds, backs up settings, starts server/client instances, switches client configuration, and restores settings afterward.
 
-Neu server tat/mat mang, client hien popup qua `LanServerUnavailableException`: can bat app/server admin, cung LAN, firewall mo port 5055.
+Connected flows include authentication, dashboards, record list/filter/export/details, Admin intake/edit/delete, processing queue/update, Settings catalog/log/users, backup/restore, resubmission, trash, staff tracking, notices/KPI, and internal update packages.
 
-Test local:
+Known limitations:
+- Attachment metadata/path travels through LAN, but physical client files are not uploaded to server storage.
+- Server is a tray application tied to a user session, not a Windows Service.
+- Use one server owning the database; do not run multiple synchronized Admin hosts.
 
-```powershell
-.\scripts\test-lan-local.ps1
-```
-
-Script se build, backup settings, mo 1 app `[SERVER]`, doi config sang `Client`, mo 1 app `[CLIENT]`, va restore settings khi dong app.
-
-Da noi cac luong chinh:
-- login
-- dashboard/read stats
-- danh sach ho so/filter/export preview
-- xem chi tiet ho so
-- nhap moi/sua form ho so qua server API cho admin
-- queue xu ly
-- cap nhat xu ly
-- xoa ho so qua server
-- settings: catalog counts/items/CRUD/reorder, system logs, user management
-- backup DB server-side tu WPF admin qua route `settings/backup/create`
-
-Chua lam day du:
-- upload/copy file dinh kem tu client len server. Hien record save van luu `FilePath` text; neu file nam tren may client thi may server/may khac co the khong mo duoc path do.
-- restore DB tu WPF client. Restore nen lam o server/bao tri de server doc duoc file backup.
-- dong goi `QuanLyHoSo.Server` thanh Windows Service chay nen/start cung Windows.
-- dong bo nhieu admin host. Khuyen nghi hien tai: 1 server giu DB, cac may WPF deu chay `Client`; admin dang nhap role `Admin`.
-
-Server UI hien tai:
-- Giao dien compact, chi hien mot URL ket noi client dung duoc, machine name, uptime va so client dang ket noi; khong hien URL lang nghe/database path/noi dung log ky thuat.
-- Cham xanh trang thai pulse cham khi listener dang chay.
-- Client heartbeat moi 30 giay. Server dem unique machine header `X-QuanLyHoSo-Client` trong cua so active 90 giay; request thu cong khong co header khong duoc dem.
-- Co start/stop server, backup ngay khong can login tai may server, mo thu muc data/log, copy client URL.
-- Dong/thu nho se an xuong system tray; thoat ro rang moi dung server.
-- Van phu thuoc user session, khong thay the Windows Service trong ban production.
+Server UI:
+- Compact status surface shows one usable client URL, machine name, uptime, and connected client count, without database/log internals.
+- Green status dot pulses while listening.
+- Client heartbeat is every 30 seconds; unique machines active within 90 seconds are counted.
+- Controls support server start/stop, built-in Admin reset, opening data/log folders, and copying the URL.
+- Closing/minimizing hides to tray; only explicit exit stops the server.

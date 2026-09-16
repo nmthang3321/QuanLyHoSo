@@ -1,40 +1,32 @@
-# Common - QuanLyHoSo
+# Common context - QuanLyHoSo
 
-## Tong quan
+## Overview
 
-- App: WPF desktop, C#, MVVM tu viet, `.NET 5.0-windows`.
-- Projects: `QuanLyHoSo` WPF client/admin UI, `QuanLyHoSo.Core` data/network/config/logging/security/doc generation, `QuanLyHoSo.Shared` models/DTO, `QuanLyHoSo.Server` WPF/tray LAN server.
-- DB: SQLite tren may server.
-- App WPF mac dinh chay `Client`, lay du lieu qua `QuanLyHoSo.Server` theo `AdminServerUrl`.
-- Server DB mac dinh: `%LocalAppData%\QuanLyHoSo\Data\quanlyhoso.db`.
-- Server/client log mac dinh: `%LocalAppData%\QuanLyHoSo\Logs\quanlyhoso-yyyyMMdd.log`.
-- `AppLogger` tu dong giu 30 ngay (hom nay + 29 ngay truoc), moi ngay don mot lan va chi xoa file dung mau `quanlyhoso-yyyyMMdd.log`.
-- Settings path: `%LocalAppData%\QuanLyHoSo\Settings\path-settings.json`.
-- Data service chinh: `Infrastructure\Data\AppDataService.cs`.
+- Desktop application: WPF, C#, custom MVVM, `.NET 5.0-windows`.
+- Projects: `QuanLyHoSo` WPF client/admin UI; `QuanLyHoSo.Core` data, network, configuration, logging, security, and document generation; `QuanLyHoSo.Shared` models/DTOs; `QuanLyHoSo.Server` WPF/tray LAN server.
+- SQLite runs on the server. WPF defaults to `Client` mode and uses `QuanLyHoSo.Server` through `AdminServerUrl`.
+- Default database: `%LocalAppData%\QuanLyHoSo\Data\quanlyhoso.db`.
+- Default log: `%LocalAppData%\QuanLyHoSo\Logs\quanlyhoso-yyyyMMdd.log`.
+- `AppLogger` retains 30 days, cleans once per day, and deletes only files matching `quanlyhoso-yyyyMMdd.log`.
+- Settings: `%LocalAppData%\QuanLyHoSo\Settings\path-settings.json`.
+- Main data service: `Infrastructure\Data\AppDataService.cs`.
 - Shell/navigation: `ViewModels\ShellViewModel.cs`, `MainWindow.xaml`.
 - Logger: `Infrastructure\Logging\AppLogger.cs`.
 
-## Role va phan quyen
+## Roles and authorization
 
-File chinh:
-- `Models\AuthModels.cs`
-- `Infrastructure\Security\AuthContext.cs`
-- `ViewModels\LoginViewModel.cs`
-- `Views\Auth\LoginView.xaml`
+Main files: `Models\AuthModels.cs`, `Infrastructure\Security\AuthContext.cs`, `ViewModels\LoginViewModel.cs`, and `Views\Auth\LoginView.xaml`.
 
-Role:
-- `Admin`: toan quyen, bao gom nhap/sua/xoa ho so qua server khi WPF chay client.
-- `Leader`: chi xem, khong sua.
-- `Officer`: xem, chinh sua, phan loai/xu ly ho so co `Records.ProcessorName == AuthContext.CurrentDisplayName`; khong duoc them moi/xoa ho so.
+- `Admin`: full access, including record create/edit/delete through the server when WPF runs as a client.
+- `Leader`: read-only.
+- `Officer`: can view, edit, classify, and process records whose `Records.ProcessorName == AuthContext.CurrentDisplayName`; cannot create or delete records.
 
-Dang co login, logout, quan ly user trong Settings. User mac dinh seed: `admin/admin123`.
+Login, logout, and Settings user management are implemented. The seeded default account is `admin/admin123`.
 
-## Verify
-
-Lenh nen dung:
+## Verification
 
 ```powershell
 dotnet build QuanLyHoSo.csproj -o .verify-builds/current
 ```
 
-Warning `NETSDK1138` ve `.NET 5.0-windows` het support la warning cu.
+`NETSDK1138` about unsupported `.NET 5.0-windows` is an existing warning.

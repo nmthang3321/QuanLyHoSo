@@ -1,23 +1,12 @@
-# Infra - Database schema
+# Infrastructure - Database schema
 
-Bang chinh:
-- `Users`
-- `Areas`
-- `CatalogItems`
-- `Records`
-- `RecordAttachments`
-- `ProcessHistories`
-- `SystemLogs`
+Main tables: `Users`, `Areas`, `CatalogItems`, `Records`, `RecordAttachments`, `ProcessHistories`, and `SystemLogs`.
 
-Notes:
-- `Users.MustChangePassword` danh dau tai khoan phai doi mat khau truoc khi vao shell; cot duoc migrate bang `TryAddColumn` voi default `0` cho du lieu cu.
-- `CatalogItems` co `CatalogType`, `Name`, `DisplayOrder`, `IsActive`.
-- Seed demo tao 105 ho so cho 7 can bo (15 ho so/can bo), dung random seed co dinh de du lieu lap lai on dinh.
-- `RecordAttachments` co `FilePath` duoc add/check bang `TryAddColumn`.
-- `SystemLogs` ghi qua `WriteDatabaseLog`.
-- Index tao trong `CreateIndexes(...)`.
-- Records co DeletedAt, DeletedBy, DeletionBatchId de xoa mem/khoi phuc; doc `AI/features/RECORD_TRASH.md`.
-
-Area:
-- `Areas` chua xa/phuong/dac khu va don vi to chuc.
-- Cac don vi cap tinh/bo/cong an tinh/ngoai tinh seed bang `EnsureStandardOrganizationAreas`.
+- `Users.MustChangePassword` forces a password change before entering the shell; migration uses `TryAddColumn` with legacy default `0`.
+- `CatalogItems` contains `CatalogType`, `Name`, `DisplayOrder`, and `IsActive`.
+- Demo seed creates 105 records for seven officers using a fixed random seed.
+- `RecordAttachments.FilePath` is added/checked through `TryAddColumn`.
+- `SystemLogs` entries are written through `WriteDatabaseLog`.
+- Indexes are created in `CreateIndexes(...)`.
+- Soft delete uses `Records.DeletedAt`, `DeletedBy`, and `DeletionBatchId`; see `AI/features/RECORD_TRASH.md`.
+- `Areas` contains communes/wards/special zones and organization units. Standard organizations are seeded by `EnsureStandardOrganizationAreas`.

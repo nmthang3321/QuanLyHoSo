@@ -6,7 +6,7 @@ Updated: 2026-09-12
 
 - Treat current UI, Vietnamese text, workflows, role rules, status strings, date formats, sort/filter semantics, exports, and SQLite values as contracts.
 - Do not restyle or restructure XAML during internal refactoring. Search XAML resources, bindings, event handlers, DI/composition, serialization, and LAN DTOs before renaming or deleting code.
-- If a confirmed defect requires observable change, record the old behavior, reason, new behavior, and impact in `.ai/REFACTORING_NOTES.md`.
+- If a confirmed defect requires observable change, record the old behavior, reason, new behavior, and impact in `AI/REFACTORING_NOTES.md`.
 
 ## Placement and dependencies
 
@@ -16,7 +16,7 @@ Updated: 2026-09-12
 - Shared models and wire DTOs: `Models/` and `Infrastructure/Network/LanApiModels.cs`, compiled by `QuanLyHoSo.Shared`.
 - Persistence, transport, security, logging, configuration, and document generation: `Infrastructure/`, compiled by `QuanLyHoSo.Core`.
 - Presentation contracts: `Application/Abstractions/`, compiled by `QuanLyHoSo.Core`.
-- AI-only guidance: `.ai/`. Historical feature notes remain in `AI/`; do not place new agent instructions in production folders.
+- AI/developer guidance belongs under `AI/`; do not place agent instructions in production or customer-documentation folders.
 
 Presentation code depends on `IApplicationDataService`; pass the dependency from `ShellViewModel`. Keep default constructors only where current runtime/XAML composition needs them.
 

@@ -1,6 +1,6 @@
 # AI instructions
 
-Read `.ai/ARCHITECTURE.md` and `.ai/CODING_GUIDELINES.md` before changing code. Use the historical feature routing in `AI/INDEX.md` when a task touches a specific screen or workflow.
+Read `AI/ARCHITECTURE.md` and `AI/CODING_GUIDELINES.md` before changing code. Use `AI/INDEX.md` when a task touches a specific screen or workflow.
 
 The governing rule is: same UI, logic, workflow, data meaning, and output unless a defect is confirmed and documented. Prefer a small, buildable extraction over a broad rewrite. Never assume an unusual Vietnamese status, role, default, date range, or navigation branch is accidental.
 
