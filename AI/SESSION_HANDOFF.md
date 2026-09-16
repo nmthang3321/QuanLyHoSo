@@ -64,6 +64,8 @@ See `AI/pages/PROCESSING_DETAIL.md`, `AI/pages/RECORD_INPUT_FORM.md`, and `AI/fe
 
 ## Tables, metrics, and selectable text - 2026-09-14
 
+- Sidebar navigation caches page ViewModels for the signed-in session, so revisiting a page no longer repeats constructor-time LAN calls. List, processing, and staff refreshes run in the background; independent first-visit catalog calls run concurrently. Input and Processing direct-navigation cleanup behavior is preserved.
+- Dashboard LAN loading no longer stacks six independent round trips sequentially. The requests start concurrently, and an explicit loading surface covers the initially empty charts until the snapshot is ready; a regression test verifies both behaviors.
 - Record-list text is selectable and copyable. Full-row selection remains visually distinct; multi-record checkboxes continue to use their own data selection state.
 - Double-clicking text selects the full cell text. Dashboard task cards preserve text selection while empty card space remains clickable.
 - Shared metric info icons explain dashboard, processing, and staff-tracking calculations in Vietnamese tooltips.
@@ -98,7 +100,7 @@ See `AI/features/RECORD_RESUBMISSION.md`.
 
 ## Verification baseline
 
-- Latest noninteractive verification on 2026-09-16: `tests/Scripts/run-all.ps1` passed 80 tests (40 unit/ViewModel and 40 integration); Release build completed with zero errors. UI tests were not included in this run.
+- Latest noninteractive verification on 2026-09-16: `tests/Scripts/run-all.ps1` passed 83 tests (43 unit/ViewModel and 40 integration); Release build completed with zero errors. UI tests were not included in this run.
 - Historical full verification on 2026-09-14: Release solution build and `tests/Scripts/run-all.ps1 -IncludeUI` passed 80 tests (40 unit, 39 integration, 1 UI smoke).
 - Test projects target .NET 8 while the application remains on .NET 5.
 - Each integration test uses an isolated temporary database. Generated test reports are ignored by Git.

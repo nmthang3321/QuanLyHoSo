@@ -50,6 +50,8 @@ namespace QuanLyHoSo.ViewModels
         private string _selectedStatus;
         private bool _shouldReturnToPreviousPage;
         private bool _isProcessingUpdateBusy;
+        private bool _isLoading;
+        private bool _reloadRequested;
         private bool _isDocumentDetailsOpen;
         private string _documentTransferNumber;
         private DateTime? _documentTransferDate;
@@ -72,8 +74,14 @@ namespace QuanLyHoSo.ViewModels
             QueueRecords = new ObservableCollection<ProcessingQueueRecord>();
             ProcessSteps = new ObservableCollection<ProcessStep>();
             History = new ObservableCollection<ProcessHistoryItem>();
-            ProcessorNames = new ObservableCollection<string>(_dataService.GetProcessorNames());
-            TransferAreas = AreaSelectionOptions.Build(_dataService.GetAreaNames(), includeGroupRows: true, groupRowsSelectable: false);
+            var processorNamesTask = Task.Run(() => _dataService.GetProcessorNames());
+            var transferAreasTask = Task.Run(() => _dataService.GetAreaNames());
+            var areaFiltersTask = Task.Run(() => _dataService.GetAreaNames(includeAll: true));
+            var severityFiltersTask = Task.Run(() => _dataService.GetCatalogValues("Priority", includeAll: true));
+            Task.WhenAll(processorNamesTask, transferAreasTask, areaFiltersTask, severityFiltersTask).GetAwaiter().GetResult();
+
+            ProcessorNames = new ObservableCollection<string>(processorNamesTask.Result);
+            TransferAreas = AreaSelectionOptions.Build(transferAreasTask.Result, includeGroupRows: true, groupRowsSelectable: false);
             FilteredTransferAreas = AreaSelectionOptions.Filter(TransferAreas, null);
             Attachments = new ObservableCollection<AttachmentDraft>();
             ProcessingStatuses = new ObservableCollection<string>(GetAllowedProcessingStatuses());
@@ -88,8 +96,8 @@ namespace QuanLyHoSo.ViewModels
                 "Đang chờ bổ sung tài liệu",
                 "Chuyển cơ quan khác"
             };
-            AreaFilters = AreaSelectionOptions.Build(_dataService.GetAreaNames(includeAll: true), includeGroupRows: true, groupRowsSelectable: true);
-            SeverityFilters = new ObservableCollection<string>(_dataService.GetCatalogValues("Priority", includeAll: true));
+            AreaFilters = AreaSelectionOptions.Build(areaFiltersTask.Result, includeGroupRows: true, groupRowsSelectable: true);
+            SeverityFilters = new ObservableCollection<string>(severityFiltersTask.Result);
             _dataService.CatalogChanged += DataService_CatalogChanged;
             ApplyFilterCommand = new RelayCommand(Reload);
             ViewRecordCommand = new RelayCommand(ViewRecord);
@@ -394,26 +402,70 @@ namespace QuanLyHoSo.ViewModels
             set => SetProperty(ref _processingNote, value);
         }
 
-        public void Reload()
+        public async void Reload()
         {
-            var metrics = _dataService.GetProcessingQueueMetrics();
-            UpdateMetricSelection(metrics);
-            ReplaceItems(Metrics, metrics);
-
-            var totalRecords = _dataService.CountProcessingQueueRecords(
-                SearchText,
-                SelectedStatus,
-                SelectedArea,
-                SelectedSeverity,
-                _selectedMetricKey);
-            TotalRecordsText = $"{totalRecords:N0} hồ sơ phù hợp";
-            TotalPages = Math.Max(1, (int)Math.Ceiling(totalRecords / (double)_pageSize));
-            if (CurrentPage > TotalPages)
+            if (_isLoading)
             {
-                CurrentPage = TotalPages;
+                _reloadRequested = true;
+                return;
             }
 
-            LoadPage();
+            _isLoading = true;
+            var searchText = SearchText;
+            var status = SelectedStatus;
+            var area = SelectedArea;
+            var severity = SelectedSeverity;
+            var metricKey = _selectedMetricKey;
+            var pageSize = _pageSize;
+            var requestedPage = CurrentPage;
+            var requestedSkip = (requestedPage - 1) * pageSize;
+
+            try
+            {
+                var metricsTask = Task.Run(() => _dataService.GetProcessingQueueMetrics());
+                var countTask = Task.Run(() => _dataService.CountProcessingQueueRecords(
+                    searchText, status, area, severity, metricKey));
+                var recordsTask = Task.Run(() => _dataService.GetProcessingQueueRecords(
+                    searchText, status, area, severity, metricKey, requestedSkip, pageSize));
+                await Task.WhenAll(metricsTask, countTask, recordsTask);
+
+                var totalRecords = countTask.Result;
+                var totalPages = Math.Max(1, (int)Math.Ceiling(totalRecords / (double)pageSize));
+                var page = Math.Min(requestedPage, totalPages);
+                var records = recordsTask.Result;
+                if (page != requestedPage)
+                {
+                    records = await Task.Run(() => _dataService.GetProcessingQueueRecords(
+                        searchText, status, area, severity, metricKey, (page - 1) * pageSize, pageSize));
+                }
+
+                if (IsDisposed)
+                {
+                    return;
+                }
+
+                var metrics = metricsTask.Result;
+                UpdateMetricSelection(metrics);
+                ReplaceItems(Metrics, metrics);
+                TotalRecordsText = $"{totalRecords:N0} hồ sơ phù hợp";
+                TotalPages = totalPages;
+                CurrentPage = page;
+                ReplaceItems(QueueRecords, records);
+                RaisePageCommandStates();
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Error("Processing", "Reload", ex, "Could not reload the processing queue.");
+            }
+            finally
+            {
+                _isLoading = false;
+                if (_reloadRequested && !IsDisposed)
+                {
+                    _reloadRequested = false;
+                    Reload();
+                }
+            }
         }
 
         private void ReloadFromFirstPage()

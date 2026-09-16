@@ -3,10 +3,12 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
 using QuanLyHoSo.ApplicationServices.Abstractions;
 using QuanLyHoSo.Infrastructure.Data;
+using QuanLyHoSo.Infrastructure.Logging;
 using QuanLyHoSo.Infrastructure.Security;
 using QuanLyHoSo.Models;
 
@@ -54,6 +56,8 @@ namespace QuanLyHoSo.ViewModels
         private string _leadershipNoticeText;
         private string _leadershipActionStatus;
         private string _leadershipKpiStatus;
+        private bool _isLoading;
+        private bool _reloadRequested;
 
         public StaffTrackingViewModel(Action<int> notificationUnreadCountChanged = null)
             : this(AppDataService.Instance, notificationUnreadCountChanged)
@@ -328,6 +332,11 @@ namespace QuanLyHoSo.ViewModels
         {
             var staffRows = _dataService.GetStaffPerformanceRows(FromDate, ToDate);
             var deadlineStats = _dataService.GetStaffDeadlineStats(FromDate, ToDate);
+            ApplyStaffData(staffRows, deadlineStats);
+        }
+
+        private void ApplyStaffData(IReadOnlyList<StaffPerformanceRow> staffRows, IReadOnlyList<StatusStat> deadlineStats)
+        {
             if (AuthContext.IsOfficer)
             {
                 staffRows = staffRows
@@ -353,10 +362,52 @@ namespace QuanLyHoSo.ViewModels
             ApplyMetricFilter();
         }
 
-        public void Reload()
+        public async void Reload()
         {
-            RefreshStaffData();
-            LoadNotifications();
+            if (_isLoading)
+            {
+                _reloadRequested = true;
+                return;
+            }
+
+            _isLoading = true;
+            var fromDate = FromDate;
+            var toDate = ToDate;
+            var canReadNotifications = CanReadLeadershipNotice;
+            var officerName = AuthContext.CurrentDisplayName;
+            var adminOnly = AuthContext.IsLeader;
+            var includeAll = AuthContext.IsAdmin;
+
+            try
+            {
+                var staffTask = Task.Run(() => _dataService.GetStaffPerformanceRows(fromDate, toDate));
+                var deadlineTask = Task.Run(() => _dataService.GetStaffDeadlineStats(fromDate, toDate));
+                var notificationsTask = canReadNotifications
+                    ? Task.Run(() => _dataService.GetLeadershipNotices(officerName, 0, int.MaxValue, adminOnly, includeAll))
+                    : Task.FromResult<StaffNotificationPage>(null);
+                await Task.WhenAll(staffTask, deadlineTask, notificationsTask);
+
+                if (IsDisposed)
+                {
+                    return;
+                }
+
+                ApplyStaffData(staffTask.Result, deadlineTask.Result);
+                ApplyNotifications(notificationsTask.Result);
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Error("StaffTracking", "Reload", ex, "Could not reload staff tracking data.");
+            }
+            finally
+            {
+                _isLoading = false;
+                if (_reloadRequested && !IsDisposed)
+                {
+                    _reloadRequested = false;
+                    Reload();
+                }
+            }
         }
 
         private void RefreshDeadlineStats(IEnumerable<StatusStat> deadlineStats)
@@ -725,6 +776,19 @@ namespace QuanLyHoSo.ViewModels
                 int.MaxValue,
                 AuthContext.IsLeader,
                 AuthContext.IsAdmin);
+
+            ApplyNotifications(page);
+        }
+
+        private void ApplyNotifications(StaffNotificationPage page)
+        {
+            if (!CanReadLeadershipNotice)
+            {
+                Notifications.Clear();
+                UnreadNotificationCount = 0;
+                _notificationUnreadCountChanged?.Invoke(0);
+                return;
+            }
 
             Notifications.Clear();
             foreach (var notification in page?.Items ?? Array.Empty<StaffNotification>())

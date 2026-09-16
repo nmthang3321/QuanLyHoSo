@@ -92,11 +92,11 @@ namespace QuanLyHoSo.ViewModels
                 Title = title,
                 IconGlyph = iconGlyph,
                 IconFontFamily = iconFontFamily,
-                Command = new RelayCommand(() => NavigateTo(key, resetPage: true), () => CanNavigateTo(key))
+                Command = new RelayCommand(() => NavigateTo(key), () => CanNavigateTo(key))
             };
         }
 
-        private void NavigateTo(string key, string selectedNavigationKey = null, bool resetPage = false)
+        private void NavigateTo(string key, string selectedNavigationKey = null)
         {
             if (!IsAuthenticated || !CanNavigateTo(key))
             {
@@ -108,10 +108,7 @@ namespace QuanLyHoSo.ViewModels
                 return;
             }
 
-            if (resetPage)
-            {
-                ResetPageViewModel(key);
-            }
+            var destinationAlreadyCreated = IsPageViewModelCreated(key);
 
             if (key == "Input" && selectedNavigationKey == null)
             {
@@ -135,33 +132,23 @@ namespace QuanLyHoSo.ViewModels
             };
 
             UpdateNavigationSelection(selectedNavigationKey ?? key);
-            RefreshCurrentPage(key);
+            if (destinationAlreadyCreated)
+            {
+                RefreshCurrentPage(key);
+            }
         }
 
-        private void ResetPageViewModel(string key)
+        private bool IsPageViewModelCreated(string key)
         {
-            switch (key)
+            return key switch
             {
-                case "Dashboard":
-                    DisposeAndClear(ref _dashboardViewModel);
-                    break;
-                case "Input":
-                    DisposeAndClear(ref _recordInputViewModel);
-                    break;
-                case "RecordList":
-                    DisposeAndClear(ref _recordListViewModel);
-                    break;
-                case "Processing":
-                    DisposeAndClear(ref _recordProcessingViewModel);
-                    break;
-                case "StaffTracking":
-                    DisposeAndClear(ref _staffTrackingViewModel);
-                    break;
-                case "Settings":
-                    DisposeAndClear(ref _settingsViewModel);
-                    DisposeAndClear(ref _settingsGuideViewModel);
-                    break;
-            }
+                "Input" => _recordInputViewModel != null,
+                "RecordList" => _recordListViewModel != null,
+                "Processing" => _recordProcessingViewModel != null,
+                "StaffTracking" => _staffTrackingViewModel != null,
+                "Settings" => _settingsViewModel != null,
+                _ => _dashboardViewModel != null
+            };
         }
 
         private void UpdateNavigationSelection(string key)
@@ -267,7 +254,7 @@ namespace QuanLyHoSo.ViewModels
             OnPropertyChanged(nameof(CurrentUserRoleText));
             UpdateNavigationVisibility();
             RaiseNavigationCommandStates();
-            UpdateStaffNotificationBadge();
+            _ = RefreshStaffNotificationBadgeAsync();
             _notificationBadgeRefreshTimer.Start();
             NavigateTo("Dashboard");
         }

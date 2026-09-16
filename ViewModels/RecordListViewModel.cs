@@ -58,6 +58,8 @@ namespace QuanLyHoSo.ViewModels
         private string _selectedStatus;
         private bool _isFilterPanelOpen;
         private bool _isExporting;
+        private bool _isLoading;
+        private bool _reloadRequested;
         private int _currentPage = 1;
         private bool _isResettingFilters;
         private int _pageSize = DefaultPageSize;
@@ -93,11 +95,17 @@ namespace QuanLyHoSo.ViewModels
                 RecordStatuses.ResubmittedResolved,
                 "Chuyển cơ quan khác"
             };
-            CaseTypes = new ObservableCollection<string>(_dataService.GetCatalogValues("CaseType", includeAll: true));
-            Fields = new ObservableCollection<string>(_dataService.GetCatalogValues("Field", includeAll: true));
-            Areas = AreaSelectionOptions.Build(_dataService.GetAreaNames(includeAll: true), includeGroupRows: true, groupRowsSelectable: true);
+            var caseTypesTask = Task.Run(() => _dataService.GetCatalogValues("CaseType", includeAll: true));
+            var fieldsTask = Task.Run(() => _dataService.GetCatalogValues("Field", includeAll: true));
+            var areasTask = Task.Run(() => _dataService.GetAreaNames(includeAll: true));
+            var processorsTask = Task.Run(() => _dataService.GetProcessorNames(includeAll: true));
+            Task.WhenAll(caseTypesTask, fieldsTask, areasTask, processorsTask).GetAwaiter().GetResult();
+
+            CaseTypes = new ObservableCollection<string>(caseTypesTask.Result);
+            Fields = new ObservableCollection<string>(fieldsTask.Result);
+            Areas = AreaSelectionOptions.Build(areasTask.Result, includeGroupRows: true, groupRowsSelectable: true);
             FilteredAreas = AreaSelectionOptions.Filter(Areas, null);
-            Processors = new ObservableCollection<string>(_dataService.GetProcessorNames(includeAll: true));
+            Processors = new ObservableCollection<string>(processorsTask.Result);
             ColumnOptions = new ObservableCollection<RecordListColumnOption>
             {
                 new("AreaName", "Địa bàn"),
@@ -589,27 +597,73 @@ namespace QuanLyHoSo.ViewModels
 
         public bool IsDetailOpen => SelectedRecordDetail != null;
 
-        public void Reload()
+        public async void Reload()
         {
-            ClearSelection();
-            var totalRecords = _dataService.CountFilteredRecords(
-                FromDate,
-                ToDate,
-                SelectedStatus,
-                SelectedCaseType,
-                SelectedField,
-                SelectedArea,
-                SelectedProcessor,
-                SearchText);
-            TotalRecordsText = $"{totalRecords:N0} hồ sơ";
-            _totalRecordCount = totalRecords;
-            TotalPages = Math.Max(1, (int)Math.Ceiling(totalRecords / (double)_pageSize));
-            if (CurrentPage > TotalPages)
+            if (_isLoading)
             {
-                CurrentPage = TotalPages;
+                _reloadRequested = true;
+                return;
             }
 
-            LoadPage();
+            _isLoading = true;
+            ClearSelection();
+            var fromDate = FromDate;
+            var toDate = ToDate;
+            var status = SelectedStatus;
+            var caseType = SelectedCaseType;
+            var field = SelectedField;
+            var area = SelectedArea;
+            var processor = SelectedProcessor;
+            var searchText = SearchText;
+            var sortOption = SelectedSortOption;
+            var pageSize = _pageSize;
+            var requestedPage = CurrentPage;
+            var requestedSkip = (requestedPage - 1) * pageSize;
+
+            try
+            {
+                var countTask = Task.Run(() => _dataService.CountFilteredRecords(
+                    fromDate, toDate, status, caseType, field, area, processor, searchText));
+                var recordsTask = Task.Run(() => _dataService.GetFilteredRecords(
+                    fromDate, toDate, status, caseType, field, area, processor, searchText,
+                    sortOption, pageSize, requestedSkip));
+                await Task.WhenAll(countTask, recordsTask);
+
+                var totalRecords = countTask.Result;
+                var totalPages = Math.Max(1, (int)Math.Ceiling(totalRecords / (double)pageSize));
+                var page = Math.Min(requestedPage, totalPages);
+                var records = recordsTask.Result;
+                if (page != requestedPage)
+                {
+                    records = await Task.Run(() => _dataService.GetFilteredRecords(
+                        fromDate, toDate, status, caseType, field, area, processor, searchText,
+                        sortOption, pageSize, (page - 1) * pageSize));
+                }
+
+                if (IsDisposed)
+                {
+                    return;
+                }
+
+                TotalRecordsText = $"{totalRecords:N0} hồ sơ";
+                _totalRecordCount = totalRecords;
+                TotalPages = totalPages;
+                CurrentPage = page;
+                ApplyPageRecords(records, (page - 1) * pageSize);
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Error("Records", "Reload", ex, "Could not reload the record list.");
+            }
+            finally
+            {
+                _isLoading = false;
+                if (_reloadRequested && !IsDisposed)
+                {
+                    _reloadRequested = false;
+                    Reload();
+                }
+            }
         }
 
         private void ReloadFromFirstPage()
@@ -666,6 +720,11 @@ namespace QuanLyHoSo.ViewModels
                 SelectedSortOption,
                 _pageSize,
                 skip);
+            ApplyPageRecords(records, skip);
+        }
+
+        private void ApplyPageRecords(IReadOnlyList<RecentRecord> records, int skip)
+        {
             var rows = new List<RecordListRowViewModel>();
             var index = skip + 1;
             foreach (var record in records)

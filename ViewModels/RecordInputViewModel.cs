@@ -6,6 +6,7 @@ using System.Globalization;
 using System.Linq;
 using System.Collections.Specialized;
 using System.Text;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Data;
 using System.Windows.Input;
@@ -63,15 +64,27 @@ namespace QuanLyHoSo.ViewModels
             _dataService = dataService ?? throw new ArgumentNullException(nameof(dataService));
             _goBack = goBack ?? (() => { });
 
-            ReceiveSources = new ObservableCollection<string>(_dataService.GetCatalogValues("ReceiveSource"));
-            ReceiverNames = new ObservableCollection<string>(_dataService.GetProcessorNames());
-            Areas = AreaSelectionOptions.Build(_dataService.GetAreaNames(), includeGroupRows: true, groupRowsSelectable: false);
+            var receiveSourcesTask = Task.Run(() => _dataService.GetCatalogValues("ReceiveSource"));
+            var receiverNamesTask = Task.Run(() => _dataService.GetProcessorNames());
+            var areasTask = Task.Run(() => _dataService.GetAreaNames());
+            var caseTypesTask = Task.Run(() => _dataService.GetCatalogValues("CaseType"));
+            var fieldsTask = Task.Run(() => _dataService.GetCatalogValues("Field"));
+            var contentGroupsTask = Task.Run(() => _dataService.GetCatalogValues("ContentGroup"));
+            var prioritiesTask = Task.Run(() => _dataService.GetCatalogValues("Priority"));
+            var handlingMethodsTask = Task.Run(() => _dataService.GetCatalogValues("ExpectedHandlingMethod"));
+            var nextRecordCodeTask = Task.Run(() => _dataService.GetNextRecordCode());
+            Task.WhenAll(receiveSourcesTask, receiverNamesTask, areasTask, caseTypesTask, fieldsTask,
+                contentGroupsTask, prioritiesTask, handlingMethodsTask, nextRecordCodeTask).GetAwaiter().GetResult();
+
+            ReceiveSources = new ObservableCollection<string>(receiveSourcesTask.Result);
+            ReceiverNames = new ObservableCollection<string>(receiverNamesTask.Result);
+            Areas = AreaSelectionOptions.Build(areasTask.Result, includeGroupRows: true, groupRowsSelectable: false);
             FilteredAreas = AreaSelectionOptions.Filter(Areas, null);
-            CaseTypes = new ObservableCollection<string>(_dataService.GetCatalogValues("CaseType"));
-            Fields = new ObservableCollection<string>(_dataService.GetCatalogValues("Field"));
-            ContentGroups = new ObservableCollection<string>(_dataService.GetCatalogValues("ContentGroup"));
-            Priorities = new ObservableCollection<string>(_dataService.GetCatalogValues("Priority"));
-            HandlingMethods = new ObservableCollection<string>(_dataService.GetCatalogValues("ExpectedHandlingMethod"));
+            CaseTypes = new ObservableCollection<string>(caseTypesTask.Result);
+            Fields = new ObservableCollection<string>(fieldsTask.Result);
+            ContentGroups = new ObservableCollection<string>(contentGroupsTask.Result);
+            Priorities = new ObservableCollection<string>(prioritiesTask.Result);
+            HandlingMethods = new ObservableCollection<string>(handlingMethodsTask.Result);
             _dataService.CatalogChanged += DataService_CatalogChanged;
             Attachments = new ObservableCollection<AttachmentDraft>();
             Attachments.CollectionChanged += Attachments_CollectionChanged;
@@ -86,7 +99,7 @@ namespace QuanLyHoSo.ViewModels
             CloseSenderHistoryCommand = new RelayCommand(CloseSenderHistory);
             SaveAsNewRecordCommand = new RelayCommand(() => SavePendingRecord(false));
             SaveResubmissionCommand = new RelayCommand(() => SavePendingRecord(true), () => CanSaveResubmission);
-            ClearForm();
+            ClearForm(nextRecordCodeTask.Result);
         }
 
         public ObservableCollection<string> ReceiveSources { get; }
@@ -193,10 +206,15 @@ namespace QuanLyHoSo.ViewModels
 
         private void ClearForm()
         {
+            ClearForm(null);
+        }
+
+        private void ClearForm(string nextRecordCode)
+        {
             CloseSenderHistory();
             _editingRecordCode = null;
             _originalDraft = null;
-            RecordCode = _dataService.GetNextRecordCode();
+            RecordCode = nextRecordCode ?? _dataService.GetNextRecordCode();
             ReceivedDate = string.Empty;
             SelectedReceivedDate = null;
             ReceiveSource = null;

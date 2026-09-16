@@ -10,6 +10,7 @@ namespace QuanLyHoSo.UnitTests
     public sealed class RecordProcessingAttachmentTests
     {
         [Fact]
+        [Trait("Category", "Unit")]
         [Trait("Category", "Regression")]
         public void OpenRecord_WhenProcessingPayloadHasNoAttachments_ShouldUseRecordAttachments()
         {

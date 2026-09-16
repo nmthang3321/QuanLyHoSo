@@ -7,10 +7,11 @@
         </Style>
     </UserControl.Resources>
 
-    <ScrollViewer x:Name="DashboardScrollViewer"
-                  VerticalScrollBarVisibility="Auto"
-                  HorizontalContentAlignment="Stretch"
-                  PreviewMouseWheel="ScrollViewer_PreviewMouseWheel">
+    <Grid>
+        <ScrollViewer x:Name="DashboardScrollViewer"
+                      VerticalScrollBarVisibility="Auto"
+                      HorizontalContentAlignment="Stretch"
+                      PreviewMouseWheel="ScrollViewer_PreviewMouseWheel">
         <StackPanel HorizontalAlignment="Stretch">
             <Grid Margin="0,0,0,18" HorizontalAlignment="Stretch">
                 <StackPanel>
@@ -577,5 +578,33 @@
                 </Border>
             </Grid>
         </StackPanel>
-    </ScrollViewer>
+        </ScrollViewer>
+
+        <Border Panel.ZIndex="10"
+                Background="#F5F8FC"
+                Visibility="{Binding IsLoading, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <Border HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Width="340"
+                    Padding="28,24"
+                    Background="White"
+                    BorderBrush="{StaticResource LineBrush}"
+                    BorderThickness="1"
+                    CornerRadius="6">
+                <StackPanel>
+                    <TextBlock Text="Đang tải dữ liệu tổng quan..."
+                               HorizontalAlignment="Center"
+                               FontSize="16"
+                               FontWeight="SemiBold"
+                               Foreground="{StaticResource TextBrush}" />
+                    <ProgressBar Height="5"
+                                 Margin="0,18,0,12"
+                                 IsIndeterminate="True" />
+                    <TextBlock Text="Vui lòng chờ trong giây lát"
+                               HorizontalAlignment="Center"
+                               Foreground="{StaticResource MutedTextBrush}" />
+                </StackPanel>
+            </Border>
+        </Border>
+    </Grid>
 </UserControl>

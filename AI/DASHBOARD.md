@@ -8,4 +8,4 @@ Service methods: `GetDashboardMetrics`, `GetStatusStats`, `GetTopAreas`, `GetRec
 
 Notes:
 - A previous not-responding defect caused by `CalculateNiceAxisStep` returning zero has been fixed.
-- Dashboard reload runs asynchronously in the background.
+- Dashboard reload runs asynchronously in the background. Its six independent summary requests start concurrently, and the page shows an explicit loading surface until the snapshot is ready.

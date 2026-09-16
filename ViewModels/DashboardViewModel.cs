@@ -35,7 +35,7 @@ namespace QuanLyHoSo.ViewModels
         private int _totalRecentPages = 1;
         private string _recentRecordsPageSizeText = DefaultRecentRecordsPageSize.ToString(CultureInfo.InvariantCulture);
         private string _selectedDateFilter;
-        private bool _isReloading;
+        private bool _isLoading;
         private double _trendChartWidth = 600;
         private PointCollection _trendLinePoints = new PointCollection();
         private string _totalRecordsText;
@@ -155,6 +155,12 @@ namespace QuanLyHoSo.ViewModels
             private set => SetProperty(ref _totalRecordsText, value);
         }
 
+        public bool IsLoading
+        {
+            get => _isLoading;
+            private set => SetProperty(ref _isLoading, value);
+        }
+
         public ICommand ApplyFilterCommand { get; }
         public ICommand PreviousRecentPageCommand => _previousRecentPageCommand;
         public ICommand NextRecentPageCommand => _nextRecentPageCommand;
@@ -224,12 +230,12 @@ namespace QuanLyHoSo.ViewModels
         public int RecentTableHeight => 38 + _recentRecordsPageSize * 34;
         public async void Reload()
         {
-            if (_isReloading)
+            if (IsLoading)
             {
                 return;
             }
 
-            _isReloading = true;
+            IsLoading = true;
             var startedAt = DateTime.Now;
             AppLogger.Info("Dashboard", "Reload", "Dashboard reload started.");
 
@@ -240,37 +246,62 @@ namespace QuanLyHoSo.ViewModels
                 var previousRange = GetPreviousDateRange();
                 var recentPageSize = _recentRecordsPageSize;
                 var currentRecentPage = CurrentRecentPage;
+                var requestedSkip = (currentRecentPage - 1) * recentPageSize;
 
-                var snapshot = await Task.Run(() =>
+                var metricsTask = Task.Run(() =>
                 {
                     AppLogger.Info("Dashboard", "Reload", "Loading metrics.");
-                    var metrics = _dataService.GetDashboardMetrics(fromDate, toDate, previousRange.FromDate, previousRange.ToDate);
-                    AppLogger.Info("Dashboard", "Reload", "Loading status stats.");
-                    var statusStats = _dataService.GetStatusStats(fromDate, toDate);
-                    AppLogger.Info("Dashboard", "Reload", "Loading area stats.");
-                    var areaStats = _dataService.GetTopAreas(fromDate: fromDate, toDate: toDate);
-                    AppLogger.Info("Dashboard", "Reload", "Loading trend stats.");
-                    var trendStats = _dataService.GetReceivedTrendStats(fromDate, toDate);
-                    AppLogger.Info("Dashboard", "Reload", "Counting records.");
-                    var totalRecords = _dataService.CountRecords(fromDate, toDate);
-                    var totalRecentPages = Math.Max(1, (int)Math.Ceiling(totalRecords / (double)recentPageSize));
-                    var page = Math.Min(currentRecentPage, totalRecentPages);
-                    var skip = (page - 1) * recentPageSize;
-                    AppLogger.Info("Dashboard", "Reload", "Loading recent records.");
-                    var recentRecords = _dataService.GetRecentRecords(recentPageSize, fromDate, toDate, skip);
-
-                    return new DashboardSnapshot
-                    {
-                        Metrics = metrics,
-                        StatusStats = statusStats,
-                        AreaStats = areaStats,
-                        TrendStats = trendStats,
-                        TotalRecords = totalRecords,
-                        TotalRecentPages = totalRecentPages,
-                        CurrentRecentPage = page,
-                        RecentRecords = recentRecords
-                    };
+                    return _dataService.GetDashboardMetrics(fromDate, toDate, previousRange.FromDate, previousRange.ToDate);
                 });
+                var statusTask = Task.Run(() =>
+                {
+                    AppLogger.Info("Dashboard", "Reload", "Loading status stats.");
+                    return _dataService.GetStatusStats(fromDate, toDate);
+                });
+                var areaTask = Task.Run(() =>
+                {
+                    AppLogger.Info("Dashboard", "Reload", "Loading area stats.");
+                    return _dataService.GetTopAreas(fromDate: fromDate, toDate: toDate);
+                });
+                var trendTask = Task.Run(() =>
+                {
+                    AppLogger.Info("Dashboard", "Reload", "Loading trend stats.");
+                    return _dataService.GetReceivedTrendStats(fromDate, toDate);
+                });
+                var totalTask = Task.Run(() =>
+                {
+                    AppLogger.Info("Dashboard", "Reload", "Counting records.");
+                    return _dataService.CountRecords(fromDate, toDate);
+                });
+                var recentTask = Task.Run(() =>
+                {
+                    AppLogger.Info("Dashboard", "Reload", "Loading recent records.");
+                    return _dataService.GetRecentRecords(recentPageSize, fromDate, toDate, requestedSkip);
+                });
+
+                await Task.WhenAll(metricsTask, statusTask, areaTask, trendTask, totalTask, recentTask);
+
+                var totalRecords = totalTask.Result;
+                var totalRecentPages = Math.Max(1, (int)Math.Ceiling(totalRecords / (double)recentPageSize));
+                var page = Math.Min(currentRecentPage, totalRecentPages);
+                var recentRecords = recentTask.Result;
+                if (page != currentRecentPage)
+                {
+                    var adjustedSkip = (page - 1) * recentPageSize;
+                    recentRecords = await Task.Run(() => _dataService.GetRecentRecords(recentPageSize, fromDate, toDate, adjustedSkip));
+                }
+
+                var snapshot = new DashboardSnapshot
+                {
+                    Metrics = metricsTask.Result,
+                    StatusStats = statusTask.Result,
+                    AreaStats = areaTask.Result,
+                    TrendStats = trendTask.Result,
+                    TotalRecords = totalRecords,
+                    TotalRecentPages = totalRecentPages,
+                    CurrentRecentPage = page,
+                    RecentRecords = recentRecords
+                };
 
                 if (IsDisposed)
                 {
@@ -302,7 +333,7 @@ namespace QuanLyHoSo.ViewModels
             }
             finally
             {
-                _isReloading = false;
+                IsLoading = false;
             }
         }
 
