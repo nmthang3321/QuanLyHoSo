@@ -1,9 +1,9 @@
 # HƯỚNG DẪN SỬ DỤNG PHẦN MỀM QUẢN LÝ HỒ SƠ
 
-**Phạm vi:** Tiếp nhận, phân loại, xử lý và theo dõi hồ sơ  
-**Đối tượng sử dụng:** Quản trị hệ thống, Lãnh đạo và Cán bộ  
-**Phiên bản tài liệu:** 1.0  
-**Ngày cập nhật:** 11/09/2026
+- **Phạm vi:** Tiếp nhận, phân loại, xử lý và theo dõi hồ sơ
+- **Đối tượng sử dụng:** Quản trị hệ thống, Lãnh đạo và Cán bộ
+- **Phiên bản tài liệu:** 1.1
+- **Ngày cập nhật:** 16/09/2026
 
 > Các tên người, số điện thoại, địa chỉ, mã hồ sơ và số liệu trong hình là dữ liệu minh họa. Giao diện và số liệu thực tế thay đổi theo tài khoản, quyền được cấp và thời điểm sử dụng.
 
@@ -71,7 +71,7 @@ Hệ thống gồm hai chương trình:
 
 Phần này dành cho người quản trị máy chủ. Người dùng thông thường không cần thao tác nếu máy chủ đã hoạt động.
 
-![Cửa sổ quản lý máy chủ](GUI/2026-09-11_21h06_34.png)
+![Cửa sổ quản lý máy chủ](GUI/2026-09-16_22h01_25.png)
 
 ### 3.1 Kiểm tra trạng thái
 
@@ -173,7 +173,7 @@ Khi có thông báo mới, huy hiệu đỏ hiển thị cạnh mục **Theo dõ
 
 Trang Tổng quan giúp nắm nhanh tình hình tiếp nhận và xử lý hồ sơ trong kỳ.
 
-![Trang Tổng quan](GUI/lanh_dao/2026-09-11_21h08_20.png)
+![Trang Tổng quan](GUI/lanh_dao/2026-09-16_21h55_04.png)
 
 ### 6.1 Nội dung chính
 
@@ -199,7 +199,7 @@ Trang Tổng quan giúp nắm nhanh tình hình tiếp nhận và xử lý hồ 
 
 Trang này chỉ hiển thị cho Admin, dùng để tạo hồ sơ mới hoặc sửa hồ sơ hiện có.
 
-![Biểu mẫu nhập hồ sơ](GUI/admin/2026-09-11_21h17_36.png)
+![Biểu mẫu nhập hồ sơ](GUI/admin/2026-09-16_21h22_52.png)
 
 ### 7.1 Nhập thông tin chung
 
@@ -210,7 +210,7 @@ Trang này chỉ hiển thị cho Admin, dùng để tạo hồ sơ mới hoặc
 3. **Nguồn tiếp nhận**.
 4. **Người tiếp nhận**.
 5. **Người gửi đơn/Người tố giác**.
-6. **Số điện thoại** và **Địa chỉ liên hệ** nếu có.
+6. **Số điện thoại** và **Địa chỉ liên hệ**.
 7. **Địa bàn** và **Địa chỉ xảy ra vụ việc**.
 8. **Nội dung đơn/Nội dung vụ việc**.
 
@@ -236,7 +236,20 @@ Chọn:
 
 Định dạng hỗ trợ: PDF, Word (`.doc`, `.docx`), JPG/JPEG và PNG. Dung lượng tối đa 10 MB cho mỗi file.
 
-### 7.4 Lưu hoặc hủy
+### 7.4 Lưu hồ sơ và đối chiếu lịch sử người gửi
+
+Khi bấm **Lưu**, nếu hệ thống tìm thấy hồ sơ trước đây của cùng người gửi, cửa sổ **Đối chiếu hồ sơ của người gửi** sẽ xuất hiện.
+
+![Đối chiếu hồ sơ của người gửi](GUI/admin/2026-09-16_21h53_33.png)
+
+1. Chọn từng dòng để xem nội dung và lịch sử/kết quả xử lý của hồ sơ trước.
+2. Nếu đây là vụ việc mới hoặc có tình tiết mới, bấm **Lưu và xử lý như hồ sơ mới**.
+3. Chỉ khi hồ sơ cùng vụ việc đã được giải quyết và không có tình tiết mới, chọn hồ sơ gốc đủ điều kiện, nhập **Lý do xác nhận gửi lại**, rồi bấm **Lưu là hồ sơ gửi lại**.
+4. Bấm **Hủy lưu** hoặc nút **X** để quay lại biểu mẫu mà không xóa nội dung đang nhập.
+
+> Hệ thống không tự kết luận hai hồ sơ trùng nội dung. Người tiếp nhận phải đọc hồ sơ trước và tự xác nhận. Hồ sơ gửi lại vẫn có mã, ngày tiếp nhận, nội dung và tài liệu riêng nhưng được liên kết với hồ sơ gốc.
+
+### 7.5 Lưu hoặc hủy
 
 - Bấm **Lưu** để tạo hồ sơ hoặc **Cập nhật** khi đang sửa.
 - Bấm **Hủy bỏ** nếu không muốn giữ thay đổi.
@@ -249,7 +262,7 @@ Chọn:
 
 ### 8.1 Xem danh sách
 
-![Danh sách hồ sơ của Admin](GUI/admin/2026-09-11_21h17_58.png)
+![Danh sách hồ sơ của Admin](GUI/admin/2026-09-16_21h23_28.png)
 
 Mỗi dòng thể hiện mã hồ sơ, người gửi, địa bàn, loại vụ việc, lĩnh vực, ngày tiếp nhận, trạng thái, thời điểm cập nhật và người xử lý.
 
@@ -267,7 +280,7 @@ Các thao tác ở cuối dòng phụ thuộc quyền:
 
 ### 8.3 Lọc, tìm kiếm và sắp xếp
 
-![Bộ lọc danh sách hồ sơ](GUI/admin/2026-09-11_21h18_16.png)
+![Bộ lọc danh sách hồ sơ](GUI/admin/2026-09-16_21h23_28.png)
 
 1. Bấm **Bộ lọc**.
 2. Chọn một hoặc nhiều điều kiện:
@@ -293,7 +306,7 @@ Các thao tác ở cuối dòng phụ thuộc quyền:
 
 ### 8.5 Xem chi tiết hồ sơ
 
-![Cửa sổ chi tiết hồ sơ](GUI/lanh_dao/2026-09-11_21h09_48.png)
+![Cửa sổ chi tiết hồ sơ](GUI/lanh_dao/2026-09-16_21h55_27.png)
 
 1. Bấm biểu tượng **con mắt** trên dòng hồ sơ.
 2. Cuộn trong cửa sổ để xem đầy đủ thông tin, ghi chú và tài liệu đính kèm.
@@ -303,7 +316,7 @@ Các thao tác ở cuối dòng phụ thuộc quyền:
 
 Chức năng này chỉ dành cho Admin.
 
-![Chế độ chọn nhiều hồ sơ](GUI/admin/2026-09-11_21h18_29.png)
+![Chế độ chọn nhiều hồ sơ](GUI/admin/2026-09-16_21h23_28.png)
 
 1. Bấm **Chọn hồ sơ** để bật chế độ chọn nhiều.
 2. Chọn từng dòng hoặc dùng **Chọn trang này**.
@@ -315,7 +328,7 @@ Hồ sơ bị xóa ở bước này chỉ được chuyển vào thùng rác và
 
 ### 8.7 Thùng rác hồ sơ
 
-![Thùng rác hồ sơ](GUI/admin/2026-09-11_21h18_53.png)
+![Thùng rác hồ sơ](GUI/admin/2026-09-16_21h23_52.png)
 
 1. Bấm **Thùng rác** trên trang Danh sách hồ sơ.
 2. Tìm kiếm theo mã hồ sơ, người gửi hoặc người xóa nếu cần.
@@ -333,7 +346,7 @@ Hồ sơ bị xóa ở bước này chỉ được chuyển vào thùng rác và
 
 ### 9.1 Danh sách việc cần xử lý
 
-![Hàng chờ phân loại và xử lý](GUI/admin/2026-09-11_21h19_13.png)
+![Hàng chờ phân loại và xử lý](GUI/admin/2026-09-16_21h25_09.png)
 
 Các thẻ phía trên cho biết số lượng:
 
@@ -355,7 +368,7 @@ Lãnh đạo có thể xem toàn bộ hàng chờ nhưng không cập nhật n�
 
 ### 9.2 Trang Chi tiết xử lý hồ sơ
 
-![Chi tiết quy trình xử lý](GUI/admin/2026-09-11_21h19_45.png)
+![Chi tiết quy trình xử lý](GUI/admin/2026-09-16_21h34_18.png)
 
 Trang gồm:
 
@@ -390,8 +403,6 @@ Quy trình tiêu chuẩn:
 
 ### 9.4 Chuyển cơ quan khác
 
-![Chọn cơ quan chuyển đến](GUI/admin/2026-09-11_21h19_59.png)
-
 1. Chọn trạng thái **Chuyển cơ quan khác**.
 2. Mở trường **Cơ quan chuyển đến**.
 3. Tìm theo tên hoặc mở nhóm địa bàn phù hợp.
@@ -400,12 +411,19 @@ Quy trình tiêu chuẩn:
 
 ### 9.5 Tạo biểu mẫu Word ở bước kết quả ban đầu
 
-![Xác nhận tạo tài liệu kết quả xử lý ban đầu](GUI/admin/2026-09-11_21h20_36.png)
+![Xác nhận thông tin tạo tài liệu kết quả xử lý](GUI/admin/2026-09-16_21h34_53.png)
 
 Khi lưu bước **Kết quả xử lý ban đầu**, nếu hồ sơ còn thiếu các biểu mẫu chuẩn, hệ thống hỏi có tạo file hay không.
 
-- Chọn **Yes** để tạo các file còn thiếu từ mẫu Word.
+- Chọn **Yes** để tiếp tục tạo các file còn thiếu từ mẫu Word.
 - Chọn **No** nếu chưa muốn tạo.
+
+Nếu chọn **Yes**, hệ thống mở cửa sổ xem trước thông tin sẽ điền vào phiếu:
+
+1. Nhập **Phiếu chuyển đơn số**, **Ngày phiếu chuyển đơn** và **Chuyển đơn tố cáo đề ngày**.
+2. Kiểm tra các nội dung chỉ đọc được lấy từ hồ sơ như đơn ghi tên, địa chỉ liên hệ, nguồn đơn, tóm tắt nội dung, nhận xét và đề xuất.
+3. Cuộn bên trong cửa sổ để đọc hết nội dung dài; các nút thao tác vẫn nằm ở cuối cửa sổ.
+4. Bấm **Xác nhận** để cập nhật xử lý và tạo tài liệu, hoặc **Hủy bỏ** để quay lại trang chi tiết mà chưa lưu bước này.
 
 Hệ thống có thể tạo:
 
@@ -428,7 +446,7 @@ Sau khi tạo, kiểm tra file trong **Tài liệu liên quan**, tải xuống v
 
 ### 10.1 Giao diện dành cho Admin và Lãnh đạo
 
-![Theo dõi toàn bộ cán bộ](GUI/lanh_dao/2026-09-11_21h11_44.png)
+![Theo dõi toàn bộ cán bộ](GUI/lanh_dao/2026-09-16_21h56_14.png)
 
 Trang hiển thị:
 
@@ -460,7 +478,7 @@ Thông báo chưa đọc được in đậm. Bấm vào một thông báo để 
 
 ### 10.3 Giao diện dành cho Cán bộ
 
-![Theo dõi cá nhân và nhận thông báo](GUI/can_bo/2026-09-11_21h31_07.png)
+![Theo dõi cá nhân và nhận thông báo](GUI/can_bo/2026-09-16_22h00_12.png)
 
 Cán bộ chỉ xem dữ liệu của mình:
 
@@ -484,7 +502,7 @@ Khi huy hiệu đỏ xuất hiện cạnh **Theo dõi cán bộ**:
 
 ### 11.1 Chức năng chung cho mọi tài khoản
 
-![Trang Cài đặt dành cho người dùng](GUI/can_bo/2026-09-11_21h31_20.png)
+![Trang Cài đặt dành cho người dùng](GUI/can_bo/2026-09-16_22h00_21.png)
 
 Các chức năng chung gồm:
 
@@ -495,7 +513,7 @@ Các chức năng chung gồm:
 
 ### 11.2 Xem nhật ký hệ thống
 
-![Nhật ký hoạt động của tài khoản](GUI/can_bo/2026-09-11_21h31_28.png)
+![Nhật ký hoạt động của tài khoản](GUI/can_bo/2026-09-16_22h00_29.png)
 
 1. Bấm **Nhật ký hệ thống**.
 2. Xem ngày giờ, phân hệ, thao tác, đối tượng và nội dung.
@@ -506,7 +524,7 @@ Admin xem được nhật ký hệ thống rộng hơn; Lãnh đạo và Cán b�
 
 ### 11.3 Đổi mật khẩu
 
-![Hộp thoại đổi mật khẩu](GUI/can_bo/2026-09-11_21h31_37.png)
+![Hộp thoại đổi mật khẩu](GUI/can_bo/2026-09-16_22h00_37.png)
 
 1. Bấm **Đổi mật khẩu**.
 2. Nhập mật khẩu hiện tại.
@@ -515,7 +533,7 @@ Admin xem được nhật ký hệ thống rộng hơn; Lãnh đạo và Cán b�
 
 ### 11.4 Cập nhật phần mềm
 
-![Kiểm tra và tải bản cập nhật](GUI/can_bo/2026-09-11_21h31_49.png)
+![Khu vực kiểm tra cập nhật phần mềm](GUI/can_bo/2026-09-16_22h00_21.png)
 
 1. Bấm **Kiểm tra cập nhật**.
 2. Nếu có phiên bản mới, đọc số phiên bản và thông báo.
@@ -524,7 +542,7 @@ Admin xem được nhật ký hệ thống rộng hơn; Lãnh đạo và Cán b�
 
 ### 11.5 Quản lý danh mục - chỉ Admin
 
-![Quản lý danh mục nguồn tiếp nhận](GUI/admin/2026-09-11_21h21_13.png)
+![Quản lý danh mục nguồn tiếp nhận](GUI/admin/2026-09-16_21h36_10.png)
 
 Admin có thể quản lý các danh mục:
 
@@ -549,7 +567,7 @@ Thao tác:
 
 ### 11.6 Người dùng và phân quyền - chỉ Admin
 
-![Quản lý người dùng và phân quyền](GUI/admin/2026-09-11_21h21_46.png)
+![Quản lý người dùng và phân quyền](GUI/admin/2026-09-16_21h36_45.png)
 
 #### Tạo tài khoản
 
@@ -579,7 +597,7 @@ Quy tắc:
 
 ### 11.7 Nhật ký toàn hệ thống - chỉ Admin
 
-![Nhật ký hệ thống của Admin](GUI/admin/2026-09-11_21h21_27.png)
+![Nhật ký hệ thống của Admin](GUI/admin/2026-09-16_21h36_27.png)
 
 Admin dùng nhật ký để truy vết các thao tác thêm, sửa, xóa, cập nhật xử lý, quản lý người dùng và dữ liệu. Có thể bấm **Làm mới** để xem các sự kiện mới nhất.
 
@@ -587,9 +605,18 @@ Admin dùng nhật ký để truy vết các thao tác thêm, sửa, xóa, cập
 
 Khối sao lưu nằm trên trang Cài đặt của Admin.
 
+![Sao lưu và khôi phục dữ liệu](GUI/admin/2026-09-16_21h35_54.png)
+
+#### Sao lưu tự động
+
+- Máy chủ kiểm tra sao lưu khi khởi động và tiếp tục kiểm tra định kỳ trong lúc hoạt động.
+- Khi bản sao lưu tự động mới nhất đã đủ 7 ngày, hệ thống tự tạo một bản mới trong thư mục sao lưu trên máy chủ.
+- Thư mục sao lưu chỉ giữ lại 10 bản mới nhất. Các bản cũ hơn được dọn tự động, kể cả bản thủ công, bản tự động và bản an toàn tạo trước khi khôi phục.
+- Dòng trạng thái màu xanh trong thẻ **Sao lưu dữ liệu** cho biết cơ chế tự động đang bật.
+
 #### Sao lưu
 
-1. Chọn thư mục lưu bản sao trên máy đang sử dụng.
+1. Chọn thư mục lưu bản sao thủ công trên máy đang sử dụng.
 2. Bấm **Sao lưu ngay**.
 3. Chờ máy chủ tạo bản sao an toàn và tải file `.db` về thư mục đã chọn.
 4. Kiểm tra trạng thái và thời điểm sao lưu gần nhất.
@@ -603,6 +630,8 @@ Khối sao lưu nằm trên trang Cài đặt của Admin.
 5. Mở lại các trang quan trọng để kiểm tra số liệu.
 
 > Khôi phục sẽ thay đổi dữ liệu dùng chung của toàn bộ người dùng. Chỉ thực hiện khi đã thông báo người đang sử dụng hệ thống và đã tạo bản sao hiện trạng.
+
+Trước khi thay dữ liệu, máy chủ tự tạo một bản an toàn có tên dạng `quanlyhoso_before_restore_...db`. File tải lên tạm thời `.restore_upload_...db` được xóa sau khi thao tác hoàn tất, kể cả khi khôi phục gặp lỗi.
 
 ---
 
@@ -630,7 +659,7 @@ Khối sao lưu nằm trên trang Cài đặt của Admin.
 
 ### 12.3 Quy trình làm việc gợi ý cho Cán bộ
 
-![Cán bộ cập nhật hồ sơ được phân công](GUI/can_bo/2026-09-11_21h30_40.png)
+![Cán bộ cập nhật hồ sơ được phân công](GUI/can_bo/2026-09-16_21h59_43.png)
 
 1. Kiểm tra huy hiệu thông báo sau khi đăng nhập.
 2. Mở **Phân loại & Xử lý** để xem việc được giao.

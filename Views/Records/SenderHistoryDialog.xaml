@@ -10,14 +10,44 @@
         <TextBlock Text="Chọn hồ sơ trước để đối chiếu. Chỉ đánh dấu gửi lại khi cùng vụ việc đã giải quyết và không có tình tiết mới."
                    TextWrapping="Wrap" Margin="0,0,0,12"/>
         <DataGrid x:Name="HistoryGrid" Grid.Row="1" IsReadOnly="True" AutoGenerateColumns="False"
+                  GridLinesVisibility="All" VerticalGridLinesBrush="#ECF1F8"
                   SelectionMode="Single" SelectionUnit="FullRow"
                   ItemsSource="{Binding SenderRecords}" SelectedItem="{Binding SelectedSenderRecord, Mode=TwoWay}">
+            <DataGrid.Resources>
+                <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}" Color="#EAF2FF" />
+                <SolidColorBrush x:Key="{x:Static SystemColors.HighlightTextBrushKey}" Color="#0B5CFF" />
+                <SolidColorBrush x:Key="{x:Static SystemColors.InactiveSelectionHighlightBrushKey}" Color="#EAF2FF" />
+                <SolidColorBrush x:Key="{x:Static SystemColors.InactiveSelectionHighlightTextBrushKey}" Color="#0B5CFF" />
+            </DataGrid.Resources>
+            <DataGrid.RowStyle>
+                <Style TargetType="DataGridRow">
+                    <Style.Triggers>
+                        <Trigger Property="IsSelected" Value="True">
+                            <Setter Property="Background" Value="#EAF2FF" />
+                            <Setter Property="BorderBrush" Value="#7EA8FF" />
+                            <Setter Property="Foreground" Value="#0B5CFF" />
+                        </Trigger>
+                    </Style.Triggers>
+                </Style>
+            </DataGrid.RowStyle>
+            <DataGrid.CellStyle>
+                <Style TargetType="DataGridCell">
+                    <Setter Property="BorderThickness" Value="0" />
+                    <Setter Property="Padding" Value="8,0" />
+                    <Style.Triggers>
+                        <Trigger Property="IsSelected" Value="True">
+                            <Setter Property="Background" Value="#EAF2FF" />
+                            <Setter Property="Foreground" Value="#0B5CFF" />
+                        </Trigger>
+                    </Style.Triggers>
+                </Style>
+            </DataGrid.CellStyle>
             <DataGrid.Columns>
                 <DataGridTextColumn Header="Mã hồ sơ" Binding="{Binding RecordCode}" Width="140"/>
                 <DataGridTextColumn Header="Ngày nhận" Binding="{Binding ReceivedDate}" Width="100"/>
                 <DataGridTextColumn Header="Loại vụ việc" Binding="{Binding CaseType}" Width="120"/>
                 <DataGridTextColumn Header="Địa bàn" Binding="{Binding AreaName}" Width="180"/>
-                <DataGridTextColumn Header="Trạng thái" Binding="{Binding Status}" Width="220"/>
+                <DataGridTextColumn Header="Trạng thái" Binding="{Binding Status}" Width="*" MinWidth="180"/>
             </DataGrid.Columns>
         </DataGrid>
         <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" Margin="0,12">
@@ -36,9 +66,13 @@
             <TextBlock Text="{Binding SenderHistoryError}" Foreground="#D42D16" TextWrapping="Wrap" Margin="0,0,0,8"/>
         </StackPanel>
         <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right">
-            <Button Content="Hủy lưu" Command="{Binding CloseSenderHistoryCommand}" Padding="14,8" Margin="0,0,8,0"/>
-            <Button Content="Lưu và xử lý như hồ sơ mới" Command="{Binding SaveAsNewRecordCommand}" Padding="14,8" Margin="0,0,8,0"/>
-            <Button x:Name="LinkButton" Content="Lưu là hồ sơ gửi lại" Command="{Binding SaveResubmissionCommand}" Padding="14,8"/>
+            <Button Content="Hủy lưu" Style="{StaticResource SecondaryButton}"
+                    Command="{Binding CloseSenderHistoryCommand}" Margin="0,0,8,0"/>
+            <Button Content="Lưu và xử lý như hồ sơ mới" Style="{StaticResource SecondaryButton}"
+                    Command="{Binding SaveAsNewRecordCommand}" Margin="0,0,8,0"/>
+            <Button x:Name="LinkButton" Content="Lưu là hồ sơ gửi lại"
+                    Style="{StaticResource PrimaryButton}" Foreground="White"
+                    Command="{Binding SaveResubmissionCommand}"/>
         </StackPanel>
     </Grid>
 </UserControl>

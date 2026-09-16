@@ -58,6 +58,7 @@ See `AI/features/BACKUP_RESTORE.md` and `AI/pages/SETTINGS_HOME.md`.
 - Every field in General Information is required, including phone number, contact address, incident address, and generated record code. Whitespace-only values are rejected.
 - Leaders can open processing details in read-only mode but cannot save, delete, or otherwise update processing.
 - All roles land on Dashboard after sign-in, including after mandatory password changes.
+- Processing details now fall back to the record-form attachment list when the processing payload contains no attachments, preventing persisted files from being shown as missing. A ViewModel regression test covers this case.
 
 See `AI/pages/PROCESSING_DETAIL.md`, `AI/pages/RECORD_INPUT_FORM.md`, and `AI/features/NAVIGATION.md`.
 
@@ -76,8 +77,14 @@ See `AI/pages/PROCESSING_DETAIL.md`, `AI/pages/RECORD_INPUT_FORM.md`, and `AI/fe
 - The server determines normalized sender identity. A sender name alone is not sufficient identification, and sender-merging is not implemented.
 - Schema changes consist of three metadata columns and two indexes with idempotent migration. Client and server must be upgraded together.
 - The server protects links when editing, deleting, changing record code/sender/incident, or reopening an original record.
+- The sender-history comparison grid no longer leaves a blank area resembling an extra column. Its grid lines, cell spacing, selected-row colors, and secondary/primary actions now match the Record List and shared application styles; the selected row remains highlighted while the application is inactive. Shared button templates apply their declared horizontal padding. Primary buttons always render white text and are not visually faded when disabled.
 
 See `AI/features/RECORD_RESUBMISSION.md`.
+
+## Customer documentation
+
+- `doc/Huong_dan_su_dung_QuanLyHoSo.md` was refreshed on 2026-09-16 to use the current Admin, Leader, Officer, and Server screenshots.
+- The user guide now documents sender-history comparison/resubmission, the initial-result document preview, automatic seven-day backups with ten-file retention, and restore safety/temp-file behavior.
 
 ## Architecture snapshot
 
@@ -91,6 +98,7 @@ See `AI/features/RECORD_RESUBMISSION.md`.
 
 ## Verification baseline
 
+- Latest noninteractive verification on 2026-09-16: `tests/Scripts/run-all.ps1` passed 80 tests (40 unit/ViewModel and 40 integration); Release build completed with zero errors. UI tests were not included in this run.
 - Historical full verification on 2026-09-14: Release solution build and `tests/Scripts/run-all.ps1 -IncludeUI` passed 80 tests (40 unit, 39 integration, 1 UI smoke).
 - Test projects target .NET 8 while the application remains on .NET 5.
 - Each integration test uses an isolated temporary database. Generated test reports are ignored by Git.

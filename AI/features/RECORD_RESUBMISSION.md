@@ -3,6 +3,7 @@
 Updated: 2026-09-13. This business behavior was explicitly approved by the user.
 
 - On new-record save, `GetSenderRecords(draft)` searches the sender's full history without a ±30-day limit. Inline overlay `SenderHistoryDialog` lets the operator review content and processing history/results.
+- The sender-history grid uses five explicit columns; the Status column fills the remaining width so no blank pseudo-column appears. Its grid lines, cell spacing, and selected-row palette match the Record List. Active and inactive selection brushes are identical, keeping the selected row highlighted when the application loses focus. Dialog actions use the shared secondary/primary button styles with visible horizontal padding. The primary action always uses white text and is not visually faded when disabled.
 - Saving as a new intake creates `Mới tiếp nhận`. Saving against an eligible resolved record requires a reason, creates a new code with `Đã giải quyết — hồ sơ gửi lại`, links `OriginalRecordCode`, and creates no fake `ProcessHistories` or result documents.
 - The application never decides duplicate content automatically. The operator must confirm the same matter and no new circumstances. Unresolved, resubmitted, or trashed records cannot be originals.
 - Sender normalization trims/collapses spaces, removes accents, and ignores case. Phone normalization keeps digits and maps +84/0084 to 0. Identity is name+phone, or name+address when both phones are missing; name alone is insufficient.

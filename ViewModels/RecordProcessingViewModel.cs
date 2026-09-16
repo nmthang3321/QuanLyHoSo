@@ -565,13 +565,7 @@ namespace QuanLyHoSo.ViewModels
             ProcessingNote = SelectedProcessingDetail.ProcessNote;
             TransferAreaName = SelectedProcessingDetail.AreaName;
             TransferAreaSearchText = SelectedProcessingDetail.AreaName;
-            Attachments.Clear();
-            foreach (var attachment in SelectedProcessingDetail.Attachments)
-            {
-                Attachments.Add(attachment);
-            }
-
-            OnPropertyChanged(nameof(HasAttachments));
+            LoadProcessingAttachments(SelectedProcessingDetail);
         }
 
         private void DataService_CatalogChanged(string catalogType)
@@ -907,12 +901,19 @@ namespace QuanLyHoSo.ViewModels
             ProcessingProcessorName = SelectedProcessingDetail.ProcessorName;
             TransferAreaName = SelectedProcessingDetail.AreaName;
             TransferAreaSearchText = SelectedProcessingDetail.AreaName;
-            Attachments.Clear();
-            foreach (var attachment in SelectedProcessingDetail.Attachments)
+            LoadProcessingAttachments(SelectedProcessingDetail);
+        }
+
+        private void LoadProcessingAttachments(ProcessingRecordDetail detail)
+        {
+            IReadOnlyList<AttachmentDraft> attachments = detail?.Attachments ?? Array.Empty<AttachmentDraft>();
+            if (attachments.Count == 0 && !string.IsNullOrWhiteSpace(detail?.RecordCode))
             {
-                Attachments.Add(attachment);
+                attachments = _dataService.GetRecordForm(detail.RecordCode)?.Attachments ?? attachments;
+                detail.Attachments = attachments;
             }
 
+            ReplaceItems(Attachments, attachments);
             OnPropertyChanged(nameof(HasAttachments));
         }
 
