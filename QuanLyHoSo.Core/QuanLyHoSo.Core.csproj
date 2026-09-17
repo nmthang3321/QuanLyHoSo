@@ -20,6 +20,7 @@
     <Compile Include="..\Infrastructure\Logging\AppLogger.cs" Link="Logging\AppLogger.cs" />
     <Compile Include="..\Infrastructure\Network\LanDataClient.cs" Link="Network\LanDataClient.cs" />
     <Compile Include="..\Infrastructure\Network\LanDataServer.cs" Link="Network\LanDataServer.cs" />
+    <Compile Include="..\Infrastructure\Network\LanProtocolVersion.cs" Link="Network\LanProtocolVersion.cs" />
     <Compile Include="..\Infrastructure\Network\LanServerUnavailableException.cs" Link="Network\LanServerUnavailableException.cs" />
     <Compile Include="..\Infrastructure\Security\AuthContext.cs" Link="Security\AuthContext.cs" />
     <Compile Include="..\Infrastructure\Security\PasswordHasher.cs" Link="Security\PasswordHasher.cs" />

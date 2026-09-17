@@ -1,15 +1,15 @@
-# Hướng dẫn cài đặt QuanLyHoSo 1.0.3
+# Hướng dẫn cài đặt QuanLyHoSo 1.0.0
 
 QuanLyHoSo gồm hai bộ cài dành cho Windows 64-bit:
 
-- `QuanLyHoSo-Server-Setup-1.0.3-win-x64.exe`: cài trên một máy được chọn làm Server.
-- `QuanLyHoSo-Client-Setup-1.0.3-win-x64.exe`: cài trên các máy trạm sử dụng phần mềm.
+- `QuanLyHoSo-Server-Setup-1.0.0-win-x64.exe`: cài trên một máy được chọn làm Server.
+- `QuanLyHoSo-Client-Setup-1.0.0-win-x64.exe`: cài trên các máy trạm sử dụng phần mềm.
 
 Nên cài và khởi động Server trước khi cài Client.
 
 ## 1. Cài máy Server
 
-1. Chép `QuanLyHoSo-Server-Setup-1.0.3-win-x64.exe` vào máy được chọn làm Server.
+1. Chép `QuanLyHoSo-Server-Setup-1.0.0-win-x64.exe` vào máy được chọn làm Server.
 2. Nhấp đúp bộ cài và đồng ý yêu cầu quyền Administrator của Windows.
 3. Tại màn hình **Select Destination Location**, giữ thư mục mặc định hoặc chọn **Browse...** để đổi thư mục cài đặt, sau đó chọn **Next**.
 
@@ -46,10 +46,12 @@ Bộ cài Server tự đăng ký URL và mở cổng TCP `5055` cho các thiết
 C:\ProgramData\QuanLyHoSo\Data\quanlyhoso.db
 ```
 
+Ở lần cài mới, hệ thống tạo database trống, các danh mục mặc định và tài khoản quản trị `admin` với mật khẩu ban đầu `admin123`. Hệ thống không tạo hồ sơ minh họa trong database của khách hàng. Người dùng phải đổi mật khẩu quản trị sau lần đăng nhập đầu tiên.
+
 ## 2. Cài từng máy Client
 
 1. Đảm bảo máy Client cùng mạng LAN với máy Server và Server đang ở trạng thái **Đang hoạt động**.
-2. Chép và chạy `QuanLyHoSo-Client-Setup-1.0.3-win-x64.exe`.
+2. Chép và chạy `QuanLyHoSo-Client-Setup-1.0.0-win-x64.exe`.
 3. Tại màn hình **Select Destination Location**, giữ thư mục mặc định hoặc chọn **Browse...** để đổi thư mục cài đặt, sau đó chọn **Next**.
 
 ![Chọn thư mục cài đặt Client](GUI/installation/2026-09-17_18h17_37.png)
@@ -95,10 +97,26 @@ Không nhập `http://0.0.0.0:5055` trên Client. Địa chỉ `0.0.0.0` chỉ �
 Có thể truyền URL của Server bằng tham số khi cài đặt tự động hoặc theo kịch bản:
 
 ```powershell
-.\QuanLyHoSo-Client-Setup-1.0.3-win-x64.exe /SERVERURL="http://SERVER-PC:5055"
+.\QuanLyHoSo-Client-Setup-1.0.0-win-x64.exe /SERVERURL="http://SERVER-PC:5055"
 ```
 
-## 4. Lưu ý
+## 4. Đồng bộ phiên bản Server và Client
+
+Server và tất cả máy Client phải sử dụng cùng một phiên bản phát hành. Mỗi Client gửi số phiên bản khi kết nối; Server kiểm tra trước khi cho phép đăng nhập và sử dụng API nghiệp vụ.
+
+Nếu phiên bản không khớp, Client sẽ hiển thị thông báo không tương thích và yêu cầu cài đúng phiên bản đang chạy trên Server. Cơ chế này ngăn Client cũ gửi dữ liệu theo cấu trúc hoặc quy trình nghiệp vụ đã thay đổi.
+
+Khi triển khai bản mới:
+
+1. Thông báo thời gian bảo trì và yêu cầu người dùng đóng ứng dụng Client.
+2. Sao lưu dữ liệu trên Server.
+3. Cập nhật Server lên phiên bản mới.
+4. Cập nhật toàn bộ Client bằng bộ cài có cùng số phiên bản.
+5. Mở lại Client, đăng nhập và kiểm tra các chức năng chính.
+
+Không nên tiếp tục vận hành thường xuyên khi Server và Client khác phiên bản. Việc kiểm tra kết nối trong bộ cài Client cũng xác nhận Server đang chạy phiên bản tương thích.
+
+## 5. Lưu ý
 
 - Hai bộ cài chỉ dành cho Windows 64-bit.
 - Client không yêu cầu quyền Administrator.

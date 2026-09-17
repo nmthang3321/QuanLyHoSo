@@ -72,8 +72,10 @@ begin
     Request.SetTimeouts(3000, 3000, 3000, 3000);
     Request.Open('POST', Value + '/api/health', False);
     Request.SetRequestHeader('Content-Type', 'application/json');
+    Request.SetRequestHeader('X-QuanLyHoSo-Version', '{#AppVersion}');
     Request.Send('{}');
-    Result := Request.Status = 200;
+    Result := (Request.Status = 200) and
+      (Pos('"IsClientVersionSupported":true', Request.ResponseText) > 0);
   except
     Result := False;
   end;

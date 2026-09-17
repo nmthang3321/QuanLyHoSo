@@ -46,6 +46,17 @@ namespace QuanLyHoSo
         private static void OnDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
         {
             AppLogger.Error("Application", "DispatcherUnhandledException", e.Exception, "Unhandled UI exception.");
+            if (e.Exception is LanVersionMismatchException)
+            {
+                MessageBox.Show(
+                    e.Exception.Message,
+                    "Cần cập nhật phiên bản",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                e.Handled = true;
+                return;
+            }
+
             if (e.Exception is LanServerUnavailableException)
             {
                 MessageBox.Show(

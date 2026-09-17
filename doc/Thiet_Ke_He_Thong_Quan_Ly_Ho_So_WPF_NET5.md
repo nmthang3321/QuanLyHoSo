@@ -1,799 +1,394 @@
-# Thiet ke he thong phan mem Quan ly ho so
+# TÀI LIỆU THIẾT KẾ TỔNG THỂ HỆ THỐNG QUẢN LÝ HỒ SƠ
 
-## 1. Muc tieu thiet ke
+| Thông tin | Giá trị |
+|---|---|
+| Mức tài liệu | Thiết kế tổng thể (High Level Design) |
+| Đối tượng đọc | Khách hàng, cán bộ quản lý và đơn vị triển khai |
+| Ngày cập nhật | 17/09/2026 |
 
-Tai lieu nay de xuat thiet ke he thong cho phan mem **Quan ly ho so** chay tren Windows Desktop bang **WPF .NET 5.0**. Thiet ke duoc xay dung dua tren:
+## 1. Mục đích tài liệu
 
-- Proposal: `doc/proposal/Proposal_Phan_Mem_Quan_Ly_Ho_So_An_Giang_Updated.pdf`
-- GUI draft: `doc/GUI/tong_quan.png`, `doc/GUI/nhap_du_lieu.png`, `doc/GUI/phan_loai_xu_ly.png`, `doc/GUI/xuat_du_lieu.png`, `doc/GUI/cai_dat.png`
+Tài liệu này trình bày thiết kế hệ thống **Quản lý hồ sơ** ở mức tổng thể, dành cho khách hàng, cán bộ quản lý, cán bộ vận hành và đơn vị triển khai.
 
-Muc tieu chinh:
+Nội dung tập trung trả lời các câu hỏi:
 
-- De phat trien theo tung man hinh va tung nghiep vu ro rang.
-- De bao tri, de them truong du lieu/danh muc/trang thai moi.
-- De trace log khi co issue: biet thao tac nao, ho so nao, nguoi xu ly nao, loi o lop nao.
-- Tach biet UI, nghiep vu, truy cap du lieu va ha tang ky thuat.
-- Phu hop pham vi local desktop: khong server, khong dong bo Internet, khong workflow phe duyet nhieu cap.
+- Hệ thống gồm những thành phần nào?
+- Dữ liệu được lưu ở đâu và các máy trạm kết nối như thế nào?
+- Người dùng theo từng vai trò được phép làm gì?
+- Hồ sơ đi qua những bước xử lý nào?
+- Hệ thống bảo vệ, sao lưu và khôi phục dữ liệu ra sao?
+- Những giới hạn nào cần lưu ý khi vận hành?
 
-## 2. Pham vi chuc nang
+Các chi tiết dành cho đội phát triển như tên class, cấu trúc source code và câu lệnh cơ sở dữ liệu không thuộc phạm vi tài liệu này.
 
-### 2.1 Bao gom
+## 2. Tổng quan giải pháp
 
-- Tong quan/thong ke ho so theo thoi gian, trang thai, dia ban.
-- Nhap, xem, sua, xoa ho so.
-- Quan ly file dinh kem: PDF, JPG, PNG, toi da 10 MB/file.
-- Phan loai va xu ly ho so theo quy trinh.
-- Luu lich su xu ly theo tung lan cap nhat.
-- Tim kiem, loc va sap xep ho so.
-- Xuat du lieu Excel `.xlsx` va CSV `.csv`.
-- Quan ly danh muc dia ban, loai vu viec, linh vuc, nhom noi dung, nguon tiep nhan.
-- Sao luu va khoi phuc du lieu local.
+Hệ thống được xây dựng theo mô hình **Client–Server trong mạng nội bộ (LAN)**:
 
-### 2.2 Khong bao gom trong giai do dau
+- **QuanLyHoSo Server** được cài trên một máy chủ hoặc máy tính được chọn làm máy chủ. Thành phần này quản lý dữ liệu tập trung, xác thực tài khoản, xử lý nghiệp vụ, sao lưu và cung cấp dữ liệu cho các máy trạm.
+- **QuanLyHoSo Client** được cài trên máy của người dùng. Người dùng đăng nhập, nhập hồ sơ, theo dõi tiến độ và thực hiện các chức năng theo quyền được cấp.
+- **Cơ sở dữ liệu SQLite** nằm trên máy Server. Máy Client không mở hoặc chỉnh sửa trực tiếp file cơ sở dữ liệu.
+- Việc trao đổi dữ liệu diễn ra qua API nội bộ bằng giao thức HTTP trong mạng LAN.
 
-- Multi-user dong thoi qua server tap trung.
-- Phan quyen nhieu cap phuc tap.
-- Web/mobile app.
-- Chu ky so, email/SMS tu dong, tich hop he thong ngoai.
-- He thong DMS chuyen sau hoac dashboard phan tich nang cao.
+Giải pháp phù hợp với đơn vị cần quản lý dữ liệu tập trung trong nội bộ, không phụ thuộc dịch vụ đám mây và vẫn có thể vận hành khi mạng Internet bên ngoài bị gián đoạn.
 
-## 3. Nguyen tac kien truc
+## 3. Sơ đồ thành phần hệ thống
 
-He thong nen dung **MVVM ket hop Clean Architecture nhe**. WPF phu hop voi MVVM, con Clean Architecture giup tach nghiep vu khoi UI va database.
+GitHub hỗ trợ hiển thị trực tiếp sơ đồ Mermaid dưới đây.
 
-Luon giu mot chieu phu thuoc:
+```mermaid
+flowchart LR
+    subgraph USERS[Người sử dụng]
+        A[Quản trị hệ thống]
+        L[Lãnh đạo]
+        O[Cán bộ xử lý]
+    end
 
-```text
-UI WPF
-  -> ViewModels
-    -> Application Services / Use Cases
-      -> Domain
-      -> Repository Interfaces
-        -> Infrastructure Implementations
-          -> SQLite / File System / Excel / Logging
+    subgraph CLIENT[Máy trạm - QuanLyHoSo Client]
+        UI[Giao diện Windows]
+        VM[Xử lý thao tác và kiểm tra dữ liệu nhập]
+        LC[Kết nối Server]
+        UI --> VM --> LC
+    end
+
+    subgraph SERVER[Máy chủ - QuanLyHoSo Server]
+        API[API mạng nội bộ]
+        AUTH[Xác thực và phân quyền]
+        BIZ[Xử lý nghiệp vụ hồ sơ]
+        DATA[Dịch vụ dữ liệu]
+        API --> AUTH
+        API --> BIZ
+        AUTH --> DATA
+        BIZ --> DATA
+    end
+
+    subgraph STORAGE[Lưu trữ trên máy chủ]
+        DB[(Cơ sở dữ liệu SQLite)]
+        FILES[Tệp, biểu mẫu và gói cập nhật]
+        LOGS[Nhật ký kỹ thuật]
+        BACKUP[Bản sao lưu dữ liệu]
+    end
+
+    A --> UI
+    L --> UI
+    O --> UI
+    LC -->|HTTP trong LAN| API
+    DATA --> DB
+    BIZ --> FILES
+    DATA --> LOGS
+    DATA --> BACKUP
 ```
 
-Quy tac:
+### Ý nghĩa các khối
 
-- View chi hien thi va bind command, khong viet nghiep vu trong code-behind.
-- ViewModel dieu phoi man hinh, validate dau vao gan UI, goi use case.
-- Application layer chua luong nghiep vu cap ung dung.
-- Domain layer chua entity, enum, business rule, state transition.
-- Infrastructure layer xu ly SQLite, file dinh kem, export, backup, logging.
+| Thành phần | Vai trò chính |
+|---|---|
+| Client | Hiển thị giao diện và gửi yêu cầu của người dùng tới Server. |
+| Server | Xác thực, kiểm tra quyền, áp dụng quy tắc nghiệp vụ và quản lý dữ liệu tập trung. |
+| SQLite | Lưu tài khoản, hồ sơ, danh mục, lịch sử xử lý, thông báo và nhật ký hệ thống. |
+| Khu vực tệp | Lưu tài liệu liên quan, biểu mẫu Word, gói cập nhật và các tệp phục vụ vận hành. |
+| Sao lưu | Lưu các bản sao cơ sở dữ liệu để phục hồi khi có sự cố. |
 
-## 4. De xuat cau truc project
+## 4. Sơ đồ triển khai
 
-Co the bat dau bang mot project WPF duy nhat de don gian, nhung nen chia folder theo layer. Khi he thong lon hon co the tach thanh nhieu project class library.
+```mermaid
+flowchart TB
+    subgraph LAN[Mạng nội bộ của đơn vị]
+        S[Máy Server<br/>QuanLyHoSo Server<br/>SQLite và thư mục sao lưu]
+        C1[Máy trạm 1<br/>QuanLyHoSo Client]
+        C2[Máy trạm 2<br/>QuanLyHoSo Client]
+        CN[Máy trạm khác<br/>QuanLyHoSo Client]
 
-```text
-QuanLyHoSo/
-  App.xaml
-  App.xaml.cs
-  MainWindow.xaml
-  MainWindow.xaml.cs
-
-  Views/
-    Shell/
-      ShellWindow.xaml
-      SidebarView.xaml
-    Dashboard/
-      DashboardView.xaml
-    Records/
-      RecordInputView.xaml
-      RecordListView.xaml
-      RecordDetailView.xaml
-      RecordProcessingView.xaml
-    Export/
-      ExportView.xaml
-    Settings/
-      SettingsView.xaml
-
-  ViewModels/
-    ShellViewModel.cs
-    DashboardViewModel.cs
-    RecordInputViewModel.cs
-    RecordListViewModel.cs
-    RecordProcessingViewModel.cs
-    ExportViewModel.cs
-    SettingsViewModel.cs
-
-  Application/
-    Common/
-      Result.cs
-      PagedResult.cs
-      DateRange.cs
-    Records/
-      CreateRecordUseCase.cs
-      UpdateRecordUseCase.cs
-      DeleteRecordUseCase.cs
-      SearchRecordsUseCase.cs
-      UpdateRecordProcessUseCase.cs
-    Dashboard/
-      GetDashboardSummaryUseCase.cs
-    Exporting/
-      ExportRecordsUseCase.cs
-    Settings/
-      ManageCatalogUseCase.cs
-      BackupDatabaseUseCase.cs
-      RestoreDatabaseUseCase.cs
-
-  Domain/
-    Entities/
-      Record.cs
-      RecordAttachment.cs
-      RecordProcessHistory.cs
-      CatalogItem.cs
-      Area.cs
-      UserProfile.cs
-    Enums/
-      RecordStatus.cs
-      ProcessingStep.cs
-      PriorityLevel.cs
-      SeverityLevel.cs
-      ReceiveSource.cs
-    Rules/
-      RecordStatusTransitionPolicy.cs
-      AttachmentPolicy.cs
-
-  Infrastructure/
-    Data/
-      AppDbContext.cs
-      Migrations/
-      Repositories/
-    FileStorage/
-      AttachmentStorageService.cs
-    Exporting/
-      ExcelExportService.cs
-      CsvExportService.cs
-    Backup/
-      BackupService.cs
-    Logging/
-      LoggingSetup.cs
-      AuditLogger.cs
-
-  Resources/
-    Styles/
-    Icons/
-    Templates/
-
-  Config/
-    appsettings.json
+        C1 -->|Địa chỉ Server và cổng 5055| S
+        C2 -->|Địa chỉ Server và cổng 5055| S
+        CN -->|Địa chỉ Server và cổng 5055| S
+    end
 ```
 
-## 5. Module man hinh
+Điều kiện vận hành:
 
-### 5.1 Shell va dieu huong
+- Máy Server phải được bật và ứng dụng Server phải đang chạy để các máy Client làm việc.
+- Các máy phải nhìn thấy nhau trong cùng mạng nội bộ hoặc qua kết nối mạng được đơn vị cho phép.
+- Tường lửa phải cho phép kết nối tới địa chỉ và cổng cấu hình của Server.
+- Không nên đổi tên máy, địa chỉ IP hoặc vị trí dữ liệu của Server mà chưa cập nhật cấu hình Client.
+- Nên dùng địa chỉ IP tĩnh hoặc tên máy ổn định cho Server.
 
-Shell la khung chinh cua ung dung gom sidebar va vung noi dung. Sidebar theo GUI draft gom:
+## 5. Vai trò và phân quyền
 
-- Tong quan
-- Nhap du lieu
-- Phan loai & Xu ly
-- Xuat du lieu
-- Cai dat
+Hệ thống có ba vai trò chính:
 
-Nen dung `ShellViewModel` giu `CurrentViewModel`. Moi nut sidebar chay command doi view model hien tai.
+| Chức năng | Admin | Lãnh đạo | Cán bộ |
+|---|:---:|:---:|:---:|
+| Xem tổng quan | Toàn hệ thống | Toàn hệ thống | Chỉ dữ liệu/hồ sơ của chính cán bộ |
+| Nhập hồ sơ mới | Có | Không | Không |
+| Xem danh sách hồ sơ | Toàn hệ thống | Toàn hệ thống, chủ yếu chỉ xem | Hồ sơ thuộc phạm vi được giao |
+| Phân loại và cập nhật xử lý | Có | Chỉ xem | Hồ sơ được phân công |
+| Theo dõi cán bộ | Có | Có | Phạm vi cá nhân |
+| Quản lý danh mục | Có | Không | Không |
+| Quản lý tài khoản | Có | Không | Không |
+| Sao lưu và khôi phục | Có | Không | Không |
 
-### 5.2 Tong quan
+Server kiểm tra lại quyền ở mỗi yêu cầu. Việc ẩn nút trên giao diện chỉ giúp dễ sử dụng, không phải lớp bảo vệ duy nhất.
 
-Muc dich: giup nguoi quan ly nam tinh hinh tiep nhan va xu ly ho so.
+## 6. Các phân hệ nghiệp vụ
 
-Du lieu can hien thi:
+### 6.1 Tổng quan
 
-- Tong ho so.
-- Dang xu ly.
-- Da giai quyet.
-- Cho ket qua.
-- Ho so theo trang thai.
-- Top 5 dia ban co nhieu ho so.
-- Ho so cap nhat gan day.
+Cung cấp cái nhìn nhanh về tình trạng hồ sơ:
 
-Use case chinh:
+- Tổng số hồ sơ.
+- Hồ sơ đang xử lý.
+- Hồ sơ đã giải quyết.
+- Hồ sơ đang chờ kết quả.
+- Phân bố hồ sơ theo trạng thái và địa bàn.
+- Các hồ sơ được cập nhật gần đây.
 
-- `GetDashboardSummaryUseCase`
-- `GetRecordStatusChartUseCase`
-- `GetTopAreasUseCase`
-- `GetRecentRecordsUseCase`
+Các số liệu được lấy từ dữ liệu tập trung trên Server và tuân theo phạm vi xem của tài khoản đang đăng nhập. Admin và Lãnh đạo xem số liệu toàn hệ thống; Cán bộ chỉ xem số liệu tổng quan được tính từ hồ sơ do chính mình phụ trách, không xem tổng hợp của cán bộ khác.
 
-Truy van dashboard nen la read-only, toi uu bang projection DTO thay vi load full entity.
+### 6.2 Nhập dữ liệu
 
-### 5.3 Nhap du lieu
+Cho phép tiếp nhận hồ sơ mới với các nhóm thông tin:
 
-Muc dich: tiep nhan va luu thong tin ban dau cua ho so.
+- Thông tin tiếp nhận và người gửi.
+- Địa bàn, địa chỉ xảy ra vụ việc và nội dung.
+- Loại vụ việc, lĩnh vực, nhóm nội dung và hướng xử lý dự kiến.
+- Mức độ vụ việc và ngày hẹn trả kết quả.
+- Tài liệu liên quan.
 
-Nhom thong tin:
+Hệ thống kiểm tra các trường bắt buộc, cấp mã hồ sơ và ghi nhận người tạo. Khi phát hiện lịch sử của cùng người gửi, người dùng có thể đối chiếu trước khi quyết định tạo hồ sơ độc lập hoặc ghi nhận hồ sơ gửi lại.
 
-- Thong tin chung: ma ho so, ngay tiep nhan, nguon tiep nhan, nguoi tiep nhan.
-- Nguoi gui/to chuc: ten, so dien thoai, dia chi lien he.
-- Dia ban va noi dung: dia ban, dia chi xay ra vu viec, noi dung don/vu viec.
-- Thong tin nghiep vu: loai vu viec, nhom noi dung, linh vuc, doi tuong lien quan.
-- Thong tin bo sung: hinh thuc xu ly mong muon, muc do vu viec, ngay hen tra ket qua, uu tien.
-- Tai lieu dinh kem.
+### 6.3 Danh sách hồ sơ
 
-Nguyen tac:
+Cho phép:
 
-- Ma ho so nen sinh theo format thong nhat, vi du `HS-yyyy-000001`.
-- Validate bat buoc tai ViewModel va Application layer.
-- File dinh kem khong nen luu binary truc tiep vao DB; nen copy vao thu muc ung dung va DB chi luu metadata/path tuong doi.
-- Khi tao ho so thanh cong, tu dong tao mot dong lich su xu ly dau tien: `TiepNhan`.
+- Tìm kiếm, lọc và sắp xếp hồ sơ.
+- Xem chi tiết và lịch sử xử lý.
+- Sửa hồ sơ theo quyền.
+- Chọn nhiều hồ sơ để thực hiện thao tác phù hợp.
+- Đưa hồ sơ vào thùng rác và khôi phục theo quyền.
+- Xuất dữ liệu phục vụ tổng hợp, báo cáo.
 
-### 5.4 Phan loai & Xu ly ho so
+### 6.4 Phân loại và xử lý
 
-Quy trinh proposal:
+Hỗ trợ cán bộ tiếp nhận công việc, cập nhật quá trình xác minh, ghi chú kết quả và hoàn tất hồ sơ. Hệ thống lưu lại lịch sử của từng lần cập nhật để phục vụ tra cứu.
 
-```text
-Tiep nhan -> Phan loai -> Phan cong -> Xac minh -> Gia han (neu co) -> Ket thuc -> Luu ho so
+Các thẻ thống kê giúp nhận biết nhanh:
+
+- Hồ sơ cần phân loại.
+- Hồ sơ đang xử lý.
+- Hồ sơ đang chờ kết quả.
+- Hồ sơ sắp đến hạn hoặc quá hạn.
+- Hồ sơ có mức độ cao.
+
+Ba giá trị `Nghiêm trọng`, `Rất nghiêm trọng` và `Đặc biệt nghiêm trọng` được dùng để tính thẻ mức độ cao. Vì vậy, danh mục mức độ vụ việc là dữ liệu chuẩn do hệ thống quản lý và không hiển thị trong phần danh mục cho phép chỉnh sửa.
+
+### 6.5 Theo dõi cán bộ
+
+Giúp Admin và Lãnh đạo theo dõi:
+
+- Số hồ sơ đang phụ trách của từng cán bộ.
+- Số hồ sơ đã hoàn thành.
+- Hồ sơ sắp đến hạn và quá hạn.
+- Tỷ lệ xử lý đúng hạn.
+- Cảnh báo và thông báo liên quan.
+
+Tên cán bộ được lấy từ dữ liệu tài khoản, danh mục cán bộ và hồ sơ thực tế; hệ thống không tính toán dựa trên tên một cá nhân được viết cứng trong chương trình.
+
+### 6.6 Cài đặt và quản trị
+
+Admin có thể:
+
+- Quản lý các danh mục nghiệp vụ được phép thay đổi.
+- Tạo, sửa, khóa hoặc mở khóa tài khoản.
+- Xem nhật ký thao tác toàn hệ thống.
+- Sao lưu và khôi phục dữ liệu.
+- Kiểm tra thông tin phiên bản và gói cập nhật.
+
+Các vai trò khác có thể xem thông tin phần mềm, đổi mật khẩu, kiểm tra cập nhật và xem nhật ký thuộc phạm vi của mình.
+
+## 7. Vòng đời hồ sơ
+
+Quy trình thực tế có thể thay đổi theo nội dung xử lý, nhưng luồng tổng thể như sau:
+
+```mermaid
+flowchart LR
+    A[Tiếp nhận hồ sơ] --> B[Phân loại]
+    B --> C[Phân công cán bộ]
+    C --> D[Xác minh và xử lý]
+    D --> E{Cần chờ thông tin?}
+    E -->|Có| F[Chờ kết quả hoặc bổ sung tài liệu]
+    F --> D
+    E -->|Không| G{Kết quả xử lý}
+    G -->|Hoàn tất| H[Đã giải quyết]
+    G -->|Không thuộc thẩm quyền| I[Chuyển cơ quan khác]
 ```
 
-Trang thai ho so:
+Tại mỗi bước, hệ thống có thể ghi nhận thời gian, cán bộ thực hiện, nội dung xử lý và trạng thái mới. Lịch sử đã ghi giúp đơn vị truy vết quá trình giải quyết hồ sơ.
 
-- Moi tiep nhan
-- Dang phan loai
-- Da phan cong
-- Dang xac minh
-- Cho ket qua
-- Dang cho bo sung tai lieu
-- Da giai quyet
-- Chuyen co quan khac
+## 8. Luồng trao đổi dữ liệu
 
-Nen thiet ke `RecordStatusTransitionPolicy` de kiem soat chuyen trang thai hop le. Vi du:
+Ví dụ khi người dùng lưu một hồ sơ:
 
-```text
-MoiTiepNhan -> DangPhanLoai
-DangPhanLoai -> DaPhanCong | ChuyenCoQuanKhac
-DaPhanCong -> DangXacMinh
-DangXacMinh -> ChoKetQua | DangChoBoSungTaiLieu | DaGiaiQuyet
-ChoKetQua -> DaGiaiQuyet
-DangChoBoSungTaiLieu -> DangXacMinh | DaGiaiQuyet
+```mermaid
+sequenceDiagram
+    actor U as Người dùng
+    participant C as Client
+    participant S as Server
+    participant D as SQLite
+
+    U->>C: Nhập thông tin và bấm Lưu
+    C->>C: Kiểm tra dữ liệu bắt buộc
+    C->>S: Gửi yêu cầu kèm phiên đăng nhập
+    S->>S: Xác thực và kiểm tra quyền
+    S->>D: Kiểm tra, cấp mã và lưu hồ sơ
+    D-->>S: Xác nhận kết quả
+    S-->>C: Trả mã hồ sơ hoặc thông báo lỗi
+    C-->>U: Hiển thị kết quả
 ```
 
-Moi lan cap nhat xu ly phai ghi:
-
-- Ho so nao.
-- Trang thai cu.
-- Trang thai moi.
-- Buoc xu ly.
-- Ngay gio xu ly.
-- Nguoi xu ly.
-- Noi dung xu ly.
-- Ghi chu.
-- CorrelationId cua thao tac.
-
-### 5.5 Xuat du lieu
-
-Bo loc:
-
-- Khoang ngay tiep nhan.
-- Trang thai ho so.
-- Loai vu viec.
-- Linh vuc.
-- Dia ban/xa/phuong.
-- Nguoi xu ly.
-- Tu khoa.
-- Sap xep.
-
-Luong xu ly:
-
-```text
-Nguoi dung chon bo loc
-  -> SearchRecordsUseCase tra preview
-  -> ExportRecordsUseCase dung cung filter
-  -> ExcelExportService hoac CsvExportService tao file
-  -> Ghi audit/log ket qua xuat
-```
-
-Nen tao `RecordSearchCriteria` dung chung cho preview va export de tranh lech ket qua.
-
-### 5.6 Cai dat
-
-Nhom chuc nang:
-
-- Danh muc dia ban: 102 xa/phuong tinh An Giang.
-- Danh muc nghiep vu: loai vu viec, linh vuc, nhom noi dung, nguon tiep nhan.
-- Sao luu va khoi phuc du lieu.
-- Thong tin phan mem.
-
-Danh muc nen co co che `IsActive` thay vi xoa vat ly ngay lap tuc. Neu danh muc da duoc gan vao ho so, thao tac xoa nen chuyen sang vo hieu hoa de giu toan ven lich su.
-
-## 6. Mo hinh du lieu de xuat
-
-### 6.1 Record
-
-`Record` la aggregate root cua nghiep vu ho so.
-
-Truong chinh:
-
-- `Id`
-- `RecordCode`
-- `ReceivedDate`
-- `ReceiveSourceId`
-- `ReceiverName`
-- `SenderName`
-- `SenderPhone`
-- `ContactAddress`
-- `AreaId`
-- `IncidentAddress`
-- `Content`
-- `CaseTypeId`
-- `ContentGroupId`
-- `FieldId`
-- `RelatedPerson`
-- `ExpectedHandlingMethod`
-- `SeverityLevel`
-- `ExpectedResultDate`
-- `PriorityLevel`
-- `CurrentStatus`
-- `CurrentProcessingStep`
-- `CreatedAt`
-- `CreatedBy`
-- `UpdatedAt`
-- `UpdatedBy`
-- `IsDeleted`
-
-### 6.2 RecordAttachment
-
-Truong chinh:
-
-- `Id`
-- `RecordId`
-- `OriginalFileName`
-- `StoredFileName`
-- `RelativePath`
-- `ContentType`
-- `FileExtension`
-- `FileSizeBytes`
-- `Sha256Hash`
-- `UploadedAt`
-- `UploadedBy`
-- `IsDeleted`
-
-Luu y:
-
-- Gioi han 10 MB/file.
-- Chi chap nhan `.pdf`, `.jpg`, `.jpeg`, `.png`.
-- Nen tinh hash de phat hien trung file va ho tro trace.
-
-### 6.3 RecordProcessHistory
+Nguyên tắc quan trọng:
 
-Truong chinh:
-
-- `Id`
-- `RecordId`
-- `FromStatus`
-- `ToStatus`
-- `ProcessingStep`
-- `ProcessedAt`
-- `ProcessorName`
-- `ActionContent`
-- `Note`
-- `CorrelationId`
-- `CreatedAt`
-
-Bang nay la nguon chinh de trace tien trinh xu ly cua ho so.
+- Server là nơi quyết định cuối cùng việc một thao tác có hợp lệ hay không.
+- Client không ghi trực tiếp vào file SQLite.
+- Dữ liệu gửi từ Client được kiểm tra lại tại Server.
+- Khi hai máy cùng làm việc, dữ liệu mới được lưu tập trung ngay trên Server.
+- Hệ thống hiện không dùng cơ chế đẩy thời gian thực tới mọi màn hình đang mở. Một số màn hình tải lại khi truy cập hoặc quay lại trang; người dùng cần mở lại trang liên quan khi muốn lấy trạng thái mới nhất từ máy khác.
 
-### 6.4 CatalogItem
+## 9. Thiết kế dữ liệu ở mức tổng thể
 
-Dung chung cho cac danh muc nghiep vu.
+Dữ liệu chính gồm:
 
-Truong chinh:
+| Nhóm dữ liệu | Nội dung |
+|---|---|
+| Người dùng | Tài khoản, họ tên, vai trò, trạng thái và yêu cầu đổi mật khẩu. |
+| Hồ sơ | Thông tin tiếp nhận, người gửi, nội dung, phân loại, mức độ, hạn xử lý và trạng thái. |
+| Lịch sử xử lý | Các bước đã thực hiện, thời gian, cán bộ và nội dung cập nhật. |
+| Tài liệu liên quan | Thông tin tệp gắn với hồ sơ. |
+| Danh mục | Nguồn tiếp nhận, loại vụ việc, lĩnh vực, nhóm nội dung, cán bộ và hướng xử lý. |
+| Địa bàn | Danh sách địa bàn và đơn vị phục vụ lọc, nhập liệu và thống kê. |
+| Nhật ký hệ thống | Hoạt động quan trọng phục vụ kiểm tra và truy vết. |
+| Thông báo/KPI | Cảnh báo, chỉ tiêu và dữ liệu theo dõi dành cho lãnh đạo. |
 
-- `Id`
-- `CatalogType`
-- `Code`
-- `Name`
-- `DisplayOrder`
-- `IsActive`
-- `CreatedAt`
-- `UpdatedAt`
+Khi cài mới cho khách hàng:
 
-`CatalogType` co the gom:
+- Hệ thống tạo tài khoản quản trị mặc định và yêu cầu quản lý lại mật khẩu.
+- Các địa bàn và danh mục chuẩn được khởi tạo sẵn.
+- Không tạo hồ sơ mẫu trong cơ sở dữ liệu vận hành.
+- Dữ liệu mẫu chỉ được tạo khi chạy chế độ demo riêng.
 
-- `CaseType`
-- `Field`
-- `ContentGroup`
-- `ReceiveSource`
-- `ExpectedHandlingMethod`
+## 10. An toàn và bảo mật
 
-### 6.5 Area
+Các cơ chế chính:
 
-Truong chinh:
+- Mật khẩu được băm kèm giá trị ngẫu nhiên; hệ thống không lưu mật khẩu ở dạng đọc được.
+- Sau khi đăng nhập, Client sử dụng phiên làm việc do Server cấp.
+- Server xác định lại người dùng và vai trò từ cơ sở dữ liệu ở mỗi yêu cầu quan trọng.
+- Tài khoản có thể bị khóa; hệ thống luôn bảo đảm còn ít nhất một Admin hoạt động.
+- Người dùng mới có thể được yêu cầu đổi mật khẩu trong lần đăng nhập đầu tiên.
+- Các thao tác quan trọng được ghi nhật ký để truy vết.
 
-- `Id`
-- `Code`
-- `Name`
-- `DistrictName`
-- `ProvinceName`
-- `DisplayOrder`
-- `IsActive`
+Giới hạn hiện tại:
 
-Ban dau import 102 xa/phuong An Giang.
+- Kết nối Client–Server sử dụng HTTP trong mạng nội bộ, chưa mã hóa bằng HTTPS/TLS.
+- Hệ thống chỉ nên được triển khai trong mạng LAN tin cậy, có kiểm soát người và thiết bị truy cập.
+- Không nên mở trực tiếp cổng Server ra Internet.
 
-### 6.6 AuditLog
+## 11. Sao lưu và khôi phục
 
-Ngoai technical log, nen co bang audit de xem lai thao tac nghiep vu quan trong.
+### Sao lưu tự động
 
-Truong chinh:
+- Server kiểm tra sao lưu khi khởi động và định kỳ trong lúc hoạt động.
+- Khi bản tự động gần nhất đã đủ 7 ngày, hệ thống tạo một bản mới.
+- Thư mục sao lưu giữ 10 bản gần nhất theo chính sách hiện tại.
 
-- `Id`
-- `OccurredAt`
-- `UserName`
-- `Action`
-- `EntityType`
-- `EntityId`
-- `EntityCode`
-- `Summary`
-- `CorrelationId`
+### Sao lưu thủ công
 
-Hanh dong nen audit:
+Admin có thể yêu cầu Server tạo một bản sao an toàn và lưu/tải bản sao về vị trí đã chọn.
 
-- Tao/sua/xoa ho so.
-- Them/xoa file dinh kem.
-- Cap nhat trang thai xu ly.
-- Xuat file.
-- Sao luu/khoi phuc du lieu.
-- Them/sua/xoa danh muc.
+### Khôi phục
 
-## 7. Co so du lieu
+Trước khi thay dữ liệu hiện tại, hệ thống:
 
-De xuat dung **SQLite local** vi phu hop proposal: ung dung desktop, du lieu tap trung trong may, khong server.
+1. Kiểm tra file được chọn.
+2. Tạo bản sao an toàn của dữ liệu đang dùng.
+3. Khôi phục cơ sở dữ liệu.
+4. Kiểm tra nhanh tính toàn vẹn.
+5. Xóa tệp tải lên tạm thời sau khi hoàn tất.
 
-Thu muc du lieu de xuat:
+Khôi phục ảnh hưởng tới toàn bộ người dùng. Admin cần thông báo dừng thao tác phát sinh dữ liệu trước khi thực hiện.
 
-```text
-%ProgramData%/QuanLyHoSo/
-  Data/
-    quanlyhoso.db
-  Attachments/
-    2026/
-      08/
-        HS-2026-000125/
-  Backups/
-  Logs/
-```
+## 12. Nhật ký và khả năng truy vết
 
-Neu can chay khong can quyen admin, co the dung:
+Hệ thống sử dụng hai nhóm nhật ký:
 
-```text
-%LocalAppData%/QuanLyHoSo/
-```
+- **Nhật ký nghiệp vụ:** lưu các hoạt động quan trọng để Admin tra cứu trong phần Cài đặt.
+- **Nhật ký kỹ thuật:** lưu lỗi và thông tin vận hành trên máy Server để hỗ trợ chẩn đoán sự cố.
 
-Khuyen nghi thu vien:
+Nhật ký giúp trả lời các câu hỏi như: ai đã thao tác, thao tác lúc nào, trên hồ sơ hoặc đối tượng nào và kết quả ra sao.
 
-- `Microsoft.EntityFrameworkCore.Sqlite`
-- `Microsoft.EntityFrameworkCore.Design`
-- `Microsoft.Extensions.DependencyInjection`
-- `Microsoft.Extensions.Configuration.Json`
-- `Serilog`
-- `Serilog.Sinks.File`
-- `ClosedXML` cho Excel
-- `CsvHelper` cho CSV
+## 13. Cập nhật phần mềm
 
-## 8. Logging va trace issue
+Hệ thống hỗ trợ kiểm tra gói cập nhật nội bộ. Khi nâng cấp:
 
-### 8.1 Nguyen tac log
+- Client và Server bắt buộc sử dụng cùng phiên bản phát hành.
+- Client gửi phiên bản trong mỗi kết nối; Server công bố phiên bản yêu cầu qua kiểm tra trạng thái.
+- Server từ chối đăng nhập và thao tác nghiệp vụ khi Client thiếu phiên bản hoặc có phiên bản khác, đồng thời Client hiển thị yêu cầu cập nhật.
+- Cần sao lưu dữ liệu trước khi nâng cấp.
+- Nên dừng thao tác nhập liệu trong thời gian cập nhật Server.
+- Cập nhật Server trước, sau đó cập nhật toàn bộ Client ngay trong cùng đợt bảo trì.
+- Cơ sở dữ liệu hiện có được giữ lại; quá trình cập nhật không tự tạo lại dữ liệu mẫu.
 
-Log phai giup tra loi nhanh:
+## 14. Khả năng hoạt động và xử lý sự cố
 
-- Loi xay ra o thao tac nao?
-- Ho so lien quan la ho so nao?
-- Nguoi dung dang lam gi?
-- Du lieu dau vao co gi bat thuong?
-- Loi o UI, nghiep vu, database, file system hay export?
+| Tình huống | Ảnh hưởng | Hướng xử lý |
+|---|---|---|
+| Server tắt | Client không đăng nhập hoặc tải dữ liệu được. | Khởi động máy và ứng dụng Server. |
+| Mất mạng LAN | Máy bị mất kết nối không thể lưu dữ liệu mới. | Khôi phục mạng rồi thực hiện lại thao tác. |
+| Sai URL Server | Client báo không kết nối được. | Kiểm tra cấu hình địa chỉ và cổng. |
+| Client và Server khác phiên bản | Client không được đăng nhập hoặc thực hiện thao tác nghiệp vụ. | Cài Client có cùng phiên bản đang chạy trên Server. |
+| Database bị khóa hoặc lỗi | Một số thao tác dữ liệu thất bại. | Dừng thao tác, kiểm tra nhật ký và dùng bản sao lưu khi cần. |
+| Cập nhật từ máy khác | Màn hình đang mở có thể chưa hiển thị ngay. | Mở lại trang hoặc thực hiện thao tác tải lại theo màn hình. |
 
-Moi command/use case nen tao `CorrelationId` va day xuong cac layer.
+## 15. Phạm vi và giới hạn hiện tại
 
-Format log de xuat:
+Hệ thống hiện được thiết kế cho:
 
-```text
-Timestamp | Level | CorrelationId | User | Module | Action | RecordCode | Message | Exception
-```
+- Ứng dụng Windows Desktop.
+- Một Server dữ liệu trung tâm trong mạng LAN.
+- Nhiều Client cùng kết nối đến Server.
+- Quản lý hồ sơ, lịch sử xử lý, danh mục, người dùng, thống kê và sao lưu.
 
-### 8.2 Vi tri log
+Chưa bao gồm:
 
-```text
-%ProgramData%/QuanLyHoSo/Logs/
-  app-2026-08-26.log
-  error-2026-08-26.log
-```
+- Ứng dụng Web hoặc Mobile.
+- Đồng bộ nhiều Server hoặc mô hình dự phòng tự động.
+- Đăng nhập một lần với hệ thống danh tính bên ngoài.
+- Chữ ký số, SMS, email hoặc tích hợp cổng dịch vụ khác.
+- HTTPS/TLS tích hợp sẵn cho kết nối Client–Server.
+- Cơ chế thông báo đẩy thời gian thực tới mọi màn hình đang mở.
+- Kho quản lý tài liệu chuyên dụng thay thế hoàn toàn hệ thống tệp.
 
-### 8.3 Logging theo layer
+Đối với tệp đính kèm, phiên bản hiện tại trao đổi thông tin tệp và đường dẫn qua API nhưng chưa thực hiện tải nội dung tệp vật lý từ Client lên Server. Đơn vị triển khai cần thống nhất thư mục dùng chung hoặc quy trình lưu tệp phù hợp cho tới khi chức năng tải tệp tập trung được bổ sung.
 
-ViewModel:
+Các nội dung trên có thể được phát triển ở giai đoạn sau tùy nhu cầu và hạ tầng của đơn vị.
 
-- Log command start/end o muc Information.
-- Log validation fail o muc Warning.
+## 16. Nguyên tắc vận hành khuyến nghị
 
-Application:
+- Bố trí máy Server ổn định, hạn chế tắt đột ngột.
+- Chỉ người phụ trách được cấp quyền truy cập máy Server và thư mục dữ liệu.
+- Thay mật khẩu Admin mặc định ngay sau khi bàn giao.
+- Kiểm tra bản sao lưu định kỳ và lưu thêm ít nhất một bản ở thiết bị/vị trí an toàn.
+- Không gửi file cơ sở dữ liệu hoặc bản sao lưu qua kênh công cộng không được bảo vệ.
+- Không chỉnh sửa trực tiếp cơ sở dữ liệu bằng công cụ bên ngoài.
+- Khi có lỗi, ghi nhận thời điểm, tài khoản, mã hồ sơ và ảnh màn hình để hỗ trợ kiểm tra nhật ký.
+- Thử nghiệm gói cập nhật và quy trình khôi phục trước khi áp dụng trên dữ liệu chính thức.
 
-- Log business decision quan trong.
-- Log state transition.
-- Log ket qua use case.
+## 17. Tài liệu liên quan
 
-Infrastructure:
+- [Hướng dẫn cài đặt Server và Client](Huong_dan_cai_dat_Server_Client.md)
+- [Hướng dẫn sử dụng phần mềm](Huong_dan_su_dung_QuanLyHoSo.md)
+- [README của dự án](../README.md)
 
-- Log database exception.
-- Log file copy/delete/export/backup.
-- Log duration cac tac vu cham.
+---
 
-### 8.4 Exception handling
-
-Can co `GlobalExceptionHandler` trong `App.xaml.cs`:
-
-- Bat `DispatcherUnhandledException`.
-- Bat `TaskScheduler.UnobservedTaskException`.
-- Ghi log error voi stack trace.
-- Hien dialog than thien: "Da co loi xay ra. Ma tra cuu: {CorrelationId}".
-
-Khong hien stack trace cho nguoi dung cuoi.
-
-## 9. Validation va business rule
-
-Validation nen chia 2 lop:
-
-- UI/ViewModel validation: bat buoc nhap, format so dien thoai, ngay hop le, gioi han ky tu.
-- Domain/Application validation: trang thai hop le, danh muc active, file hop le, ho so ton tai.
-
-Rule quan trong:
-
-- `RecordCode` khong trung.
-- `ReceivedDate` khong duoc lon hon ngay hien tai qua xa neu khong co ly do.
-- `ExpectedResultDate` phai >= `ReceivedDate`.
-- File dinh kem toi da 10 MB/file.
-- Khong xoa vat ly ho so da co lich su xu ly; dung soft delete.
-- Khong cho chuyen trang thai neu transition khong hop le.
-
-## 10. Bao mat va an toan du lieu
-
-Voi pham vi local desktop, bao mat tap trung vao du lieu tren may:
-
-- Khong luu password/token trong source code.
-- Thu muc data/backup/log nen dat tai vi tri ro rang, co the cau hinh.
-- Backup nen tao file nen `.zip` gom SQLite DB va attachments.
-- Truoc khi restore phai tu dong tao backup hien trang.
-- File dinh kem copy vao vung quan ly cua app, khong chi link den file goc cua nguoi dung.
-- Log khong nen ghi toan bo noi dung don neu noi dung co the nhay cam; chi ghi ma ho so va tom tat.
-
-## 11. Chien luoc sao luu va khoi phuc
-
-### 11.1 Backup
-
-Luong backup:
-
-```text
-Khoa thao tac ghi ngan han
-  -> Tao checkpoint SQLite
-  -> Copy DB vao thu muc tam
-  -> Copy attachments
-  -> Nen thanh file zip
-  -> Ghi AuditLog BackupCompleted
-```
-
-Ten file:
-
-```text
-QuanLyHoSo_Backup_yyyyMMdd_HHmmss.zip
-```
-
-### 11.2 Restore
-
-Luong restore:
-
-```text
-Nguoi dung chon file backup
-  -> Validate cau truc zip
-  -> Tao backup hien trang
-  -> Dong ket noi DB
-  -> Restore DB va attachments
-  -> Mo lai ung dung hoac reload app
-  -> Ghi AuditLog RestoreCompleted
-```
-
-## 12. Thiet ke OOP trong C#
-
-### 12.1 Entity
-
-Entity nen bao ve invariant, khong chi la class public set tran lan. Vi du `Record` co method:
-
-```csharp
-public void UpdateStatus(
-    RecordStatus newStatus,
-    ProcessingStep step,
-    string processorName,
-    string actionContent,
-    string note,
-    IRecordStatusTransitionPolicy transitionPolicy,
-    Guid correlationId)
-```
-
-Method nay:
-
-- Kiem tra transition hop le.
-- Cap nhat `CurrentStatus`.
-- Tao `RecordProcessHistory`.
-- Cap nhat `UpdatedAt`.
-
-### 12.2 Service
-
-Service chi nen lam viec co tinh nghiep vu/ha tang ro rang:
-
-- `RecordNumberGenerator`
-- `AttachmentStorageService`
-- `DashboardQueryService`
-- `ExportService`
-- `BackupService`
-- `AuditLogger`
-
-### 12.3 Interface
-
-Application layer phu thuoc interface:
-
-```csharp
-public interface IRecordRepository
-{
-    Task<Record?> GetByIdAsync(Guid id);
-    Task<Record?> GetByCodeAsync(string recordCode);
-    Task AddAsync(Record record);
-    Task SaveChangesAsync();
-}
-```
-
-Infrastructure implement interface bang EF Core/SQLite.
-
-## 13. MVVM va UI maintainability
-
-Nen dung `CommunityToolkit.Mvvm` de giam boilerplate:
-
-- `ObservableObject`
-- `RelayCommand`
-- `AsyncRelayCommand`
-
-Quy tac UI:
-
-- Moi man hinh co mot ViewModel rieng.
-- Command async phai co loading state va error state.
-- Control dung chung nen dua vao `Resources/Styles`.
-- ComboBox danh muc load tu `CatalogLookupService`.
-- Bang danh sach nen dung DTO rieng, khong bind truc tiep entity EF.
-
-Vi du ViewModel mapping:
-
-```text
-DashboardView.xaml          -> DashboardViewModel
-RecordInputView.xaml        -> RecordInputViewModel
-RecordProcessingView.xaml   -> RecordProcessingViewModel
-ExportView.xaml             -> ExportViewModel
-SettingsView.xaml           -> SettingsViewModel
-```
-
-## 14. Goi y package NuGet
-
-```text
-CommunityToolkit.Mvvm
-Microsoft.Extensions.DependencyInjection
-Microsoft.Extensions.Configuration
-Microsoft.Extensions.Configuration.Json
-Microsoft.EntityFrameworkCore.Sqlite
-Microsoft.EntityFrameworkCore.Design
-Serilog
-Serilog.Extensions.Hosting
-Serilog.Sinks.File
-ClosedXML
-CsvHelper
-```
-
-Neu muon ve chart trong dashboard:
-
-```text
-LiveChartsCore.SkiaSharpView.WPF
-```
-
-## 15. Luong nghiep vu chinh
-
-### 15.1 Tao ho so
-
-```text
-RecordInputViewModel.SaveCommand
-  -> Validate form
-  -> CreateRecordUseCase
-  -> RecordNumberGenerator sinh ma
-  -> AttachmentStorageService copy file
-  -> RecordRepository.Add
-  -> AuditLogger ghi CreatedRecord
-  -> Logger ghi Information voi CorrelationId
-```
-
-### 15.2 Cap nhat xu ly
-
-```text
-RecordProcessingViewModel.UpdateCommand
-  -> Validate trang thai va noi dung
-  -> UpdateRecordProcessUseCase
-  -> RecordStatusTransitionPolicy kiem tra
-  -> Record.UpdateStatus
-  -> RecordRepository.SaveChanges
-  -> AuditLogger ghi StatusChanged
-```
-
-### 15.3 Xuat du lieu
-
-```text
-ExportViewModel.ExportCommand
-  -> Build RecordSearchCriteria
-  -> SearchRecordsUseCase lay dung tap du lieu
-  -> ExportRecordsUseCase
-  -> ExcelExportService/CsvExportService
-  -> AuditLogger ghi ExportedRecords
-```
-
-## 16. Test strategy
-
-Nen co test cho nghiep vu quan trong, du app desktop van nen test core logic.
-
-Unit test:
-
-- Sinh ma ho so.
-- Transition trang thai.
-- Validate file dinh kem.
-- Search criteria mapping.
-- Export column mapping.
-
-Integration test:
-
-- Repository voi SQLite in-memory.
-- Tao ho so kem lich su tiep nhan.
-- Cap nhat trang thai tao lich su xu ly.
-- Backup/restore voi thu muc tam.
-
-Manual test:
-
-- Tao ho so day du thong tin.
-- Sua ho so co file dinh kem.
-- Xoa file dinh kem.
-- Loc dashboard theo thang.
-- Xuat Excel/CSV theo filter.
-- Restore tu backup.
-
-## 17. Lo trinh trien khai de xuat
-
-### Giai doan 1: Nen mong ky thuat
-
-- Setup DI, logging, config.
-- Setup SQLite + EF Core.
-- Tao entity, enum, repository.
-- Tao shell/sidebar va routing man hinh.
-
-### Giai doan 2: Ho so va danh muc
-
-- Danh muc dia ban/nghiep vu.
-- Nhap ho so.
-- Danh sach va chi tiet ho so.
-- File dinh kem.
-
-### Giai doan 3: Xu ly va lich su
-
-- Phan loai & xu ly.
-- State transition policy.
-- Timeline lich su xu ly.
-- Audit log.
-
-### Giai doan 4: Bao cao va van hanh
-
-- Dashboard.
-- Xuat Excel/CSV.
-- Sao luu/khoi phuc.
-- Dong goi installer va huong dan su dung.
-
-## 18. Rui ro va cach kiem soat
-
-| Rui ro | Anh huong | Cach kiem soat |
-| --- | --- | --- |
-| Thay doi danh muc nghiep vu | Anh huong form, thong ke, export | Dung `CatalogItem`, khong hard-code danh muc trong UI |
-| File dinh kem bi mat/di chuyen | Ho so mat tai lieu | Copy file vao thu muc app, DB luu path tuong doi va hash |
-| Loi kho trace khi nguoi dung bao issue | Ton thoi gian debug | Bat buoc log `CorrelationId`, `RecordCode`, `Action` |
-| DB local bi hong | Mat du lieu | Backup dinh ky, backup truoc restore |
-| UI code-behind phinh to | Kho maintain | Ap dung MVVM, command/use case rieng |
-| Xoa danh muc da duoc su dung | Mat y nghia lich su | Dung soft delete/IsActive |
-
-## 19. Ket luan
-
-Thiet ke de xuat tap trung vao mot ung dung WPF local gon, ro layer va de mo rong. Phan quan trong nhat la tach nghiep vu ho so ra khoi UI, thiet ke state transition co kiem soat, luu lich su xu ly day du va co logging/audit theo `CorrelationId`. Cach lam nay giup ung dung de maintain, de trace issue va phu hop voi pham vi proposal hien tai.
+Tài liệu này mô tả kiến trúc đang được áp dụng ở mức tổng thể. Khi thay đổi mô hình triển khai, phân quyền, quy trình nghiệp vụ hoặc chính sách sao lưu, tài liệu cần được cập nhật đồng thời.

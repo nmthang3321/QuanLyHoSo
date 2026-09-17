@@ -9,7 +9,7 @@ namespace QuanLyHoSo.IntegrationTests
 {
     internal sealed class TestDatabase : IDisposable
     {
-        public TestDatabase()
+        public TestDatabase(bool seedSampleRecords = false)
         {
             RootPath = Path.Combine(Path.GetTempPath(), "QuanLyHoSo.Tests", Guid.NewGuid().ToString("N"));
             DatabasePath = Path.Combine(RootPath, "data", "test.db");
@@ -18,7 +18,7 @@ namespace QuanLyHoSo.IntegrationTests
             {
                 AppPathSettings.UseServerMode(DatabasePath, Path.Combine(RootPath, "logs"), "http://127.0.0.1:0");
                 Service = new AppDataService(DatabasePath);
-                Service.Initialize();
+                Service.Initialize(seedSampleRecords);
                 SignInAsAdmin();
             }
             catch

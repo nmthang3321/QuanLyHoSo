@@ -51,7 +51,7 @@ Hệ thống gồm hai chương trình:
 
 | Chức năng | Admin | Lãnh đạo | Cán bộ |
 |---|:---:|:---:|:---:|
-| Xem Tổng quan | Có | Có | Có, theo hồ sơ được giao |
+| Xem Tổng quan | Toàn hệ thống | Toàn hệ thống | Chỉ dữ liệu/hồ sơ của chính cán bộ |
 | Nhập hồ sơ mới | Có | Không | Không |
 | Xem danh sách hồ sơ | Có | Có | Có, theo phạm vi được giao |
 | Sửa/xóa hồ sơ | Có | Chỉ xem | Chỉ sửa hồ sơ mình phụ trách |
@@ -191,7 +191,7 @@ Trang Tổng quan giúp nắm nhanh tình hình tiếp nhận và xử lý hồ 
 2. Chọn kỳ có sẵn như năm nay, tháng này hoặc khoảng thời gian phù hợp.
 3. Số liệu và biểu đồ sẽ được tải lại theo kỳ đã chọn.
 
-> Với Cán bộ, số liệu chủ yếu phản ánh hồ sơ được phân công cho chính người đang đăng nhập. Admin và Lãnh đạo xem phạm vi tổng hợp rộng hơn.
+> Với Cán bộ, toàn bộ thẻ số liệu, biểu đồ và danh sách gần đây trên trang Tổng quan chỉ phản ánh hồ sơ do chính cán bộ đang đăng nhập phụ trách. Cán bộ không xem số liệu tổng hợp hoặc hồ sơ của cán bộ khác. Admin và Lãnh đạo xem phạm vi toàn hệ thống.
 
 ---
 
@@ -540,9 +540,11 @@ Admin xem được nhật ký hệ thống rộng hơn; Lãnh đạo và Cán b�
 3. Bấm **Cập nhật** để tải gói từ máy chủ.
 4. Lưu công việc trước khi cài đặt hoặc khởi động lại ứng dụng.
 
+Server và Client phải dùng cùng phiên bản. Nếu Server đã được nâng cấp và Client còn ở bản cũ, hệ thống sẽ không cho đăng nhập hoặc tiếp tục thao tác; hãy cài bộ Client có đúng số phiên bản được thông báo.
+
 ### 11.5 Quản lý danh mục - chỉ Admin
 
-![Quản lý danh mục nguồn tiếp nhận](GUI/admin/2026-09-16_21h36_10.png)
+![Quản lý danh mục nguồn tiếp nhận](GUI/admin/2026-09-17_20h11_58.png)
 
 Admin có thể quản lý các danh mục:
 
@@ -550,7 +552,6 @@ Admin có thể quản lý các danh mục:
 - Loại vụ việc.
 - Lĩnh vực.
 - Nhóm nội dung.
-- Mức độ vụ việc.
 - Tên cán bộ xử lý.
 - Hướng xử lý.
 
@@ -565,9 +566,11 @@ Thao tác:
 
 > Không tạo hai giá trị khác nhau chỉ bởi khoảng trắng hoặc cách viết hoa. Tránh xóa danh mục đang được dùng trong hồ sơ cũ.
 
+> **Mức độ vụ việc** là danh mục chuẩn do hệ thống quản lý để tính toán các thẻ thống kê, vì vậy không hiển thị trong phần Quản lý danh mục và không cho phép chỉnh sửa.
+
 ### 11.6 Người dùng và phân quyền - chỉ Admin
 
-![Quản lý người dùng và phân quyền](GUI/admin/2026-09-16_21h36_45.png)
+![Quản lý người dùng và phân quyền](GUI/admin/2026-09-17_20h12_36.png)
 
 #### Tạo tài khoản
 
@@ -597,7 +600,7 @@ Quy tắc:
 
 ### 11.7 Nhật ký toàn hệ thống - chỉ Admin
 
-![Nhật ký hệ thống của Admin](GUI/admin/2026-09-16_21h36_27.png)
+![Nhật ký hệ thống của Admin](GUI/admin/2026-09-17_20h12_14.png)
 
 Admin dùng nhật ký để truy vết các thao tác thêm, sửa, xóa, cập nhật xử lý, quản lý người dùng và dữ liệu. Có thể bấm **Làm mới** để xem các sự kiện mới nhất.
 
@@ -605,7 +608,7 @@ Admin dùng nhật ký để truy vết các thao tác thêm, sửa, xóa, cập
 
 Khối sao lưu nằm trên trang Cài đặt của Admin.
 
-![Sao lưu và khôi phục dữ liệu](GUI/admin/2026-09-16_21h35_54.png)
+![Sao lưu và khôi phục dữ liệu](GUI/admin/2026-09-17_20h11_44.png)
 
 #### Sao lưu tự động
 
@@ -678,6 +681,7 @@ Trước khi thay dữ liệu, máy chủ tự tạo một bản an toàn có t�
 - Kiểm tra Caps Lock và kiểu gõ bàn phím.
 - Kiểm tra máy chủ có ở trạng thái **Đang hoạt động**.
 - Kiểm tra URL máy chủ trong trang Cài đặt.
+- Nếu có thông báo phiên bản không tương thích, cài Client có cùng phiên bản với Server rồi mở lại ứng dụng.
 - Liên hệ Admin nếu tài khoản bị khóa hoặc quên mật khẩu.
 
 ### 13.2 Bị yêu cầu đổi mật khẩu ngay sau đăng nhập

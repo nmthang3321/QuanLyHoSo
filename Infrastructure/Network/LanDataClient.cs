@@ -23,6 +23,7 @@ namespace QuanLyHoSo.Infrastructure.Network
                 Timeout = TimeSpan.FromSeconds(5)
             };
             _httpClient.DefaultRequestHeaders.TryAddWithoutValidation("X-QuanLyHoSo-Client", Environment.MachineName);
+            _httpClient.DefaultRequestHeaders.TryAddWithoutValidation(LanProtocolVersion.ClientVersionHeader, LanProtocolVersion.Current);
             _jsonOptions = new JsonSerializerOptions
             {
                 PropertyNameCaseInsensitive = true
@@ -32,7 +33,15 @@ namespace QuanLyHoSo.Infrastructure.Network
 
         public void Ping()
         {
-            Call<object>("health", null);
+            var health = Call<LanHealthResponse>("health", null);
+            if (health == null || !health.IsClientVersionSupported ||
+                !string.Equals(health.ServerVersion, LanProtocolVersion.Current, StringComparison.OrdinalIgnoreCase))
+            {
+                var serverVersion = string.IsNullOrWhiteSpace(health?.ServerVersion) ? "không xác định" : health.ServerVersion;
+                throw new LanVersionMismatchException(
+                    $"Phiên bản Client ({LanProtocolVersion.Current}) không tương thích với Server ({serverVersion}). " +
+                    $"Vui lòng cài Client phiên bản {health?.RequiredClientVersion ?? serverVersion}.");
+            }
         }
 
         private void SendHeartbeat()
@@ -63,6 +72,11 @@ namespace QuanLyHoSo.Infrastructure.Network
 
                 if (!response.IsSuccessStatusCode)
                 {
+                    if ((int)response.StatusCode == 426)
+                    {
+                        throw new LanVersionMismatchException(responseBody);
+                    }
+
                     throw new InvalidOperationException(string.IsNullOrWhiteSpace(responseBody)
                         ? $"Máy admin trả về lỗi HTTP {(int)response.StatusCode}."
                         : responseBody);
@@ -100,6 +114,11 @@ namespace QuanLyHoSo.Infrastructure.Network
                 if (!response.IsSuccessStatusCode)
                 {
                     var responseBody = response.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+                    if ((int)response.StatusCode == 426)
+                    {
+                        throw new LanVersionMismatchException(responseBody);
+                    }
+
                     throw new InvalidOperationException(string.IsNullOrWhiteSpace(responseBody)
                         ? $"Máy admin trả về lỗi HTTP {(int)response.StatusCode}."
                         : responseBody);

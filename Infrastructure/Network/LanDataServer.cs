@@ -142,7 +142,6 @@ namespace QuanLyHoSo.Infrastructure.Network
         {
             try
             {
-                TrackClient(context.Request);
                 if (!string.Equals(context.Request.HttpMethod, "POST", StringComparison.OrdinalIgnoreCase))
                 {
                     await WriteErrorAsync(context, 405, "Only POST is supported.");
@@ -150,7 +149,16 @@ namespace QuanLyHoSo.Infrastructure.Network
                 }
 
                 var route = context.Request.Url.AbsolutePath.Trim('/').Replace("api/", string.Empty);
-                var result = Dispatch(route, await ReadBodyAsync(context.Request));
+                var clientVersion = context.Request.Headers[LanProtocolVersion.ClientVersionHeader];
+                if (!string.Equals(route, "health", StringComparison.OrdinalIgnoreCase) &&
+                    !LanProtocolVersion.IsCompatible(clientVersion))
+                {
+                    await WriteErrorAsync(context, 426, LanProtocolVersion.BuildMismatchMessage(clientVersion));
+                    return;
+                }
+
+                TrackClient(context.Request);
+                var result = Dispatch(route, await ReadBodyAsync(context.Request), clientVersion);
                 if (string.Equals(route, "settings/update/download", StringComparison.OrdinalIgnoreCase)
                     || string.Equals(route, "settings/backup/download", StringComparison.OrdinalIgnoreCase))
                 {
@@ -186,11 +194,18 @@ namespace QuanLyHoSo.Infrastructure.Network
             _activeClients[clientMachine] = DateTime.UtcNow;
         }
 
-        private object Dispatch(string route, string body)
+        private object Dispatch(string route, string body, string clientVersion)
         {
             if (string.Equals(route, "health", StringComparison.OrdinalIgnoreCase))
             {
-                return new { ok = true, machine = Environment.MachineName };
+                return new LanHealthResponse
+                {
+                    Ok = true,
+                    Machine = Environment.MachineName,
+                    ServerVersion = LanProtocolVersion.Current,
+                    RequiredClientVersion = LanProtocolVersion.Current,
+                    IsClientVersionSupported = LanProtocolVersion.IsCompatible(clientVersion)
+                };
             }
 
             if (string.Equals(route, "auth/login", StringComparison.OrdinalIgnoreCase))

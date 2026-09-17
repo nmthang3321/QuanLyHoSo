@@ -2,6 +2,14 @@ using System;
 
 namespace QuanLyHoSo.Infrastructure.Network
 {
+    public sealed class LanVersionMismatchException : Exception
+    {
+        public LanVersionMismatchException(string message)
+            : base(message)
+        {
+        }
+    }
+
     public sealed class LanServerUnavailableException : Exception
     {
         public LanServerUnavailableException(string adminServerUrl, Exception innerException)

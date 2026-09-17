@@ -1,0 +1,11 @@
+# Dashboard
+
+Detailed references: `engineering/pages/DASHBOARD_OVERVIEW.md` and `engineering/popups/DASHBOARD_DATE_RANGE.md`.
+
+Open `ViewModels\DashboardViewModel.cs`, `Views\Dashboard\DashboardView.xaml[.cs]`, and `Models\DashboardModels.cs`.
+
+Service methods: `GetDashboardMetrics`, `GetStatusStats`, `GetTopAreas`, `GetReceivedTrendStats`, `GetRecentRecords`, and `CountRecords`.
+
+Notes:
+- A previous not-responding defect caused by `CalculateNiceAxisStep` returning zero has been fixed.
+- Dashboard reload runs asynchronously in the background. Its six independent summary requests start concurrently, and the page shows an explicit loading surface until the snapshot is ready.

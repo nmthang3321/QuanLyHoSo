@@ -21,6 +21,7 @@ namespace QuanLyHoSo.Infrastructure.Data
     {
         private const string RecordCodePrefix = "HS";
         private const int RecordCodeSequenceWidth = 6;
+        private const string ProtectedCalculationCatalogType = "Priority";
         private const string AutomaticBackupFilePattern = "quanlyhoso_auto_*.db";
         private const string RetainedBackupFilePattern = "quanlyhoso_*.db";
         private const int AutomaticBackupIntervalDays = 7;
@@ -99,6 +100,11 @@ namespace QuanLyHoSo.Infrastructure.Data
 
         public void Initialize()
         {
+            Initialize(seedSampleRecords: false);
+        }
+
+        public void Initialize(bool seedSampleRecords)
+        {
             var stopwatch = Stopwatch.StartNew();
             if (AppPathSettings.Current.IsClientMode)
             {
@@ -122,7 +128,10 @@ namespace QuanLyHoSo.Infrastructure.Data
             NormalizeSeverityCatalog(connection);
             NormalizeRecordSeverity(connection);
             NormalizeProcessingHistoryTitles(connection);
-            SeedRecords(connection);
+            if (seedSampleRecords)
+            {
+                SeedRecords(connection);
+            }
             NormalizeFutureRecordDates(connection);
             SyncProcessorCatalogFromRecords(connection);
             _lanServer?.Start();
@@ -304,6 +313,7 @@ LIMIT $take;";
         {
             if (AppPathSettings.Current.IsClientMode)
             {
+                _lanClient.Ping();
                 return _lanClient.Call<AppUser>("auth/login", new LoginRequest { UserName = userName, Password = password });
             }
 
@@ -691,6 +701,8 @@ VALUES
 
         public int AddCatalogItem(string catalogType, string name)
         {
+            EnsureCatalogCanBeModified(catalogType);
+
             if (AppPathSettings.Current.IsClientMode)
             {
                 return _lanClient.Call<int>("settings/catalog/add", new SaveCatalogItemRequest { CatalogType = catalogType, Name = name });
@@ -742,6 +754,7 @@ SELECT last_insert_rowid();";
             using var connection = OpenConnection();
             var trimmedName = name.Trim();
             var catalogType = GetCatalogType(connection, id);
+            EnsureCatalogCanBeModified(catalogType);
             if (string.IsNullOrWhiteSpace(catalogType) || CatalogNameExists(connection, catalogType, trimmedName, id))
             {
                 return false;
@@ -776,6 +789,7 @@ SELECT last_insert_rowid();";
 
             using var connection = OpenConnection();
             var catalogType = GetCatalogType(connection, id);
+            EnsureCatalogCanBeModified(catalogType);
             var catalogName = GetCatalogItemName(connection, id);
             using var command = connection.CreateCommand();
             command.CommandText = "UPDATE CatalogItems SET IsActive = 0 WHERE Id = $id AND IsActive = 1;";
@@ -792,6 +806,11 @@ SELECT last_insert_rowid();";
 
         public void UpdateCatalogItemOrders(IReadOnlyList<CatalogValueSetting> items)
         {
+            if (items != null && items.Count > 0)
+            {
+                EnsureCatalogCanBeModified(items[0].CatalogType);
+            }
+
             if (AppPathSettings.Current.IsClientMode)
             {
                 _lanClient.Call<bool>("settings/catalog/reorder", new ReorderCatalogItemsRequest { Items = items });
@@ -805,6 +824,14 @@ SELECT last_insert_rowid();";
             }
 
             using var connection = OpenConnection();
+            if (items.Any(item => string.Equals(
+                GetCatalogType(connection, item.Id),
+                ProtectedCalculationCatalogType,
+                StringComparison.OrdinalIgnoreCase)))
+            {
+                EnsureCatalogCanBeModified(ProtectedCalculationCatalogType);
+            }
+
             using var transaction = connection.BeginTransaction();
             for (var index = 0; index < items.Count; index++)
             {
@@ -819,6 +846,15 @@ SELECT last_insert_rowid();";
             transaction.Commit();
             WriteDatabaseLog(connection, null, "Danh mục", "Sắp xếp", "CatalogItems", $"Cập nhật thứ tự {items.Count} danh mục.");
             NotifyCatalogChanged(items[0].CatalogType);
+        }
+
+        private static void EnsureCatalogCanBeModified(string catalogType)
+        {
+            if (string.Equals(catalogType, ProtectedCalculationCatalogType, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException(
+                    "Danh mục Mức độ vụ việc là dữ liệu chuẩn dùng để tính toán các card và không thể chỉnh sửa.");
+            }
         }
 
         public IReadOnlyList<string> GetProcessorNames(bool includeAll = false)

@@ -11,15 +11,68 @@ namespace QuanLyHoSo.IntegrationTests
         [Fact]
         [Trait("Category", "Smoke")]
         [Trait("Category", "Database")]
-        public void Initialize_OnFreshPath_ShouldCreateUsableDatabaseAndSeedRequiredData()
+        public void Initialize_OnFreshPath_ShouldCreateUsableDatabaseWithoutSampleRecords()
         {
             using var database = new TestDatabase();
 
             Assert.True(File.Exists(database.DatabasePath));
             Assert.NotEmpty(database.Service.GetAreaNames());
-            Assert.NotEmpty(database.Service.GetCatalogValues("CaseType"));
-            Assert.True(database.Service.CountRecords() > 0);
+            var catalogTypes = new[]
+            {
+                "ReceiveSource",
+                "CaseType",
+                "Field",
+                "ContentGroup",
+                "Priority",
+                "ProcessorName",
+                "ExpectedHandlingMethod"
+            };
+            Assert.All(catalogTypes, catalogType =>
+                Assert.NotEmpty(database.Service.GetCatalogValues(catalogType)));
+            Assert.Equal(0, database.Service.CountRecords());
             Assert.NotNull(database.Service.AuthenticateUser("admin", "admin123"));
+        }
+
+        [Fact]
+        [Trait("Category", "Integration")]
+        [Trait("Category", "Database")]
+        public void Initialize_WhenSampleRecordsAreRequested_ShouldSeedDemoRecords()
+        {
+            using var database = new TestDatabase(seedSampleRecords: true);
+
+            Assert.Equal(105, database.Service.CountRecords());
+        }
+
+        [Fact]
+        [Trait("Category", "Integration")]
+        [Trait("Category", "Regression")]
+        public void PriorityCatalog_WhenModificationIsRequested_ShouldRemainProtected()
+        {
+            using var database = new TestDatabase();
+            var priorities = database.Service.GetCatalogItems("Priority").ToList();
+            var firstPriority = priorities.First();
+
+            Assert.Throws<InvalidOperationException>(() =>
+                database.Service.AddCatalogItem("Priority", "Mức độ thử nghiệm"));
+            Assert.Throws<InvalidOperationException>(() =>
+                database.Service.UpdateCatalogItem(firstPriority.Id, "Mức độ đã đổi"));
+            Assert.Throws<InvalidOperationException>(() =>
+                database.Service.DeleteCatalogItem(firstPriority.Id));
+            Assert.Throws<InvalidOperationException>(() =>
+                database.Service.UpdateCatalogItemOrders(priorities.AsEnumerable().Reverse().ToList()));
+            var disguisedPriorities = priorities.Select(item => new CatalogValueSetting
+            {
+                Id = item.Id,
+                CatalogType = "ReceiveSource",
+                Name = item.Name,
+                DisplayOrder = item.DisplayOrder
+            }).ToList();
+            Assert.Throws<InvalidOperationException>(() =>
+                database.Service.UpdateCatalogItemOrders(disguisedPriorities));
+
+            Assert.Equal(
+                priorities.Select(item => (item.Id, item.Name, item.DisplayOrder)),
+                database.Service.GetCatalogItems("Priority").Select(item => (item.Id, item.Name, item.DisplayOrder)));
         }
 
         [Theory]

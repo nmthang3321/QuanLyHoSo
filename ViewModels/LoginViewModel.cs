@@ -108,9 +108,12 @@ namespace QuanLyHoSo.ViewModels
             catch (Exception ex)
             {
                 AppLogger.Error("Auth", "SignIn", ex, "Failed to sign in.");
-                ErrorMessage = ex is LanServerUnavailableException
-                    ? "Không kết nối được máy server. Vui lòng kiểm tra server đã bật và kết nối mạng, rồi thử đăng nhập lại."
-                    : "Kh\u00F4ng th\u1EC3 \u0111\u0103ng nh\u1EADp. Vui l\u00F2ng th\u1EED l\u1EA1i.";
+                ErrorMessage = ex switch
+                {
+                    LanVersionMismatchException => ex.Message,
+                    LanServerUnavailableException => "Không kết nối được máy server. Vui lòng kiểm tra server đã bật và kết nối mạng, rồi thử đăng nhập lại.",
+                    _ => "Kh\u00F4ng th\u1EC3 \u0111\u0103ng nh\u1EADp. Vui l\u00F2ng th\u1EED l\u1EA1i."
+                };
             }
         }
 

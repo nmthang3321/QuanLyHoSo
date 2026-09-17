@@ -19,7 +19,7 @@ namespace QuanLyHoSo.Server
                 var options = ServerOptions.Parse(args);
                 options.PrepareSampleDatabase();
                 AppPathSettings.UseServerMode(options.DatabasePath, options.LogFolder, options.AdminServerUrl);
-                AppDataService.Instance.Initialize();
+                AppDataService.Instance.Initialize(options.UseSampleData);
 
                 var application = new Application
                 {

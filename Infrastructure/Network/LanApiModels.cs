@@ -16,6 +16,15 @@ namespace QuanLyHoSo.Infrastructure.Network
         public string Password { get; set; }
     }
 
+    public sealed class LanHealthResponse
+    {
+        public bool Ok { get; set; }
+        public string Machine { get; set; }
+        public string ServerVersion { get; set; }
+        public string RequiredClientVersion { get; set; }
+        public bool IsClientVersionSupported { get; set; }
+    }
+
     public class IncludeAllRequest
     {
         public bool IncludeAll { get; set; }
