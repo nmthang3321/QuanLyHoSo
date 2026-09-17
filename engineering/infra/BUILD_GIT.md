@@ -29,3 +29,12 @@ Git rules:
 - Run `git status --short --branch` before editing or committing.
 - Never revert user changes.
 - Stage only files relevant to the task.
+
+Customer releases:
+- Run `scripts/build-release.ps1 -Version 1.0.0` to generate the customer package.
+- `artifacts/installer/` contains exactly two Windows x64 setup EXEs, the matching
+  `doc/QuanLyHoSo_TaiLieu_KhachHang_<version>.pdf`, and `SHA256.txt`.
+- The checksum file covers both installers and the PDF. Update ZIPs are not release assets.
+- The matching-version PDF must exist before building; its visible version must also match.
+- Pushing a `v<version>` tag runs `.github/workflows/release.yml`, verifies the solution,
+  builds the same package, and publishes these four assets to GitHub Releases.

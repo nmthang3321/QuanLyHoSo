@@ -65,6 +65,7 @@ end;
 function CanConnectToServer(const Value: string): Boolean;
 var
   Request: Variant;
+  ResponseText: string;
 begin
   Result := False;
   try
@@ -74,8 +75,9 @@ begin
     Request.SetRequestHeader('Content-Type', 'application/json');
     Request.SetRequestHeader('X-QuanLyHoSo-Version', '{#AppVersion}');
     Request.Send('{}');
+    ResponseText := Request.ResponseText;
     Result := (Request.Status = 200) and
-      (Pos('"IsClientVersionSupported":true', Request.ResponseText) > 0);
+      (Pos('"IsClientVersionSupported":true', ResponseText) > 0);
   except
     Result := False;
   end;

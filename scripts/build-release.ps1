@@ -11,14 +11,18 @@ $artifactRoot = Join-Path $repoRoot 'artifacts'
 $clientPublishDir = Join-Path $artifactRoot 'publish-client-win-x64'
 $serverPublishDir = Join-Path $artifactRoot 'publish-server-win-x64'
 $installerDir = Join-Path $artifactRoot 'installer'
-$clientUpdateZip = Join-Path $artifactRoot "QuanLyHoSo-Client-$Version-win-x64-update.zip"
-$serverPackageZip = Join-Path $artifactRoot "QuanLyHoSo-Server-$Version-win-x64.zip"
+$customerPdfName = "QuanLyHoSo_TaiLieu_KhachHang_$Version.pdf"
+$customerPdf = Join-Path $repoRoot "doc\$customerPdfName"
 $clientIssPath = Join-Path $repoRoot 'installer\QuanLyHoSo.Client.iss'
 $serverIssPath = Join-Path $repoRoot 'installer\QuanLyHoSo.Server.iss'
 $iconPath = Join-Path $repoRoot 'Assets\AppIcon.ico'
 
-if (-not $artifactRoot.StartsWith($repoRoot.Path, [System.StringComparison]::OrdinalIgnoreCase)) {
+if ([System.IO.Path]::GetFullPath($artifactRoot) -ne [System.IO.Path]::GetFullPath((Join-Path $repoRoot.Path 'artifacts'))) {
     throw "Artifact path is outside the repository: $artifactRoot"
+}
+
+if (-not (Test-Path -LiteralPath $customerPdf -PathType Leaf)) {
+    throw "Missing customer PDF for version ${Version}: $customerPdf"
 }
 
 Remove-Item -LiteralPath $artifactRoot -Recurse -Force -ErrorAction SilentlyContinue
@@ -38,6 +42,7 @@ try {
         /p:AssemblyVersion=$Version.0 `
         /p:FileVersion=$Version.0 `
         -o $clientPublishDir
+    if ($LASTEXITCODE -ne 0) { throw "Client publish failed: $LASTEXITCODE" }
 
     dotnet publish .\QuanLyHoSo.Server\QuanLyHoSo.Server.csproj `
         -c Release `
@@ -49,9 +54,7 @@ try {
         /p:AssemblyVersion=$Version.0 `
         /p:FileVersion=$Version.0 `
         -o $serverPublishDir
-
-    Compress-Archive -Path (Join-Path $clientPublishDir '*') -DestinationPath $clientUpdateZip -Force
-    Compress-Archive -Path (Join-Path $serverPublishDir '*') -DestinationPath $serverPackageZip -Force
+    if ($LASTEXITCODE -ne 0) { throw "Server publish failed: $LASTEXITCODE" }
 
     $innoCandidates = @(
         "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",
@@ -84,10 +87,21 @@ try {
         throw "Server installer compilation failed with exit code $LASTEXITCODE."
     }
 
+    Copy-Item -LiteralPath $customerPdf -Destination (Join-Path $installerDir $customerPdfName)
+    $assetNames = @(
+        "QuanLyHoSo-Server-Setup-$Version-win-x64.exe",
+        "QuanLyHoSo-Client-Setup-$Version-win-x64.exe",
+        $customerPdfName
+    )
+    $checksums = foreach ($assetName in $assetNames) {
+        $hash = Get-FileHash -LiteralPath (Join-Path $installerDir $assetName) -Algorithm SHA256
+        '{0}  {1}' -f $hash.Hash.ToLowerInvariant(), $assetName
+    }
+    $checksums | Set-Content -LiteralPath (Join-Path $installerDir 'SHA256.txt') -Encoding ASCII
+
     Write-Host ''
     Write-Host 'Release artifacts:'
-    Get-ChildItem -LiteralPath $artifactRoot -Recurse -File |
-        Where-Object { $_.Extension -in '.zip', '.exe' } |
+    Get-ChildItem -LiteralPath $installerDir -File |
         Select-Object FullName, Length |
         Format-Table -AutoSize
 } finally {

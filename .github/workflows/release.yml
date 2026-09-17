@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Version to build, for example 1.0.1"
+        description: "Version to build, for example 1.0.0"
         required: true
         type: string
 
@@ -18,7 +18,6 @@ jobs:
   build-windows:
     name: Build Windows package
     runs-on: windows-latest
-
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
@@ -26,94 +25,56 @@ jobs:
       - name: Resolve version
         id: version
         shell: pwsh
+        env:
+          REQUESTED_VERSION: ${{ inputs.version }}
         run: |
-          if ("${{ github.event_name }}" -eq "workflow_dispatch") {
-            $version = "${{ inputs.version }}"
+          if ($env:GITHUB_EVENT_NAME -eq 'workflow_dispatch') {
+            $version = $env:REQUESTED_VERSION
           } else {
-            $version = "${{ github.ref_name }}".TrimStart("v")
+            $version = $env:GITHUB_REF_NAME.TrimStart('v')
           }
-
           if ($version -notmatch '^\d+\.\d+\.\d+$') {
-            throw "Version must use semantic format like 1.0.1. Actual: $version"
+            throw "Invalid release version: $version"
           }
-
-          "value=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
-          "tag=v$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "value=$version" >> $env:GITHUB_OUTPUT
+          "tag=v$version" >> $env:GITHUB_OUTPUT
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "8.0.x"
 
-      - name: Publish client and server
+      - name: Verify solution
         shell: pwsh
-        run: |
-          dotnet publish .\QuanLyHoSo.csproj `
-            -c Release `
-            -r win-x64 `
-            --self-contained true `
-            /p:PublishSingleFile=true `
-            /p:IncludeNativeLibrariesForSelfExtract=true `
-            /p:Version=${{ steps.version.outputs.value }} `
-            /p:AssemblyVersion=${{ steps.version.outputs.value }}.0 `
-            /p:FileVersion=${{ steps.version.outputs.value }}.0 `
-            -o .\artifacts\publish-client-win-x64
-
-          dotnet publish .\QuanLyHoSo.Server\QuanLyHoSo.Server.csproj `
-            -c Release `
-            -r win-x64 `
-            --self-contained true `
-            /p:PublishSingleFile=true `
-            /p:IncludeNativeLibrariesForSelfExtract=true `
-            /p:Version=${{ steps.version.outputs.value }} `
-            /p:AssemblyVersion=${{ steps.version.outputs.value }}.0 `
-            /p:FileVersion=${{ steps.version.outputs.value }}.0 `
-            -o .\artifacts\publish-server-win-x64
-
-      - name: Create update packages
-        shell: pwsh
-        run: |
-          Compress-Archive `
-            -Path .\artifacts\publish-client-win-x64\* `
-            -DestinationPath .\artifacts\QuanLyHoSo-Client-${{ steps.version.outputs.value }}-win-x64-update.zip `
-            -Force
-
-          Compress-Archive `
-            -Path .\artifacts\publish-server-win-x64\* `
-            -DestinationPath .\artifacts\QuanLyHoSo-Server-${{ steps.version.outputs.value }}-win-x64.zip `
-            -Force
+        run: ./tests/Scripts/run-all.ps1
 
       - name: Install Inno Setup
         shell: pwsh
         run: choco install innosetup --no-progress -y
 
-      - name: Build installers
+      - name: Build installers, customer PDF, and checksums
         shell: pwsh
-        run: |
-          New-Item -ItemType Directory -Path .\artifacts\installer -Force | Out-Null
-          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" `
-            /DAppVersion=${{ steps.version.outputs.value }} `
-            /DPublishDir="$pwd\artifacts\publish-client-win-x64" `
-            /DIconPath="$pwd\Assets\AppIcon.ico" `
-            /O"$pwd\artifacts\installer" `
-            .\installer\QuanLyHoSo.Client.iss
-
-          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" `
-            /DAppVersion=${{ steps.version.outputs.value }} `
-            /DPublishDir="$pwd\artifacts\publish-server-win-x64" `
-            /DIconPath="$pwd\Assets\AppIcon.ico" `
-            /O"$pwd\artifacts\installer" `
-            .\installer\QuanLyHoSo.Server.iss
+        run: ./scripts/build-release.ps1 -Version '${{ steps.version.outputs.value }}'
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.version.outputs.tag }}
+          target_commitish: ${{ github.sha }}
           name: QuanLyHoSo ${{ steps.version.outputs.tag }}
           prerelease: false
           make_latest: true
+          fail_on_unmatched_files: true
+          body: |
+            Bộ cài QuanLyHoSo dành cho Windows 64-bit, kèm tài liệu khách hàng và mã SHA-256.
+
+            - Cài Server trước, sau đó cài Client trên các máy trạm.
+            - Server và Client phải sử dụng cùng phiên bản.
+            - Bộ cài đã kèm .NET Runtime.
+            - Khi nâng cấp, sao lưu dữ liệu trước và cập nhật Server cùng toàn bộ Client.
+            - Kiểm tra mã SHA-256 của hai bộ cài và PDF theo file SHA256.txt.
           files: |
-            artifacts/QuanLyHoSo-Client-${{ steps.version.outputs.value }}-win-x64-update.zip
-            artifacts/QuanLyHoSo-Server-${{ steps.version.outputs.value }}-win-x64.zip
-            artifacts/installer/QuanLyHoSo-Client-Setup-${{ steps.version.outputs.value }}-win-x64.exe
             artifacts/installer/QuanLyHoSo-Server-Setup-${{ steps.version.outputs.value }}-win-x64.exe
+            artifacts/installer/QuanLyHoSo-Client-Setup-${{ steps.version.outputs.value }}-win-x64.exe
+            artifacts/installer/QuanLyHoSo_TaiLieu_KhachHang_${{ steps.version.outputs.value }}.pdf
+            artifacts/installer/SHA256.txt
