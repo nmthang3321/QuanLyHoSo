@@ -20,8 +20,11 @@ SolidCompression=yes
 WizardStyle=modern
 UninstallDisplayIcon={app}\{#MyAppExeName}
 
+[Languages]
+Name: "english"; MessagesFile: "compiler:Default.isl"
+
 [Tasks]
-Name: "desktopicon"; Description: "Tao bieu tuong ngoai man hinh"; GroupDescription: "Bieu tuong bo sung:"
+Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
 
 [Files]
 Source: "{#PublishDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
@@ -31,7 +34,7 @@ Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
 
 [Run]
-Filename: "{app}\{#MyAppExeName}"; Description: "Mo {#MyAppName}"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
 
 [Code]
 var
@@ -82,10 +85,10 @@ var
 begin
   ServerPage := CreateInputQueryPage(
     wpSelectDir,
-    'Ket noi may chu',
-    'Nhap dia chi may chu QuanLyHoSo',
-    'Dung ten may (khuyen nghi) hoac IP tinh. Vi du: http://SERVER-PC:5055');
-  ServerPage.Add('Dia chi may chu:', False);
+    'Server connection',
+    'Enter the QuanLyHoSo server address',
+    'Use the computer name (recommended) or a static IP address. Example: http://SERVER-PC:5055');
+  ServerPage.Add('Server address:', False);
 
   ParameterUrl := ExpandConstant('{param:SERVERURL|http://SERVER-PC:5055}');
   ServerPage.Values[0] := NormalizeServerUrl(ParameterUrl);
@@ -100,7 +103,7 @@ begin
   ServerUrl := NormalizeServerUrl(ServerPage.Values[0]);
   if not IsValidServerUrl(ServerUrl) then
   begin
-    MsgBox('Dia chi may chu phai bat dau bang http:// hoac https://.', mbError, MB_OK);
+    MsgBox('The server address must begin with http:// or https://.', mbError, MB_OK);
     Result := False;
     Exit;
   end;
@@ -109,9 +112,9 @@ begin
   if not CanConnectToServer(ServerUrl) then
   begin
     Result := MsgBox(
-      'Chua ket noi duoc may chu tai ' + ServerUrl + '.' + #13#10 + #13#10 +
-      'Hay kiem tra Server dang chay, hai may cung mang LAN va cong 5055 da duoc mo.' + #13#10 +
-      'Ban van muon tiep tuc cai dat?',
+      'Could not connect to the server at ' + ServerUrl + '.' + #13#10 + #13#10 +
+      'Make sure the Server is running, both computers are on the same LAN, and port 5055 is open.' + #13#10 +
+      'Do you want to continue the installation?',
       mbConfirmation,
       MB_YESNO) = IDYES;
   end;
@@ -139,5 +142,5 @@ begin
     '}' + #13#10;
 
   if not SaveStringToFile(SettingsPath, SettingsJson, False) then
-    MsgBox('Khong the luu cau hinh ket noi tai:' + #13#10 + SettingsPath, mbError, MB_OK);
+    MsgBox('Could not save the connection settings to:' + #13#10 + SettingsPath, mbError, MB_OK);
 end;

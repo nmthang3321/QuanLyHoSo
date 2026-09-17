@@ -22,9 +22,12 @@ WizardStyle=modern
 UninstallDisplayIcon={app}\{#MyAppExeName}
 CloseApplications=yes
 
+[Languages]
+Name: "english"; MessagesFile: "compiler:Default.isl"
+
 [Tasks]
-Name: "desktopicon"; Description: "Tao bieu tuong ngoai man hinh"; GroupDescription: "Bieu tuong bo sung:"
-Name: "startup"; Description: "Tu khoi dong Server khi dang nhap Windows"; GroupDescription: "Khoi dong:"
+Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
+Name: "startup"; Description: "Start QuanLyHoSo Server when I sign in to Windows"; GroupDescription: "Startup:"
 
 [Dirs]
 Name: "{commonappdata}\QuanLyHoSo\Data"; Permissions: users-modify
@@ -39,11 +42,11 @@ Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Parameter
 Name: "{commonstartup}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Parameters: "--url http://0.0.0.0:{#ServerPort} --database ""{commonappdata}\QuanLyHoSo\Data\quanlyhoso.db"" --log-folder ""{commonappdata}\QuanLyHoSo\Logs"""; Tasks: startup
 
 [Run]
-Filename: "{sys}\netsh.exe"; Parameters: "http delete urlacl url=http://+:{#ServerPort}/"; Flags: runhidden waituntilterminated; StatusMsg: "Dang cap nhat quyen URL..."
-Filename: "{sys}\netsh.exe"; Parameters: "http add urlacl url=http://+:{#ServerPort}/ sddl=""D:(A;;GX;;;BU)"""; Flags: runhidden waituntilterminated; StatusMsg: "Dang dang ky URL Server..."
-Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall delete rule name=""QuanLyHoSo Server TCP {#ServerPort}"""; Flags: runhidden waituntilterminated; StatusMsg: "Dang cap nhat Firewall..."
-Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall add rule name=""QuanLyHoSo Server TCP {#ServerPort}"" dir=in action=allow protocol=TCP localport={#ServerPort} remoteip=localsubnet profile=any"; Flags: runhidden waituntilterminated; StatusMsg: "Dang mo cong Firewall {#ServerPort}..."
-Filename: "{app}\{#MyAppExeName}"; Parameters: "--url http://0.0.0.0:{#ServerPort} --database ""{commonappdata}\QuanLyHoSo\Data\quanlyhoso.db"" --log-folder ""{commonappdata}\QuanLyHoSo\Logs"""; Description: "Mo {#MyAppName}"; Flags: nowait postinstall skipifsilent runasoriginaluser
+Filename: "{sys}\netsh.exe"; Parameters: "http delete urlacl url=http://+:{#ServerPort}/"; Flags: runhidden waituntilterminated; StatusMsg: "Updating URL permissions..."
+Filename: "{sys}\netsh.exe"; Parameters: "http add urlacl url=http://+:{#ServerPort}/ sddl=""D:(A;;GX;;;BU)"""; Flags: runhidden waituntilterminated; StatusMsg: "Registering the Server URL..."
+Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall delete rule name=""QuanLyHoSo Server TCP {#ServerPort}"""; Flags: runhidden waituntilterminated; StatusMsg: "Updating Windows Firewall..."
+Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall add rule name=""QuanLyHoSo Server TCP {#ServerPort}"" dir=in action=allow protocol=TCP localport={#ServerPort} remoteip=localsubnet profile=any"; Flags: runhidden waituntilterminated; StatusMsg: "Opening Windows Firewall port {#ServerPort}..."
+Filename: "{app}\{#MyAppExeName}"; Parameters: "--url http://0.0.0.0:{#ServerPort} --database ""{commonappdata}\QuanLyHoSo\Data\quanlyhoso.db"" --log-folder ""{commonappdata}\QuanLyHoSo\Logs"""; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent runasoriginaluser
 
 [UninstallRun]
 Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall delete rule name=""QuanLyHoSo Server TCP {#ServerPort}"""; Flags: runhidden waituntilterminated; RunOnceId: "RemoveFirewallRule"
