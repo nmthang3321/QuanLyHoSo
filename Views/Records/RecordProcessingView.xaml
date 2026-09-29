@@ -249,28 +249,25 @@
                                             </Border>
                                             <StackPanel Grid.Column="1" Margin="0,0,16,0">
                                                 <StackPanel Orientation="Horizontal">
-                                                    <TextBox Style="{StaticResource SelectableTaskText}" Text="{Binding WorkLabel, Mode=OneWay}"
-                                                               FontSize="15"
-                                                               FontWeight="SemiBold"
-                                                               Foreground="{StaticResource TextBrush}"
-                                                               Margin="0,0,10,0" />
+                                                    <TextBox Style="{StaticResource SelectableTaskText}" Text="{Binding RecordCode, Mode=OneWay}"
+                                                               FontSize="18"
+                                                               FontWeight="Bold" />
                                                     <Border Background="{Binding Status, Converter={StaticResource StatusToBrushConverter}}"
                                                             CornerRadius="4"
                                                             Height="22"
-                                                            Padding="7,1">
+                                                            Padding="7,1"
+                                                            Margin="10,0,0,0"
+                                                            VerticalAlignment="Center">
                                                         <TextBox Style="{StaticResource SelectableTaskText}" Text="{Binding Status, Mode=OneWay}"
                                                                    Foreground="{Binding Status, Converter={StaticResource StatusToBrushConverter}, ConverterParameter=Foreground}"
                                                                    FontSize="12"
                                                                    FontWeight="SemiBold" />
                                                     </Border>
                                                 </StackPanel>
-                                                <TextBox Style="{StaticResource SelectableTaskText}" Text="{Binding RecordCode, Mode=OneWay}"
-                                                           FontSize="18"
-                                                           FontWeight="Bold"
-                                                           Margin="0,5,0,4" />
                                                 <TextBox Style="{StaticResource SelectableTaskText}" Text="{Binding CaseType, Mode=OneWay}"
                                                            Foreground="{StaticResource MutedTextBrush}"
-                                                           TextWrapping="Wrap" />
+                                                           TextWrapping="Wrap"
+                                                           Margin="0,4,0,0" />
                                             </StackPanel>
                                             <StackPanel Grid.Column="2" Margin="0,0,16,0">
                                                 <TextBlock Text="Người gửi" Style="{StaticResource FieldLabelText}" />

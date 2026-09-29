@@ -113,6 +113,34 @@ namespace QuanLyHoSo.IntegrationTests
             Assert.Equal(originalCode, candidate.RecordCode);
         }
 
+        [Fact]
+        [Trait("Category", "Smoke")]
+        [Trait("Category", "Regression")]
+        public void RecordDetail_ShouldCarryResubmissionReasonOnResubmissionRows()
+        {
+            using var db = new TestDatabase();
+            var originalCode = db.Service.SaveRecordForm(db.NewRecord("reason-on-row"));
+            var repeat = db.NewRecord("reason-on-row");
+            repeat.OriginalRecordCode = originalCode;
+            repeat.ResubmissionReason = "Đã đối chiếu cùng vụ việc, không có tình tiết mới.";
+            var repeatCode = db.Service.SaveRecordForm(repeat);
+
+            var originalDetail = db.Service.GetRecordForm(originalCode);
+            Assert.True(originalDetail.HasLinkedRecords);
+            var originalRow = Assert.Single(originalDetail.SenderHistory, x => x.RecordCode == originalCode);
+            Assert.False(originalRow.IsResubmission);
+            Assert.False(originalRow.HasResubmissionReason);
+            var repeatRow = Assert.Single(originalDetail.SenderHistory, x => x.RecordCode == repeatCode);
+            Assert.True(repeatRow.IsResubmission);
+            Assert.True(repeatRow.HasResubmissionReason);
+            Assert.Equal(repeat.ResubmissionReason, repeatRow.ResubmissionReason);
+
+            var repeatDetail = db.Service.GetRecordForm(repeatCode);
+            Assert.True(repeatDetail.HasLinkedRecords);
+            Assert.Equal(repeat.ResubmissionReason,
+                Assert.Single(repeatDetail.SenderHistory, x => x.RecordCode == repeatCode).ResubmissionReason);
+        }
+
         [Theory]
         [InlineData("deleted")]
         [InlineData("wrong-sender")]

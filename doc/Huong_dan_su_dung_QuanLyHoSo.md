@@ -311,8 +311,9 @@ Các thao tác ở cuối dòng phụ thuộc quyền:
 ![Cửa sổ chi tiết hồ sơ](GUI/lanh_dao/2026-09-16_21h55_27.png)
 
 1. Bấm biểu tượng **con mắt** trên dòng hồ sơ.
-2. Cuộn trong cửa sổ để xem đầy đủ thông tin, ghi chú và tài liệu đính kèm.
-3. Bấm **Đóng** hoặc nút **X** để quay lại danh sách.
+2. Cuộn trong cửa sổ để xem đầy đủ thông tin; trạng thái hiển thị dạng thẻ màu cạnh số hồ sơ ở đầu cửa sổ.
+3. **Danh sách hồ sơ gửi lại** nằm ở dưới cùng cửa sổ và chỉ xuất hiện khi hồ sơ có liên kết hồ sơ gửi lại; mỗi hồ sơ là một dòng gọn gồm số hồ sơ và thẻ trạng thái, bấm vào dòng để xổ xuống xem ngày tiếp nhận, loại vụ việc, lý do gửi lại (với hồ sơ gửi lại) hoặc lịch sử xử lý (với hồ sơ gốc), cùng nút **Xem chi tiết hồ sơ này**.
+4. Bấm **Đóng** hoặc nút **X** để quay lại danh sách.
 
 ### 8.6 Chọn và xóa nhiều hồ sơ
 

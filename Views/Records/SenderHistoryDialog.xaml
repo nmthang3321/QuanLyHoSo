@@ -2,6 +2,15 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         KeyboardNavigation.TabNavigation="Cycle" Loaded="OnLoaded">
+    <UserControl.Resources>
+        <Style x:Key="PrimaryButtonWithDisabledState" TargetType="Button" BasedOn="{StaticResource PrimaryButton}">
+            <Style.Triggers>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Opacity" Value="0.45" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </UserControl.Resources>
     <Grid Background="White">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/><RowDefinition Height="2*"/>
@@ -15,9 +24,9 @@
                   ItemsSource="{Binding SenderRecords}" SelectedItem="{Binding SelectedSenderRecord, Mode=TwoWay}">
             <DataGrid.Resources>
                 <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}" Color="#EAF2FF" />
-                <SolidColorBrush x:Key="{x:Static SystemColors.HighlightTextBrushKey}" Color="#0B5CFF" />
+                <SolidColorBrush x:Key="{x:Static SystemColors.HighlightTextBrushKey}" Color="{StaticResource TextColor}" />
                 <SolidColorBrush x:Key="{x:Static SystemColors.InactiveSelectionHighlightBrushKey}" Color="#EAF2FF" />
-                <SolidColorBrush x:Key="{x:Static SystemColors.InactiveSelectionHighlightTextBrushKey}" Color="#0B5CFF" />
+                <SolidColorBrush x:Key="{x:Static SystemColors.InactiveSelectionHighlightTextBrushKey}" Color="{StaticResource TextColor}" />
             </DataGrid.Resources>
             <DataGrid.RowStyle>
                 <Style TargetType="DataGridRow">
@@ -25,7 +34,6 @@
                         <Trigger Property="IsSelected" Value="True">
                             <Setter Property="Background" Value="#EAF2FF" />
                             <Setter Property="BorderBrush" Value="#7EA8FF" />
-                            <Setter Property="Foreground" Value="#0B5CFF" />
                         </Trigger>
                     </Style.Triggers>
                 </Style>
@@ -37,7 +45,6 @@
                     <Style.Triggers>
                         <Trigger Property="IsSelected" Value="True">
                             <Setter Property="Background" Value="#EAF2FF" />
-                            <Setter Property="Foreground" Value="#0B5CFF" />
                         </Trigger>
                     </Style.Triggers>
                 </Style>
@@ -66,13 +73,26 @@
             <TextBlock Text="{Binding SenderHistoryError}" Foreground="#D42D16" TextWrapping="Wrap" Margin="0,0,0,8"/>
         </StackPanel>
         <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right">
-            <Button Content="Hủy lưu" Style="{StaticResource SecondaryButton}"
-                    Command="{Binding CloseSenderHistoryCommand}" Margin="0,0,8,0"/>
-            <Button Content="Lưu và xử lý như hồ sơ mới" Style="{StaticResource SecondaryButton}"
-                    Command="{Binding SaveAsNewRecordCommand}" Margin="0,0,8,0"/>
-            <Button x:Name="LinkButton" Content="Lưu là hồ sơ gửi lại"
-                    Style="{StaticResource PrimaryButton}" Foreground="White"
-                    Command="{Binding SaveResubmissionCommand}"/>
+            <Button Content="Hủy lưu"
+                    Style="{StaticResource SecondaryButton}"
+                    MinWidth="128"
+                    Margin="0,0,12,0"
+                    Command="{Binding CloseSenderHistoryCommand}" />
+            <Button Content="Lưu và xử lý như hồ sơ mới"
+                    Style="{StaticResource SecondaryButton}"
+                    MinWidth="128"
+                    Margin="0,0,12,0"
+                    Command="{Binding SaveAsNewRecordCommand}" />
+            <Button x:Name="LinkButton"
+                    MinWidth="138"
+                    Style="{StaticResource PrimaryButtonWithDisabledState}"
+                    IsEnabled="{Binding CanSaveResubmission}"
+                    Command="{Binding SaveResubmissionCommand}">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="&#xE74E;" FontFamily="Segoe MDL2 Assets" Margin="0,0,8,0" Foreground="White" />
+                    <TextBlock Text="Lưu là hồ sơ gửi lại" Foreground="White" />
+                </StackPanel>
+            </Button>
         </StackPanel>
     </Grid>
 </UserControl>

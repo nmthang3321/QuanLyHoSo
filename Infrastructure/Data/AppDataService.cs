@@ -1617,7 +1617,8 @@ VALUES ($createdAt, $senderName, $scope, $targetName, $kpiTarget, $message);";
             ApplyUserRecordScope(command, conditions);
             command.CommandText = @"
 SELECT RecordCode, ReceivedDate, SenderName, SenderPhone, ContactAddress, AreaName, CaseType, Content, Status, OriginalRecordCode,
-       COALESCE((SELECT group_concat(strftime('%d/%m/%Y', ProcessedAt) || ' — ' || Title || ': ' || Content, char(10)) FROM (SELECT ProcessedAt, Title, Content FROM ProcessHistories WHERE RecordId = Records.Id ORDER BY ProcessedAt, Id)), '')
+       COALESCE((SELECT group_concat(strftime('%d/%m/%Y', ProcessedAt) || ' — ' || Title || ': ' || Content, char(10)) FROM (SELECT ProcessedAt, Title, Content FROM ProcessHistories WHERE RecordId = Records.Id ORDER BY ProcessedAt, Id)), ''),
+       ResubmissionReason
 FROM (SELECT * FROM Records WHERE DeletedAt = '') AS Records
 WHERE " + string.Join(" AND ", conditions) + " ORDER BY ReceivedDate DESC, Id DESC;";
             using var reader = command.ExecuteReader();
@@ -1628,6 +1629,7 @@ WHERE " + string.Join(" AND ", conditions) + " ORDER BY ReceivedDate DESC, Id DE
                 SenderName = reader.GetString(2), SenderPhone = reader.GetString(3), ContactAddress = reader.GetString(4),
                 AreaName = reader.GetString(5), CaseType = reader.GetString(6), Content = reader.GetString(7),
                 Status = reader.GetString(8), OriginalRecordCode = reader.GetString(9), ResolutionSummary = reader.GetString(10),
+                ResubmissionReason = reader.IsDBNull(11) ? string.Empty : reader.GetString(11),
                 IsSameCase = NormalizeSenderText(reader.GetString(5)) == NormalizeSenderText(record.AreaName)
                     && NormalizeSenderText(reader.GetString(6)) == NormalizeSenderText(record.CaseType)
             });

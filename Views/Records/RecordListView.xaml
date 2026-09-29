@@ -142,6 +142,95 @@
                 </Setter.Value>
             </Setter>
         </Style>
+
+        <ControlTemplate x:Key="LinkedRecordExpanderTemplate" TargetType="Expander">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <ToggleButton IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}}"
+                              Focusable="False"
+                              Cursor="Hand">
+                    <ToggleButton.Template>
+                        <ControlTemplate TargetType="ToggleButton">
+                            <Border x:Name="HeaderBorder"
+                                    Background="#FFFFFF"
+                                    BorderBrush="{StaticResource LineBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="6"
+                                    Padding="10,7"
+                                    SnapsToDevicePixels="True">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock x:Name="Chevron"
+                                               Text="&#xE70D;"
+                                               FontFamily="Segoe MDL2 Assets"
+                                               FontSize="11"
+                                               Foreground="{StaticResource MutedTextBrush}"
+                                               VerticalAlignment="Center"
+                                               Margin="0,0,9,0" />
+                                    <ContentPresenter VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="HeaderBorder" Property="Background" Value="#F2F7FF" />
+                                </Trigger>
+                                <Trigger Property="IsChecked" Value="True">
+                                    <Setter TargetName="Chevron" Property="Text" Value="&#xE70E;" />
+                                </Trigger>
+                                <DataTrigger Binding="{Binding IsExpanded, RelativeSource={RelativeSource AncestorType=Expander}}" Value="True">
+                                    <Setter TargetName="HeaderBorder" Property="CornerRadius" Value="6,6,0,0" />
+                                </DataTrigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </ToggleButton.Template>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="{Binding RecordCode}"
+                                   FontSize="14"
+                                   FontWeight="Bold"
+                                   Foreground="{StaticResource StrongTextBrush}"
+                                   VerticalAlignment="Center" />
+                        <Border Background="#EEF3FB"
+                                BorderBrush="#D8E7FF"
+                                BorderThickness="1"
+                                CornerRadius="4"
+                                Padding="7,2"
+                                Margin="9,0,0,0"
+                                VerticalAlignment="Center">
+                            <TextBlock Text="{Binding Relationship}"
+                                       FontSize="11"
+                                       FontWeight="SemiBold"
+                                       Foreground="#33517D" />
+                        </Border>
+                        <Border Background="{Binding Status, Converter={StaticResource StatusToBrushConverter}}"
+                                CornerRadius="4"
+                                Padding="7,2"
+                                Margin="6,0,0,0"
+                                VerticalAlignment="Center">
+                            <TextBlock Text="{Binding StatusDisplay}"
+                                       FontSize="11"
+                                       FontWeight="SemiBold"
+                                       Foreground="{Binding Status, Converter={StaticResource StatusToBrushConverter}, ConverterParameter=Foreground}" />
+                        </Border>
+                    </StackPanel>
+                </ToggleButton>
+                <Border x:Name="ExpandSite"
+                        Grid.Row="1"
+                        Background="#FFFFFF"
+                        BorderBrush="{StaticResource LineBrush}"
+                        BorderThickness="1,0,1,1"
+                        CornerRadius="0,0,6,6"
+                        Visibility="Collapsed">
+                    <ContentPresenter ContentSource="Content" />
+                </Border>
+            </Grid>
+            <ControlTemplate.Triggers>
+                <Trigger Property="IsExpanded" Value="True">
+                    <Setter TargetName="ExpandSite" Property="Visibility" Value="Visible" />
+                </Trigger>
+            </ControlTemplate.Triggers>
+        </ControlTemplate>
     </UserControl.Resources>
 
     <Grid x:Name="RootGrid" PreviewMouseDown="RootGrid_PreviewMouseDown">
@@ -782,7 +871,19 @@
                     <Grid Margin="0,0,0,14">
                         <StackPanel>
                             <TextBlock Text="CHI TIẾT HỒ SƠ" Style="{StaticResource SectionTitleText}" Foreground="{StaticResource PrimaryBrush}" />
-                            <TextBlock Text="{Binding SelectedRecordDetail.RecordCode}" FontSize="24" FontWeight="Bold" Margin="0,6,0,0" />
+                            <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                                <TextBlock Text="{Binding SelectedRecordDetail.RecordCode}" FontSize="24" FontWeight="Bold" VerticalAlignment="Center" />
+                                <Border Background="{Binding SelectedRecordDetail.Status, Converter={StaticResource StatusToBrushConverter}}"
+                                        CornerRadius="4"
+                                        Padding="7,2"
+                                        Margin="10,0,0,0"
+                                        VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding SelectedRecordDetail.StatusDisplay}"
+                                               Foreground="{Binding SelectedRecordDetail.Status, Converter={StaticResource StatusToBrushConverter}, ConverterParameter=Foreground}"
+                                               FontSize="12"
+                                               FontWeight="SemiBold" />
+                                </Border>
+                            </StackPanel>
                         </StackPanel>
                         <Button Style="{StaticResource SecondaryButton}"
                                 Width="36"
@@ -895,37 +996,12 @@
                                 </Border>
                             </Grid>
 
-                            <Border Background="#F8FAFD" BorderBrush="{StaticResource LineBrush}" BorderThickness="1"
-                                    CornerRadius="6" Padding="12" Margin="0,0,0,12">
-                                <StackPanel>
-                                    <TextBlock Text="{Binding SelectedRecordDetail.Status}" FontWeight="Bold" />
-                                    <TextBlock Text="{Binding SelectedRecordDetail.Relationship}" Margin="0,6,0,0" />
-                                    <TextBlock Text="{Binding SelectedRecordDetail.ResubmissionReason}" TextWrapping="Wrap" Margin="0,6,0,12" />
-                                    <TextBlock Text="Hồ sơ gốc và các lần gửi lại" Style="{StaticResource SubsectionTitleText}" />
-                                    <ItemsControl ItemsSource="{Binding SelectedRecordDetail.SenderHistory}">
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate>
-                                                <StackPanel Margin="0,0,0,10">
-                                                    <Button Content="{Binding RecordCode}" HorizontalAlignment="Left"
-                                                            Command="{Binding DataContext.OpenSenderRecordCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                            CommandParameter="{Binding RecordCode}" />
-                                                    <TextBlock Text="{Binding ReceivedDate}" Margin="0,4,0,0" />
-                                                    <TextBlock Text="{Binding CaseType}" />
-                                                    <TextBlock Text="{Binding Status}" TextWrapping="Wrap" />
-                                                    <TextBlock Text="{Binding Relationship}" />
-                                                    <TextBlock Text="{Binding ResolutionSummary}" TextWrapping="Wrap" Margin="0,4,0,0" />
-                                                </StackPanel>
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
-                                </StackPanel>
-                            </Border>
-
                             <Border Background="#F8FAFD"
                                     BorderBrush="{StaticResource LineBrush}"
                                     BorderThickness="1"
                                     CornerRadius="6"
-                                    Padding="12">
+                                    Padding="12"
+                                    Margin="0,0,0,12">
                                 <StackPanel>
                                     <TextBlock Text="Tài liệu đính kèm" Style="{StaticResource SubsectionTitleText}" />
                                     <ItemsControl ItemsSource="{Binding SelectedRecordDetail.Attachments}">
@@ -941,6 +1017,82 @@
                                                     <TextBlock Grid.Column="1" Text="{Binding FileName}" />
                                                     <TextBlock Grid.Column="2" Text="{Binding FileSize}" Style="{StaticResource MutedText}" HorizontalAlignment="Right" />
                                                 </Grid>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </Border>
+
+                            <Border Background="#F8FAFD"
+                                    BorderBrush="{StaticResource LineBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="6"
+                                    Padding="12"
+                                    Margin="0,0,0,12"
+                                    Visibility="{Binding SelectedRecordDetail.HasLinkedRecords, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                <StackPanel>
+                                    <TextBlock Text="Danh sách hồ sơ gửi lại" Style="{StaticResource SubsectionTitleText}" />
+                                    <ItemsControl ItemsSource="{Binding SelectedRecordDetail.SenderHistory}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Expander Template="{StaticResource LinkedRecordExpanderTemplate}"
+                                                          Margin="0,0,0,8">
+                                                    <StackPanel Margin="14,10,12,12">
+                                                        <TextBlock Text="{Binding ReceivedDate, StringFormat=Ngày tiếp nhận: {0}}" />
+                                                        <TextBlock Text="{Binding CaseType, StringFormat=Loại vụ việc: {0}}" Margin="0,4,0,0" />
+                                                        <TextBlock Text="{Binding ResubmissionReason, StringFormat=Lý do gửi lại: {0}}"
+                                                                   TextWrapping="Wrap"
+                                                                   Margin="0,4,0,0"
+                                                                   Visibility="{Binding HasResubmissionReason, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                                        <TextBlock Text="Lịch sử xử lý"
+                                                                   FontWeight="SemiBold"
+                                                                   Foreground="{StaticResource StrongTextBrush}"
+                                                                   Margin="0,10,0,4"
+                                                                   Visibility="{Binding IsResubmission, Converter={StaticResource InverseBooleanToVisibilityConverter}}" />
+                                                        <Border Background="#F8FAFD"
+                                                                BorderBrush="{StaticResource LineBrush}"
+                                                                BorderThickness="1"
+                                                                CornerRadius="4"
+                                                                Padding="10,8"
+                                                                Visibility="{Binding IsResubmission, Converter={StaticResource InverseBooleanToVisibilityConverter}}">
+                                                            <StackPanel>
+                                                                <TextBlock Text="{Binding ResolutionSummary}"
+                                                                           TextWrapping="Wrap"
+                                                                           LineHeight="19">
+                                                                    <TextBlock.Style>
+                                                                        <Style TargetType="TextBlock">
+                                                                            <Setter Property="Visibility" Value="Visible" />
+                                                                            <Style.Triggers>
+                                                                                <DataTrigger Binding="{Binding ResolutionSummary}" Value="">
+                                                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                                                </DataTrigger>
+                                                                            </Style.Triggers>
+                                                                        </Style>
+                                                                    </TextBlock.Style>
+                                                                </TextBlock>
+                                                                <TextBlock Text="Chưa có lịch sử xử lý."
+                                                                           Foreground="{StaticResource MutedTextBrush}">
+                                                                    <TextBlock.Style>
+                                                                        <Style TargetType="TextBlock">
+                                                                            <Setter Property="Visibility" Value="Collapsed" />
+                                                                            <Style.Triggers>
+                                                                                <DataTrigger Binding="{Binding ResolutionSummary}" Value="">
+                                                                                    <Setter Property="Visibility" Value="Visible" />
+                                                                                </DataTrigger>
+                                                                            </Style.Triggers>
+                                                                        </Style>
+                                                                    </TextBlock.Style>
+                                                                </TextBlock>
+                                                            </StackPanel>
+                                                        </Border>
+                                                        <Button Content="Xem chi tiết hồ sơ này"
+                                                                HorizontalAlignment="Left"
+                                                                Style="{StaticResource SecondaryButton}"
+                                                                Margin="0,10,0,0"
+                                                                Command="{Binding DataContext.OpenSenderRecordCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                                CommandParameter="{Binding RecordCode}" />
+                                                    </StackPanel>
+                                                </Expander>
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
                                     </ItemsControl>

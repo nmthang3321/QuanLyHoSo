@@ -26,6 +26,14 @@ namespace QuanLyHoSo.Models
         public const string ResubmittedResolved = "Đã giải quyết — hồ sơ gửi lại";
     }
 
+    public static class RecordStatusDisplay
+    {
+        public static string GetDisplay(string status)
+        {
+            return status == RecordStatuses.ResubmittedResolved ? "Hồ sơ gửi lại" : status;
+        }
+    }
+
     public sealed class SenderRecordHistory
     {
         public string RecordCode { get; set; }
@@ -39,9 +47,13 @@ namespace QuanLyHoSo.Models
         public string Status { get; set; }
         public string OriginalRecordCode { get; set; }
         public string ResolutionSummary { get; set; }
+        public string ResubmissionReason { get; set; }
         public bool IsSameCase { get; set; }
         public bool CanLinkAsResubmission => IsSameCase && string.IsNullOrEmpty(OriginalRecordCode);
         public string Relationship => string.IsNullOrEmpty(OriginalRecordCode) ? "Hồ sơ gốc" : "Gửi lại " + OriginalRecordCode;
+        public string StatusDisplay => RecordStatusDisplay.GetDisplay(Status);
+        public bool IsResubmission => !string.IsNullOrEmpty(OriginalRecordCode);
+        public bool HasResubmissionReason => !string.IsNullOrEmpty(ResubmissionReason);
     }
 
     public sealed class RecordFormDraft
@@ -71,6 +83,8 @@ namespace QuanLyHoSo.Models
         public string ResubmissionReason { get; set; }
         public string Status { get; set; }
         public string Relationship => string.IsNullOrEmpty(OriginalRecordCode) ? "Hồ sơ gốc" : "Gửi lại " + OriginalRecordCode;
+        public string StatusDisplay => RecordStatusDisplay.GetDisplay(Status);
+        public bool HasLinkedRecords => SenderHistory.Count > 1 || !string.IsNullOrEmpty(ResubmissionReason);
         public IReadOnlyList<SenderRecordHistory> SenderHistory { get; set; } = new List<SenderRecordHistory>();
         public IReadOnlyList<AttachmentDraft> Attachments { get; set; } = new List<AttachmentDraft>();
     }

@@ -53,7 +53,7 @@ namespace QuanLyHoSo.ViewModels
         public string Field { get; }
         public string ReceivedDate { get; }
         public string Status { get; }
-        public string StatusDisplay => Status == RecordStatuses.ResubmittedResolved ? "Hồ sơ gửi lại" : Status;
+        public string StatusDisplay => RecordStatusDisplay.GetDisplay(Status);
         public string UpdatedAt { get; }
         public string ProcessorName { get; }
         public string CommanderApproverName { get; }
