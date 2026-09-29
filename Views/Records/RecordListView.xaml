@@ -362,7 +362,13 @@
                         </StackPanel>
                         <StackPanel Grid.Column="2" Margin="0,0,14,14">
                             <TextBlock Text="Trạng thái hồ sơ" Style="{StaticResource RecordListFilterLabel}" />
-                            <ComboBox ItemsSource="{Binding Statuses}" SelectedItem="{Binding SelectedStatus, Mode=TwoWay}" />
+                            <ComboBox ItemsSource="{Binding Statuses}" SelectedItem="{Binding SelectedStatus, Mode=TwoWay}">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding Converter={StaticResource StatusDisplayConverter}}" />
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
                         </StackPanel>
                         <StackPanel Grid.Column="3" Margin="0,0,14,14">
                             <TextBlock Text="Loại vụ việc" Style="{StaticResource RecordListFilterLabel}" />

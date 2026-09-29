@@ -54,7 +54,7 @@
                 <DataGridTextColumn Header="Ngày nhận" Binding="{Binding ReceivedDate}" Width="100"/>
                 <DataGridTextColumn Header="Loại vụ việc" Binding="{Binding CaseType}" Width="120"/>
                 <DataGridTextColumn Header="Địa bàn" Binding="{Binding AreaName}" Width="180"/>
-                <DataGridTextColumn Header="Trạng thái" Binding="{Binding Status}" Width="*" MinWidth="180"/>
+                <DataGridTextColumn Header="Trạng thái" Binding="{Binding StatusDisplay}" Width="*" MinWidth="180"/>
             </DataGrid.Columns>
         </DataGrid>
         <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" Margin="0,12">

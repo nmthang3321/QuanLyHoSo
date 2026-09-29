@@ -1820,7 +1820,7 @@ ORDER BY COUNT(*) DESC, Status;";
                 var count = reader.GetInt32(1);
                 result.Add(new StatusStat
                 {
-                    Name = status,
+                    Name = RecordStatusDisplay.GetDisplay(status),
                     Count = count,
                     Percentage = $"{count * 100.0 / total:0.0}%",
                     Width = Math.Max(8, (int)Math.Round(count * 130.0 / total)),

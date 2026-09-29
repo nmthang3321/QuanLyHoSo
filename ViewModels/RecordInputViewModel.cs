@@ -125,7 +125,7 @@ namespace QuanLyHoSo.ViewModels
         public ObservableCollection<AttachmentDraft> Attachments { get; }
         public bool IsResubmission => !string.IsNullOrEmpty(_originalDraft?.OriginalRecordCode);
         public string ResubmissionSummary => IsResubmission
-            ? $"{RecordStatuses.ResubmittedResolved}. Tham chiếu hồ sơ {_originalDraft.OriginalRecordCode}. Không xác minh lại."
+            ? $"{RecordStatusDisplay.GetDisplay(RecordStatuses.ResubmittedResolved)}. Tham chiếu hồ sơ {_originalDraft.OriginalRecordCode}. Không xác minh lại."
             : string.Empty;
         public bool HasAttachments => Attachments.Count > 0;
         public ICommand NewCommand { get; }

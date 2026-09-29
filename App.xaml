@@ -12,6 +12,7 @@
     <Application.Resources>
         <converters:BooleanToNavBrushConverter x:Key="BooleanToNavBrushConverter" />
         <converters:StatusToBrushConverter x:Key="StatusToBrushConverter" />
+        <converters:StatusDisplayConverter x:Key="StatusDisplayConverter" />
         <converters:StatusDonutSegmentConverter x:Key="StatusDonutSegmentConverter" />
         <converters:NumberToVisibilityConverter x:Key="NumberToVisibilityConverter" />
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />

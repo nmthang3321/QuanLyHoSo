@@ -7,6 +7,7 @@ namespace QuanLyHoSo.Models
         public string RecordCode { get; set; }
         public string SenderName { get; set; }
         public string Status { get; set; }
+        public string StatusDisplay => RecordStatusDisplay.GetDisplay(Status);
         public string ProcessorName { get; set; }
         public string DeletedAt { get; set; }
         public string DeletedBy { get; set; }
@@ -140,6 +141,7 @@ namespace QuanLyHoSo.Models
         public string CaseType { get; set; }
         public string Field { get; set; }
         public string Status { get; set; }
+        public string StatusDisplay => RecordStatusDisplay.GetDisplay(Status);
         public string ProcessorName { get; set; }
         public string ProcessingDate { get; set; }
         public string ProcessContent { get; set; }

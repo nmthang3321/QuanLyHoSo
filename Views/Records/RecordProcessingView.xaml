@@ -474,7 +474,7 @@
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="{Binding SelectedProcessingDetail.RecordCode}" FontSize="18" FontWeight="Bold" Margin="0,0,10,0" />
                                 <Border Background="{Binding SelectedProcessingDetail.Status, Converter={StaticResource StatusToBrushConverter}}" CornerRadius="4" Height="22" Padding="7,1">
-                                    <TextBlock Text="{Binding SelectedProcessingDetail.Status}" Foreground="{Binding SelectedProcessingDetail.Status, Converter={StaticResource StatusToBrushConverter}, ConverterParameter=Foreground}" FontSize="12" FontWeight="SemiBold" />
+                                    <TextBlock Text="{Binding SelectedProcessingDetail.StatusDisplay}" Foreground="{Binding SelectedProcessingDetail.Status, Converter={StaticResource StatusToBrushConverter}, ConverterParameter=Foreground}" FontSize="12" FontWeight="SemiBold" />
                                 </Border>
                             </StackPanel>
                             <TextBlock Text="{Binding SelectedProcessingDetail.ReceivedDate, StringFormat=Ngày tiếp nhận: {0}}" Style="{StaticResource MutedText}" Margin="0,6,0,0" />

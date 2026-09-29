@@ -43,7 +43,7 @@
                 </DataGridTemplateColumn>
                 <DataGridTextColumn Header="Mã hồ sơ" Binding="{Binding Record.RecordCode}" Width="140" />
                 <DataGridTextColumn Header="Người gửi" Binding="{Binding Record.SenderName}" Width="*" MinWidth="160" />
-                <DataGridTextColumn Header="Trạng thái trước khi xóa" Binding="{Binding Record.Status}" Width="165" />
+                <DataGridTextColumn Header="Trạng thái trước khi xóa" Binding="{Binding Record.StatusDisplay}" Width="165" />
                 <DataGridTextColumn Header="Người xử lý" Binding="{Binding Record.ProcessorName}" Width="140" />
                 <DataGridTextColumn Header="Người xóa" Binding="{Binding Record.DeletedBy}" Width="130" />
                 <DataGridTextColumn Header="Thời điểm xóa" Binding="{Binding Record.DeletedAt}" Width="150" />
