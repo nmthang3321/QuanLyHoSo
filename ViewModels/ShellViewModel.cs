@@ -192,9 +192,9 @@ namespace QuanLyHoSo.ViewModels
             NavigateTo("Input", selectedNavigationKey: "RecordList");
         }
 
-        private void ClassifyRecordFromList(string recordCode)
+        private void ClassifyRecordFromList(string recordCode, string resubmissionCode)
         {
-            RecordProcessingViewModel.OpenRecord(recordCode, returnToPreviousPage: true);
+            RecordProcessingViewModel.OpenRecord(recordCode, returnToPreviousPage: true, viaResubmissionCode: resubmissionCode);
             NavigateTo("Processing", selectedNavigationKey: "RecordList");
         }
 

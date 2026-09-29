@@ -95,8 +95,25 @@ namespace QuanLyHoSo.IntegrationTests
             Assert.Equal(0L, check.ExecuteScalar());
         }
 
+        [Fact]
+        [Trait("Category", "Regression")]
+        public void Resubmission_ShouldAllowUnresolvedOriginal()
+        {
+            using var db = new TestDatabase();
+            var originalCode = db.Service.SaveRecordForm(db.NewRecord("open-original"));
+            var repeat = db.NewRecord("open-original");
+            repeat.OriginalRecordCode = originalCode;
+            repeat.ResubmissionReason = "Cùng vụ việc, chưa giải quyết";
+            var code = db.Service.SaveRecordForm(repeat);
+            var saved = db.Service.GetRecordForm(code);
+            Assert.Equal(RecordStatuses.ResubmittedResolved, saved.Status);
+            Assert.Equal(originalCode, saved.OriginalRecordCode);
+            Assert.Equal("Mới tiếp nhận", db.Service.GetRecordForm(originalCode).Status);
+            var candidate = db.Service.GetSenderRecords(repeat).Where(item => item.CanLinkAsResubmission).Single();
+            Assert.Equal(originalCode, candidate.RecordCode);
+        }
+
         [Theory]
-        [InlineData("unresolved")]
         [InlineData("deleted")]
         [InlineData("wrong-sender")]
         [InlineData("wrong-case")]
@@ -107,7 +124,7 @@ namespace QuanLyHoSo.IntegrationTests
         {
             using var db = new TestDatabase();
             var code = db.Service.SaveRecordForm(db.NewRecord("invalid"));
-            if (scenario != "unresolved") Resolve(db, code);
+            Resolve(db, code);
             if (scenario == "deleted") db.Service.DeleteRecord(code);
             var repeat = db.NewRecord("invalid");
             repeat.OriginalRecordCode = code;
@@ -177,7 +194,7 @@ namespace QuanLyHoSo.IntegrationTests
 
         [Fact]
         [Trait("Category", "Regression")]
-        public void LinkedRecords_ShouldKeepReferenceOnEditAndProtectOriginalResult()
+        public void LinkedRecords_ShouldKeepReferenceOnEditAndAllowReprocessing()
         {
             using var db = new TestDatabase();
             var originalCode = db.Service.SaveRecordForm(db.NewRecord("protected"));
@@ -196,7 +213,8 @@ namespace QuanLyHoSo.IntegrationTests
             edit.SenderPhone = "0909999999";
             Assert.Throws<InvalidOperationException>(() => db.Service.SaveRecordForm(edit, code));
             Assert.Throws<InvalidOperationException>(() => db.Service.DeleteRecord(originalCode));
-            Assert.Throws<InvalidOperationException>(() => db.Service.UpdateProcessingRecord(originalCode, "Đang xác minh", DateTime.Now, "Integration Admin", "", "", "", Array.Empty<AttachmentDraft>()));
+            db.Service.UpdateProcessingRecord(originalCode, "Đang xác minh", DateTime.Now, "Integration Admin", "Mở lại xử lý theo hồ sơ gửi lại.", "", "", Array.Empty<AttachmentDraft>());
+            Assert.Equal("Đang xác minh", db.Service.GetRecordForm(originalCode).Status);
             var original = db.Service.GetRecordForm(originalCode);
             original.RecordCode = "RENAMED";
             Assert.Throws<InvalidOperationException>(() => db.Service.SaveRecordForm(original, originalCode));

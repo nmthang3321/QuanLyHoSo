@@ -1676,7 +1676,7 @@ WHERE " + string.Join(" AND ", conditions) + " ORDER BY ReceivedDate DESC, Id DE
                 throw new InvalidOperationException("Vui lòng ghi lý do xác nhận hồ sơ gửi lại.");
             using var command = connection.CreateCommand();
             command.Transaction = transaction;
-            var conditions = new List<string> { "RecordCode = $originalCode", "DeletedAt = ''", "Status = 'Đã giải quyết'", "OriginalRecordCode = ''",
+            var conditions = new List<string> { "RecordCode = $originalCode", "DeletedAt = ''", "OriginalRecordCode = ''",
                 "normalize_sender(AreaName) = $area", "normalize_sender(CaseType) = $case" };
             AddSenderIdentityConditions(command, conditions, record);
             command.Parameters.AddWithValue("$originalCode", NormalizeDbText(record.OriginalRecordCode));
@@ -1684,7 +1684,7 @@ WHERE " + string.Join(" AND ", conditions) + " ORDER BY ReceivedDate DESC, Id DE
             command.Parameters.AddWithValue("$case", NormalizeSenderText(record.CaseType));
             command.CommandText = "SELECT Id FROM Records WHERE " + string.Join(" AND ", conditions) + ";";
             var id = command.ExecuteScalar();
-            if (id == null) throw new InvalidOperationException("Hồ sơ tham chiếu phải đã giải quyết, còn trong danh sách và cùng người gửi, địa bàn, loại vụ việc. Vui lòng đối chiếu lại.");
+            if (id == null) throw new InvalidOperationException("Hồ sơ tham chiếu phải còn trong danh sách, chưa là hồ sơ gửi lại và cùng người gửi, địa bàn, loại vụ việc. Vui lòng đối chiếu lại.");
             return Convert.ToInt32(id, CultureInfo.InvariantCulture);
         }
 
@@ -2007,7 +2007,11 @@ LIMIT $take OFFSET $skip;";
             using var command = connection.CreateCommand();
             var whereClause = BuildExportWhere(command, fromDate, toDate, status, caseType, field, areaName, processorName, searchText, applyUserScope: true);
             command.CommandText = $@"
-SELECT RecordCode, SenderName, AreaName, CaseType, Field, ReceivedDate, Status, UpdatedAt, ProcessorName
+SELECT RecordCode, SenderName, AreaName, CaseType, Field, ReceivedDate, Status, UpdatedAt, ProcessorName,
+       CommanderApproverName, LeaderApproverName, TransferDocumentNumber, TransferDocumentDate,
+       CASE WHEN Status IN ('Chuyển cơ quan khác', 'Chờ kết quả', 'Đã giải quyết') THEN AreaName ELSE '' END,
+       COALESCE((SELECT ph.Content FROM ProcessHistories ph WHERE ph.RecordId = Records.Id AND ph.Title = 'Lưu hồ sơ' ORDER BY ph.ProcessedAt DESC, ph.Id DESC LIMIT 1), ''),
+       OriginalRecordCode
 FROM (SELECT * FROM Records WHERE DeletedAt = '') AS Records
 {whereClause}
 ORDER BY {BuildExportOrderBy(sortOption)}
@@ -2028,7 +2032,14 @@ LIMIT $take OFFSET $skip;";
                     ReceivedDate = FormatDate(reader.GetString(5)),
                     Status = reader.GetString(6),
                     UpdatedAt = FormatDateTime(reader.GetString(7)),
-                    ProcessorName = reader.GetString(8)
+                    ProcessorName = reader.GetString(8),
+                    CommanderApproverName = reader.GetString(9),
+                    LeaderApproverName = reader.GetString(10),
+                    TransferDocumentNumber = reader.GetString(11),
+                    TransferDocumentDate = FormatDate(reader.GetString(12)),
+                    TransferredToAgency = reader.GetString(13),
+                    AgencyResult = reader.GetString(14),
+                    OriginalRecordCode = reader.GetString(15)
                 });
             }
 
@@ -2872,7 +2883,7 @@ LIMIT 1;";
                 processingDate = FormatDateTime(reader.GetString(11));
             }
 
-            var history = GetProcessHistory(connection, recordId, status);
+            var history = GetProcessHistory(connection, recordId, status, areaName);
             return new ProcessingRecordDetail
             {
                 RecordCode = recordCodeValue,
@@ -2944,7 +2955,6 @@ LIMIT 1;";
             }
             if (persistedStatus == RecordStatuses.ResubmittedResolved)
                 throw new InvalidOperationException("Chỉ có thể đánh dấu hồ sơ gửi lại khi tạo hồ sơ và liên kết hồ sơ đã giải quyết.");
-            if (persistedStatus != "Đã giải quyết") EnsureNoLinkedResubmissions(connection, transaction, recordCode);
             EnsureCanUpdateProcessingStatus(persistedStatus);
             if (generateInitialResultDocuments && GetProcessStepNumber(persistedStatus) == 5)
             {
@@ -2974,19 +2984,33 @@ WHERE Id = $recordId;";
                 : attachments;
             ReplaceAttachments(connection, transaction, recordId.Value, PrepareAttachmentsForServerStorage(recordCode, attachmentsToSave));
 
+            if (generateInitialResultDocuments && GetProcessStepNumber(persistedStatus) == 5 && documentDetails != null)
+            {
+                SaveInitialResultDocumentMetadata(connection, transaction, recordId.Value, documentDetails);
+            }
+
             var currentStep = GetProcessStepNumber(persistedStatus);
             DeleteProcessHistoryFromStep(connection, transaction, recordId.Value, currentStep);
+            var isTransferToOtherAgency = string.Equals(requestedStatus, "Chuyển cơ quan khác", StringComparison.Ordinal);
 
             for (var step = 1; step <= currentStep; step++)
             {
                 var definition = GetProcessStepDefinition(step);
+                var isTransferMilestone = isTransferToOtherAgency && step == 6;
                 var stepContent = step == currentStep
                     ? NormalizeDbText(content)
-                    : $"Tự động ghi nhận bước {definition.Title.ToLower(CultureInfo.GetCultureInfo("vi-VN"))} khi hồ sơ được chuyển đến bước {persistedStatus}.";
+                    : isTransferMilestone
+                        ? BuildTransferMilestoneContent(transferAreaName, persistedStatus)
+                        : $"Tự động ghi nhận bước {definition.Title.ToLower(CultureInfo.GetCultureInfo("vi-VN"))} khi hồ sơ được chuyển đến bước {persistedStatus}.";
                 var isCompleted = step < currentStep || currentStep >= 6;
 
                 if (step < currentStep && HasProcessHistory(connection, transaction, recordId.Value, definition.Title))
                 {
+                    if (isTransferMilestone)
+                    {
+                        UpdateTransferMilestoneHistory(connection, transaction, recordId.Value, processedAt, NormalizeDbText(processorName), stepContent);
+                    }
+
                     continue;
                 }
 
@@ -3228,7 +3252,10 @@ LIMIT $take OFFSET $skip;";
             using var command = connection.CreateCommand();
             var whereClause = BuildExportWhere(command, fromDate, toDate, status, caseType, field, areaName, processorName, searchText, applyUserScope: true);
             command.CommandText = $@"
-SELECT RecordCode, ReceivedDate, SenderName, AreaName, CaseType, Field, Status, UpdatedAt, ProcessorName
+SELECT RecordCode, ReceivedDate, SenderName, AreaName, CaseType, Field, Status, UpdatedAt, ProcessorName,
+       CommanderApproverName, LeaderApproverName, TransferDocumentNumber, TransferDocumentDate,
+       CASE WHEN Status IN ('Chuyển cơ quan khác', 'Chờ kết quả', 'Đã giải quyết') THEN AreaName ELSE '' END,
+       COALESCE((SELECT ph.Content FROM ProcessHistories ph WHERE ph.RecordId = Records.Id AND ph.Title = 'Lưu hồ sơ' ORDER BY ph.ProcessedAt DESC, ph.Id DESC LIMIT 1), '')
 FROM (SELECT * FROM Records WHERE DeletedAt = '') AS Records
 {whereClause}
 ORDER BY {BuildExportOrderBy(sortOption)}
@@ -3250,7 +3277,13 @@ LIMIT $take;";
                     Field = reader.GetString(5),
                     Status = reader.GetString(6),
                     UpdatedAt = FormatDateTime(reader.GetString(7)),
-                    ProcessorName = reader.GetString(8)
+                    ProcessorName = reader.GetString(8),
+                    CommanderApproverName = reader.GetString(9),
+                    LeaderApproverName = reader.GetString(10),
+                    TransferDocumentNumber = reader.GetString(11),
+                    TransferDocumentDate = FormatDate(reader.GetString(12)),
+                    TransferredToAgency = reader.GetString(13),
+                    AgencyResult = reader.GetString(14)
                 });
             }
 
@@ -3985,6 +4018,15 @@ CREATE TABLE IF NOT EXISTS Users (
             TryAddColumn(connection, "Users", "MustChangePassword", "INTEGER NOT NULL DEFAULT 0");
             CreateIndexes(connection);
             EnsureRecordTrashSchema(connection);
+            EnsureInitialResultDocumentSchema(connection);
+        }
+
+        private static void EnsureInitialResultDocumentSchema(SqliteConnection connection)
+        {
+            TryAddColumn(connection, "Records", "TransferDocumentNumber", "TEXT NOT NULL DEFAULT ''");
+            TryAddColumn(connection, "Records", "TransferDocumentDate", "TEXT NOT NULL DEFAULT ''");
+            TryAddColumn(connection, "Records", "CommanderApproverName", "TEXT NOT NULL DEFAULT ''");
+            TryAddColumn(connection, "Records", "LeaderApproverName", "TEXT NOT NULL DEFAULT ''");
         }
 
         private static void EnsureSenderRecordSchema(SqliteConnection connection)
@@ -4731,7 +4773,7 @@ VALUES ($recordId, $title, $processedAt, $processor, $content, $isCompleted);";
             return result;
         }
 
-        private static List<ProcessHistoryItem> GetProcessHistory(SqliteConnection connection, int recordId, string status)
+        private static List<ProcessHistoryItem> GetProcessHistory(SqliteConnection connection, int recordId, string status, string recordAreaName = null)
         {
             var result = new List<ProcessHistoryItem>();
             using var command = connection.CreateCommand();
@@ -4746,12 +4788,20 @@ ORDER BY ProcessedAt;";
             while (reader.Read())
             {
                 var title = reader.GetString(0);
+                var content = reader.GetString(3);
+                if (title == "Chuyển cơ quan khác"
+                    && content.StartsWith("Tự động ghi nhận bước chuyển cơ quan khác", StringComparison.Ordinal)
+                    && !string.IsNullOrWhiteSpace(recordAreaName))
+                {
+                    content = $"Chuyển đến: {recordAreaName.Trim()}.";
+                }
+
                 result.Add(new ProcessHistoryItem
                 {
                     Title = title,
                     ProcessedAt = FormatDateTime(reader.GetString(1)),
                     ProcessorName = reader.GetString(2),
-                    Content = reader.GetString(3),
+                    Content = content,
                     IsCompleted = reader.GetInt32(4) == 1,
                     IsCurrent = title == currentStepTitle,
                     HasDetails = true
@@ -4907,6 +4957,50 @@ VALUES ($recordId, $title, $processedAt, $processor, $content, $isCompleted);";
             command.Parameters.AddWithValue("$processor", processor);
             command.Parameters.AddWithValue("$content", content);
             command.Parameters.AddWithValue("$isCompleted", isCompleted ? 1 : 0);
+            command.ExecuteNonQuery();
+        }
+
+        private static string BuildTransferMilestoneContent(string transferAreaName, string persistedStatus)
+        {
+            var areaName = NormalizeDbText(transferAreaName);
+            return string.IsNullOrWhiteSpace(areaName)
+                ? $"Tự động ghi nhận bước chuyển cơ quan khác khi hồ sơ được chuyển đến bước {persistedStatus}."
+                : $"Chuyển đến: {areaName}.";
+        }
+
+        private static void SaveInitialResultDocumentMetadata(SqliteConnection connection, SqliteTransaction transaction, int recordId, InitialResultDocumentDetails documentDetails)
+        {
+            using var command = connection.CreateCommand();
+            command.Transaction = transaction;
+            command.CommandText = @"
+UPDATE Records
+SET TransferDocumentNumber = $number,
+    TransferDocumentDate = $date,
+    CommanderApproverName = $commander,
+    LeaderApproverName = $leader
+WHERE Id = $recordId;";
+            command.Parameters.AddWithValue("$recordId", recordId);
+            command.Parameters.AddWithValue("$number", NormalizeDbText(documentDetails.TransferNumber));
+            command.Parameters.AddWithValue("$date", documentDetails.TransferDate?.ToString("O", CultureInfo.InvariantCulture) ?? string.Empty);
+            command.Parameters.AddWithValue("$commander", NormalizeDbText(documentDetails.CommanderApproverName));
+            command.Parameters.AddWithValue("$leader", NormalizeDbText(documentDetails.LeaderApproverName));
+            command.ExecuteNonQuery();
+        }
+
+        private static void UpdateTransferMilestoneHistory(SqliteConnection connection, SqliteTransaction transaction, int recordId, DateTime processedAt, string processor, string content)
+        {
+            using var command = connection.CreateCommand();
+            command.Transaction = transaction;
+            command.CommandText = @"
+UPDATE ProcessHistories
+SET ProcessedAt = $processedAt,
+    ProcessorName = $processor,
+    Content = $content
+WHERE RecordId = $recordId AND Title = 'Chuyển cơ quan khác';";
+            command.Parameters.AddWithValue("$recordId", recordId);
+            command.Parameters.AddWithValue("$processedAt", processedAt.ToString("O", CultureInfo.InvariantCulture));
+            command.Parameters.AddWithValue("$processor", processor);
+            command.Parameters.AddWithValue("$content", content);
             command.ExecuteNonQuery();
         }
 

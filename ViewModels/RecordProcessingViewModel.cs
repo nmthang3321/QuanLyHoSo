@@ -39,9 +39,9 @@ namespace QuanLyHoSo.ViewModels
         private ProcessingRecordDetail _selectedProcessingDetail;
         private DateTime? _selectedProcessingDate;
         private string _processingContent;
-        private string _processingNote;
         private string _processingProcessorName;
         private string _processingStatus;
+        private string _resubmissionNote = string.Empty;
         private string _transferAreaName;
         private string _transferAreaSearchText;
         private string _selectedArea;
@@ -214,6 +214,8 @@ namespace QuanLyHoSo.ViewModels
             : AreaSelectionOptions.GetDisplayName(TransferAreas, TransferAreaName);
         public bool CanUpdateProcessing => SelectedProcessingDetail != null && SelectedProcessingDetail.Status != RecordStatuses.ResubmittedResolved && AuthContext.CanEditRecord(SelectedProcessingDetail.ProcessorName);
 
+        public bool CanChangeProcessor => AuthContext.IsAdmin;
+
         public bool IsProcessingUpdateBusy
         {
             get => _isProcessingUpdateBusy;
@@ -380,6 +382,20 @@ namespace QuanLyHoSo.ViewModels
 
         public bool IsProcessingDetailOpen => SelectedProcessingDetail != null;
 
+        public string ResubmissionNote
+        {
+            get => _resubmissionNote;
+            private set
+            {
+                if (SetProperty(ref _resubmissionNote, value))
+                {
+                    OnPropertyChanged(nameof(HasResubmissionNote));
+                }
+            }
+        }
+
+        public bool HasResubmissionNote => !string.IsNullOrWhiteSpace(ResubmissionNote);
+
         public string ProcessingStatus
         {
             get => _processingStatus;
@@ -402,12 +418,6 @@ namespace QuanLyHoSo.ViewModels
         {
             get => _processingContent;
             set => SetProperty(ref _processingContent, value);
-        }
-
-        public string ProcessingNote
-        {
-            get => _processingNote;
-            set => SetProperty(ref _processingNote, value);
         }
 
         public async void Reload()
@@ -590,13 +600,13 @@ namespace QuanLyHoSo.ViewModels
             OpenProcessingDetail(record.RecordCode);
         }
 
-        public void OpenRecord(string recordCode, bool returnToPreviousPage = false)
+        public void OpenRecord(string recordCode, bool returnToPreviousPage = false, string viaResubmissionCode = null)
         {
             _shouldReturnToPreviousPage = returnToPreviousPage;
-            OpenProcessingDetail(recordCode);
+            OpenProcessingDetail(recordCode, viaResubmissionCode);
         }
 
-        private void OpenProcessingDetail(string recordCode)
+        private void OpenProcessingDetail(string recordCode, string viaResubmissionCode = null)
         {
             if (string.IsNullOrWhiteSpace(recordCode))
             {
@@ -604,6 +614,7 @@ namespace QuanLyHoSo.ViewModels
             }
 
             IsDocumentDetailsOpen = false;
+            ResubmissionNote = string.Empty;
             DocumentTransferNumber = string.Empty;
             DocumentTransferDate = null;
             DocumentComplaintDate = null;
@@ -624,12 +635,16 @@ namespace QuanLyHoSo.ViewModels
                 ProcessingStatus = ProcessingStatuses.FirstOrDefault() ?? SelectedProcessingDetail.Status;
             }
             SelectedProcessingDate = ParseProcessingDate(SelectedProcessingDetail.ProcessingDate) ?? DateTime.Now;
-            ProcessingProcessorName = SelectedProcessingDetail.ProcessorName;
-            ProcessingContent = SelectedProcessingDetail.ProcessContent;
-            ProcessingNote = SelectedProcessingDetail.ProcessNote;
+            ProcessingProcessorName = AuthContext.IsAdmin
+                ? SelectedProcessingDetail.ProcessorName
+                : AuthContext.CurrentDisplayName;
+            ProcessingContent = string.Empty;
             TransferAreaName = SelectedProcessingDetail.AreaName;
             TransferAreaSearchText = SelectedProcessingDetail.AreaName;
             LoadProcessingAttachments(SelectedProcessingDetail);
+            ResubmissionNote = string.IsNullOrWhiteSpace(viaResubmissionCode)
+                ? string.Empty
+                : $"Bạn đang xử lý trên hồ sơ gốc {SelectedProcessingDetail.RecordCode} thông qua hồ sơ gửi lại {viaResubmissionCode}.";
         }
 
         private void DataService_CatalogChanged(string catalogType)
@@ -804,7 +819,7 @@ namespace QuanLyHoSo.ViewModels
                         SelectedProcessingDate.Value,
                         ProcessingProcessorName,
                         ProcessingContent,
-                        ProcessingNote,
+                        string.Empty, // Ghi chú đã bị bỏ khỏi giao diện; Note cũ trên record được giữ nguyên.
                         selectedTransferArea,
                         attachmentsToSave,
                         generateInitialResultDocuments,
@@ -822,7 +837,7 @@ namespace QuanLyHoSo.ViewModels
                             SelectedProcessingDate.Value,
                             ProcessingProcessorName,
                             ProcessingContent,
-                            ProcessingNote,
+                            string.Empty,
                             selectedTransferArea,
                             attachmentsToSave);
                         refreshedDetail = _dataService.GetProcessingRecordDetail(recordCode);
@@ -1008,7 +1023,9 @@ namespace QuanLyHoSo.ViewModels
                 ProcessingStatus = ProcessingStatuses.FirstOrDefault() ?? SelectedProcessingDetail.Status;
             }
 
-            ProcessingProcessorName = SelectedProcessingDetail.ProcessorName;
+            ProcessingProcessorName = AuthContext.IsAdmin
+                ? SelectedProcessingDetail.ProcessorName
+                : AuthContext.CurrentDisplayName;
             TransferAreaName = SelectedProcessingDetail.AreaName;
             TransferAreaSearchText = SelectedProcessingDetail.AreaName;
             LoadProcessingAttachments(SelectedProcessingDetail);

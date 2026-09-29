@@ -2,7 +2,10 @@
 
 Files: record-list XAML/code-behind and list/row ViewModels.
 
-- DataGrid binds `Records`, uses light horizontal/vertical grid lines, binds height to `TableHeight`, and forwards mouse wheel to `RecordListScrollViewer`.
+- DataGrid binds `Records`, uses light horizontal/vertical grid lines, fills the remaining window height, and scrolls vertically inside the card. Its horizontal scrollbar therefore stays pinned at the bottom of the visible table area (above pagination) instead of the end of the page. The former `TableHeight` binding and the page-level `RecordListScrollViewer` were removed.
+- Optional columns (via "Cột hiển thị") include the step-5 document metadata `Chỉ huy duyệt`, `Lãnh đạo duyệt`, `Phiếu chuyển đơn số`, `Ngày chuyển đơn` (populated when step-5 documents are generated), `Đơn vị chuyển đến` (the record's `AreaName` once the record reaches step 6+), and `Kết quả của đơn vị` (the step-8 `Lưu hồ sơ` history content of resolved records). The six new columns are hidden by default and must be enabled in "Cột hiển thị"; all six are also exported to Excel when visible.
+- Resubmission rows (`Đã giải quyết — hồ sơ gửi lại`) show the classify action; it redirects to the linked original record and the processing page displays the "đang xử lý trên hồ sơ gốc" banner. The row tooltip says "Phân loại / xử lý trên hồ sơ gốc" (leaders keep the read-only wording).
+- The status chip of resubmission rows displays `Hồ sơ gửi lại` (`StatusDisplay`) with its own magenta palette (#B42467 on #FCE3EF) instead of the resolved green; the chip color no longer mirrors the resolved status. The stored status, clipboard content, filters, and exports keep the full `Đã giải quyết — hồ sơ gửi lại` value.
 - See record-detail and Excel-export feature docs.
 - Row edit permission is `AuthContext.CanEditRecord(record.ProcessorName)`; it no longer checks client mode.
 - Admin bulk-selection mode reveals the checkbox column and supports current page, all filtered results, clear selection, and delete selected. Disabling the mode clears selections.

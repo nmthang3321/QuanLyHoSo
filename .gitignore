@@ -4,6 +4,7 @@ obj/
 .verify-build/
 .verify-build-*/
 .verify-builds/
+.verify-testbin/
 .lan-test-build/
 artifacts/
 /output/

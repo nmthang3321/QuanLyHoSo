@@ -149,6 +149,74 @@ namespace QuanLyHoSo.IntegrationTests
             Assert.Equal("Chờ kết quả", detail.Status);
             Assert.True(detail.Steps.Single(step => step.Title == "Chuyển cơ quan khác").IsDone);
             Assert.True(detail.Steps.Single(step => step.Title == "Chờ kết quả").IsCurrent);
+            Assert.Equal("Chuyển đến: Cơ quan kiểm thử.",
+                detail.History.Single(item => item.Title == "Chuyển cơ quan khác").Content);
+            Assert.Equal("Đã được lãnh đạo duyệt và chuyển cơ quan xử lý.",
+                detail.History.Single(item => item.Title == "Chờ kết quả").Content);
+        }
+
+        [Fact]
+        [Trait("Category", "Regression")]
+        public void FilteredRecords_ShouldExposeDocumentAndTransferColumns()
+        {
+            using var db = new TestDatabase();
+            var code = db.Service.SaveRecordForm(db.NewRecord("filtered-record-columns"));
+
+            db.Service.UpdateProcessingRecord(code,
+                "Kết quả xử lý ban đầu",
+                DateTime.Now,
+                "Integration Admin",
+                "Hoàn tất xác minh và trình duyệt.",
+                string.Empty,
+                string.Empty,
+                Array.Empty<AttachmentDraft>(),
+                true,
+                new InitialResultDocumentDetails
+                {
+                    TransferNumber = "BC-101/2026",
+                    TransferDate = new DateTime(2026, 9, 20),
+                    ComplaintDate = new DateTime(2026, 9, 18),
+                    Review = "Nhận xét kiểm thử",
+                    Proposal = "Đề xuất kiểm thử",
+                    CommanderApproverName = "Đội trưởng Nguyễn Văn A",
+                    ProposingOfficerName = "Integration Admin",
+                    LeaderApproverName = "Lãnh đạo Trần Thị B"
+                });
+
+            var atStep5 = db.Service.GetFilteredRecords(searchText: code);
+            var row = atStep5.Single();
+            Assert.Equal("Đội trưởng Nguyễn Văn A", row.CommanderApproverName);
+            Assert.Equal("Lãnh đạo Trần Thị B", row.LeaderApproverName);
+            Assert.Equal("BC-101/2026", row.TransferDocumentNumber);
+            Assert.Equal("20/09/2026", row.TransferDocumentDate);
+            Assert.Equal(string.Empty, row.TransferredToAgency);
+            Assert.Equal(string.Empty, row.AgencyResult);
+
+            db.Service.UpdateProcessingRecord(code,
+                "Chuyển cơ quan khác",
+                DateTime.Now.AddMinutes(5),
+                "Integration Admin",
+                "Chuyển hồ sơ sang cơ quan có thẩm quyền.",
+                string.Empty,
+                "Cơ quan kiểm thử",
+                Array.Empty<AttachmentDraft>());
+
+            row = db.Service.GetFilteredRecords(searchText: code).Single();
+            Assert.Equal("Cơ quan kiểm thử", row.TransferredToAgency);
+            Assert.Equal("Đội trưởng Nguyễn Văn A", row.CommanderApproverName);
+
+            db.Service.UpdateProcessingRecord(code,
+                "Đã giải quyết",
+                DateTime.Now.AddMinutes(10),
+                "Integration Admin",
+                "Cơ quan kiểm thử đã xử lý xong và trả kết quả.",
+                string.Empty,
+                string.Empty,
+                Array.Empty<AttachmentDraft>());
+
+            row = db.Service.GetFilteredRecords(searchText: code).Single();
+            Assert.Equal("Cơ quan kiểm thử", row.TransferredToAgency);
+            Assert.Equal("Cơ quan kiểm thử đã xử lý xong và trả kết quả.", row.AgencyResult);
         }
     }
 }

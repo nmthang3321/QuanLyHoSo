@@ -26,10 +26,18 @@ namespace QuanLyHoSo.ViewModels
             Status = record.Status;
             UpdatedAt = record.UpdatedAt;
             ProcessorName = record.ProcessorName;
+            CommanderApproverName = record.CommanderApproverName ?? string.Empty;
+            LeaderApproverName = record.LeaderApproverName ?? string.Empty;
+            TransferDocumentNumber = record.TransferDocumentNumber ?? string.Empty;
+            TransferDocumentDate = record.TransferDocumentDate ?? string.Empty;
+            TransferredToAgency = record.TransferredToAgency ?? string.Empty;
+            AgencyResult = record.AgencyResult ?? string.Empty;
+            OriginalRecordCode = record.OriginalRecordCode ?? string.Empty;
             CanEdit = AuthContext.CanEditRecord(record.ProcessorName);
-            CanClassify = record.Status != RecordStatuses.ResubmittedResolved
-                && (AuthContext.IsLeader || AuthContext.CanEditRecord(record.ProcessorName));
-            ProcessingActionToolTip = AuthContext.IsLeader ? "Xem chi tiết xử lý (chỉ xem)" : "Phân loại / xử lý";
+            CanClassify = AuthContext.IsLeader || AuthContext.CanEditRecord(record.ProcessorName);
+            ProcessingActionToolTip = IsResubmission
+                ? (AuthContext.IsLeader ? "Xem chi tiết xử lý hồ sơ gốc (chỉ xem)" : "Phân loại / xử lý trên hồ sơ gốc")
+                : (AuthContext.IsLeader ? "Xem chi tiết xử lý (chỉ xem)" : "Phân loại / xử lý");
             CanDelete = AuthContext.CanDeleteRecord;
             ViewCommand = viewCommand;
             EditCommand = editCommand;
@@ -45,8 +53,17 @@ namespace QuanLyHoSo.ViewModels
         public string Field { get; }
         public string ReceivedDate { get; }
         public string Status { get; }
+        public string StatusDisplay => Status == RecordStatuses.ResubmittedResolved ? "Hồ sơ gửi lại" : Status;
         public string UpdatedAt { get; }
         public string ProcessorName { get; }
+        public string CommanderApproverName { get; }
+        public string LeaderApproverName { get; }
+        public string TransferDocumentNumber { get; }
+        public string TransferDocumentDate { get; }
+        public string TransferredToAgency { get; }
+        public string AgencyResult { get; }
+        public string OriginalRecordCode { get; }
+        public bool IsResubmission => !string.IsNullOrWhiteSpace(OriginalRecordCode);
         public bool CanEdit { get; }
         public bool CanClassify { get; }
         public string ProcessingActionToolTip { get; }

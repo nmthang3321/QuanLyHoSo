@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Data;
 using System.Windows.Input;
+using System.Windows.Threading;
 using QuanLyHoSo.ApplicationServices.Abstractions;
 using QuanLyHoSo.Infrastructure.Data;
 using QuanLyHoSo.Infrastructure.Logging;
@@ -23,6 +24,9 @@ namespace QuanLyHoSo.ViewModels
         private readonly IApplicationDataService _dataService;
         private readonly Action _goBack;
         private string _editingRecordCode;
+        private readonly DispatcherTimer _recordCodeCheckTimer;
+        private bool _hasDuplicateRecordCode;
+        private string _recordCodeWarning = string.Empty;
         private string _recordCode;
         private RecordFormDraft _originalDraft;
         private RecordFormDraft _pendingDraft;
@@ -46,10 +50,10 @@ namespace QuanLyHoSo.ViewModels
         public string ResubmissionReason { get => _resubmissionReason; set => SetProperty(ref _resubmissionReason, value); }
         public string SenderHistoryError { get => _senderHistoryError; private set => SetProperty(ref _senderHistoryError, value); }
         public bool CanSaveResubmission => IsSenderHistoryOpen && SelectedSenderRecord?.CanLinkAsResubmission == true;
-        public string ResubmissionAvailability => SelectedSenderRecord == null ? "Chọn hồ sơ đã giải quyết để liên kết."
-            : !string.IsNullOrEmpty(SelectedSenderRecord.OriginalRecordCode) ? "Đây là hồ sơ gửi lại. Hãy chọn hồ sơ gốc đã giải quyết."
-            : SelectedSenderRecord.Status != "Đã giải quyết" ? "Hồ sơ được chọn chưa giải quyết; có thể lưu và xử lý như hồ sơ mới."
+        public string ResubmissionAvailability => SelectedSenderRecord == null ? "Chọn hồ sơ để liên kết gửi lại."
+            : !string.IsNullOrEmpty(SelectedSenderRecord.OriginalRecordCode) ? "Đây là hồ sơ gửi lại. Hãy chọn hồ sơ gốc."
             : !SelectedSenderRecord.IsSameCase ? "Hồ sơ được chọn khác địa bàn hoặc loại vụ việc. Hãy đối chiếu lại thông tin đang nhập."
+            : SelectedSenderRecord.Status != "Đã giải quyết" ? "Hồ sơ gốc chưa giải quyết; có thể lưu gửi lại và tiếp tục xử lý trên hồ sơ gốc."
             : "Có thể lưu gửi lại hồ sơ này. Vui lòng ghi lý do xác nhận.";
         public ICommand CloseSenderHistoryCommand { get; }
         public ICommand SaveAsNewRecordCommand { get; }
@@ -65,6 +69,12 @@ namespace QuanLyHoSo.ViewModels
             _dataService = dataService ?? throw new ArgumentNullException(nameof(dataService));
             _goBack = goBack ?? (() => { });
 
+            _recordCodeCheckTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(400) };
+            _recordCodeCheckTimer.Tick += (_, _) =>
+            {
+                _recordCodeCheckTimer.Stop();
+                RefreshRecordCodeDuplicateCheck();
+            };
             var receiveSourcesTask = Task.Run(() => _dataService.GetCatalogValues("ReceiveSource"));
             var receiverNamesTask = Task.Run(() => _dataService.GetProcessorNames());
             var areasTask = Task.Run(() => _dataService.GetAreaNames());
@@ -90,7 +100,7 @@ namespace QuanLyHoSo.ViewModels
             Attachments = new ObservableCollection<AttachmentDraft>();
             Attachments.CollectionChanged += Attachments_CollectionChanged;
             NewCommand = new RelayCommand(ClearForm, () => CanCreateRecord);
-            SaveCommand = new RelayCommand(Save, () => CanSave);
+            SaveCommand = new RelayCommand(Save, () => CanSave && !HasDuplicateRecordCode);
             BackCommand = new RelayCommand(_goBack);
             CancelCommand = new RelayCommand(CancelForm);
             DeleteCommand = new RelayCommand(DeleteCurrentRecord, () => CanDelete);
@@ -135,7 +145,67 @@ namespace QuanLyHoSo.ViewModels
         public string RecordCode
         {
             get => _recordCode;
-            set => SetProperty(ref _recordCode, value);
+            set
+            {
+                if (SetProperty(ref _recordCode, value))
+                {
+                    RestartRecordCodeDuplicateCheck();
+                }
+            }
+        }
+
+        public bool HasDuplicateRecordCode
+        {
+            get => _hasDuplicateRecordCode;
+            private set
+            {
+                if (SetProperty(ref _hasDuplicateRecordCode, value))
+                {
+                    (SaveCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                }
+            }
+        }
+
+        public string RecordCodeWarning
+        {
+            get => _recordCodeWarning;
+            private set => SetProperty(ref _recordCodeWarning, value);
+        }
+
+        private void RestartRecordCodeDuplicateCheck()
+        {
+            _recordCodeCheckTimer.Stop();
+            _recordCodeCheckTimer.Start();
+        }
+
+        public void RefreshRecordCodeDuplicateCheck()
+        {
+            var code = RecordCodeRules.Normalize(RecordCode);
+            if (string.IsNullOrWhiteSpace(code)
+                || (IsEditingExistingRecord && string.Equals(code, _editingRecordCode, StringComparison.Ordinal)))
+            {
+                HasDuplicateRecordCode = false;
+                RecordCodeWarning = string.Empty;
+                return;
+            }
+
+            RecordFormDraft existing;
+            try
+            {
+                existing = _dataService.GetRecordForm(code);
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Error("Records", "CheckRecordCodeDuplicate", ex, "Failed to check record code.", code);
+                return;
+            }
+
+            var isDuplicate = !string.IsNullOrWhiteSpace(existing?.RecordCode)
+                && !string.Equals(existing.RecordCode, _editingRecordCode, StringComparison.Ordinal);
+            HasDuplicateRecordCode = isDuplicate;
+            RecordCodeWarning = isDuplicate
+                ? $"Số hồ sơ {code} đã tồn tại trong hệ thống. Vui lòng chọn số hồ sơ khác."
+                : string.Empty;
         }
         public string ReceiveSource { get; set; }
         public string ReceiverName { get; set; }
@@ -331,6 +401,13 @@ namespace QuanLyHoSo.ViewModels
             if (!string.IsNullOrWhiteSpace(validationMessage))
             {
                 MessageBox.Show(validationMessage, "Kiểm tra thông tin", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            RefreshRecordCodeDuplicateCheck();
+            if (HasDuplicateRecordCode)
+            {
+                MessageBox.Show(RecordCodeWarning, "Số hồ sơ trùng", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
@@ -948,6 +1025,7 @@ namespace QuanLyHoSo.ViewModels
         {
             if (disposing)
             {
+                _recordCodeCheckTimer?.Stop();
                 _dataService.CatalogChanged -= DataService_CatalogChanged;
                 Attachments.CollectionChanged -= Attachments_CollectionChanged;
             }

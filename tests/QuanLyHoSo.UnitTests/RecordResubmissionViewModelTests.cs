@@ -46,18 +46,23 @@ namespace QuanLyHoSo.UnitTests
         [Fact]
         [Trait("Category", "Unit")]
         [Trait("Category", "Regression")]
-        public void Popup_ShouldExplainUnavailableSelectionAndCancelWithoutLosingForm()
+        public void Popup_ShouldAllowUnresolvedOriginalAndExplainUnavailableSelection()
         {
             using var authScope = QuanLyHoSo.Infrastructure.Security.AuthContext.BeginRequestScope(new AppUser
                 { Id = 1, UserName = "test-admin", DisplayName = "Test Admin", Role = UserRoles.Admin, IsActive = true });
             var service = NewService();
             var unresolved = new SenderRecordHistory { RecordCode = "unresolved", Status = "Đang xác minh", IsSameCase = true };
-            service.Setup(x => x.GetSenderRecords(It.IsAny<RecordFormDraft>())).Returns(new[] { unresolved });
+            var differentCase = new SenderRecordHistory { RecordCode = "other-case", Status = "Đã giải quyết", IsSameCase = false };
+            service.Setup(x => x.GetSenderRecords(It.IsAny<RecordFormDraft>())).Returns(new[] { differentCase, unresolved });
             using var vm = NewFilledForm(service);
             vm.SaveCommand.Execute(null);
             Assert.True(vm.IsSenderHistoryOpen);
-            Assert.False(vm.SaveResubmissionCommand.CanExecute(null));
+            Assert.Same(unresolved, vm.SelectedSenderRecord);
+            Assert.True(vm.SaveResubmissionCommand.CanExecute(null));
             Assert.Contains("chưa giải quyết", vm.ResubmissionAvailability);
+            vm.SelectedSenderRecord = differentCase;
+            Assert.False(vm.SaveResubmissionCommand.CanExecute(null));
+            Assert.Contains("khác địa bàn hoặc loại vụ việc", vm.ResubmissionAvailability);
             vm.CloseSenderHistoryCommand.Execute(null);
             Assert.False(vm.IsSenderHistoryOpen);
             Assert.Equal("Nội dung mới", vm.Content);
@@ -83,6 +88,32 @@ namespace QuanLyHoSo.UnitTests
             Assert.Null(saved.OriginalRecordCode);
             Assert.False(vm.IsResubmission);
             Assert.False(vm.IsSenderHistoryOpen);
+        }
+
+        [Fact]
+        [Trait("Category", "Unit")]
+        [Trait("Category", "Regression")]
+        public void DuplicateRecordCode_ShouldWarnAndBlockSave()
+        {
+            using var authScope = QuanLyHoSo.Infrastructure.Security.AuthContext.BeginRequestScope(new AppUser
+                { Id = 1, UserName = "test-admin", DisplayName = "Test Admin", Role = UserRoles.Admin, IsActive = true });
+            var service = NewService();
+            service.Setup(x => x.GetRecordForm("HS-2026-000099"))
+                .Returns(new RecordFormDraft { RecordCode = "HS-2026-000099", Status = "Đang xác minh" });
+            using var vm = NewFilledForm(service);
+
+            vm.RecordCode = "HS-2026-000099";
+            vm.RefreshRecordCodeDuplicateCheck();
+            Assert.True(vm.HasDuplicateRecordCode);
+            Assert.Contains("đã tồn tại", vm.RecordCodeWarning);
+            Assert.False(vm.SaveCommand.CanExecute(null));
+            vm.SaveCommand.Execute(null);
+            service.Verify(x => x.SaveRecordForm(It.IsAny<RecordFormDraft>(), It.IsAny<string>()), Times.Never);
+
+            vm.RecordCode = "HS-2026-000001";
+            vm.RefreshRecordCodeDuplicateCheck();
+            Assert.False(vm.HasDuplicateRecordCode);
+            Assert.True(vm.SaveCommand.CanExecute(null));
         }
 
         private static Mock<IApplicationDataService> NewService()

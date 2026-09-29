@@ -145,13 +145,13 @@
     </UserControl.Resources>
 
     <Grid x:Name="RootGrid" PreviewMouseDown="RootGrid_PreviewMouseDown">
-        <ScrollViewer x:Name="RecordListScrollViewer"
-                      IsEnabled="{Binding IsRecordListEnabled}"
-                      VerticalScrollBarVisibility="Auto"
-                      HorizontalScrollBarVisibility="Disabled"
-                      PreviewMouseWheel="RecordListScrollViewer_PreviewMouseWheel"
-                      ScrollChanged="RecordListScrollViewer_ScrollChanged">
-            <StackPanel IsEnabled="{Binding IsSelectionIdle}">
+        <Grid IsEnabled="{Binding IsRecordListEnabled}">
+        <Grid IsEnabled="{Binding IsSelectionIdle}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+        <StackPanel Grid.Row="0">
             <Grid Margin="0,0,0,18">
                 <StackPanel>
                     <TextBlock Text="DANH SÁCH HỒ SƠ" Style="{StaticResource PageTitleText}" />
@@ -336,9 +336,16 @@
                         </StackPanel>
                         </Grid>
                     </Border>
+        </StackPanel>
 
-            <Border Style="{StaticResource CardBorder}">
-                <StackPanel>
+        <Border Grid.Row="1" Style="{StaticResource CardBorder}">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+            <StackPanel Grid.Row="0">
                     <Grid Margin="0,0,0,12">
                         <StackPanel>
                             <TextBlock Text="HỒ SƠ MỚI NHẤT" Style="{StaticResource SectionTitleText}" Foreground="{StaticResource PrimaryBrush}" />
@@ -396,12 +403,13 @@
                             </Button>
                         </WrapPanel>
                     </Border>
+            </StackPanel>
 
-                    <DataGrid ItemsSource="{Binding Records}"
-                              Height="{Binding TableHeight}"
+                    <DataGrid Grid.Row="1"
+                              ItemsSource="{Binding Records}"
                               CanUserResizeColumns="True"
                               HorizontalScrollBarVisibility="Auto"
-                              VerticalScrollBarVisibility="Disabled"
+                              VerticalScrollBarVisibility="Auto"
                               PreviewMouseWheel="RecordListDataGrid_PreviewMouseWheel"
                               GridLinesVisibility="All"
                               VerticalGridLinesBrush="#ECF1F8"
@@ -536,7 +544,7 @@
                                                 Padding="7,1"
                                                 VerticalAlignment="Center"
                                                 HorizontalAlignment="Left">
-                                            <TextBox Style="{StaticResource SelectableRecordCellText}" Text="{Binding Status, Mode=OneWay}"
+                                            <TextBox Style="{StaticResource SelectableRecordCellText}" Text="{Binding StatusDisplay, Mode=OneWay}"
                                                        FontSize="12"
                                                        MaxWidth="210" TextWrapping="Wrap"
                                                        FontWeight="SemiBold"
@@ -565,6 +573,72 @@
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <TextBox Style="{StaticResource SelectableRecordCellText}" Text="{Binding ProcessorName, Mode=OneWay}" />
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTemplateColumn Header="Chỉ huy duyệt"
+                                                Width="1.0*"
+                                                MinWidth="120"
+                                                MaxWidth="200"
+                                                Visibility="{Binding Data.IsCommanderApproverColumnVisible, Source={StaticResource ViewModelProxy}, Converter={StaticResource BooleanToVisibilityConverter}}"  ClipboardContentBinding="{Binding CommanderApproverName}" SortMemberPath="CommanderApproverName">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBox Style="{StaticResource SelectableRecordCellText}" Text="{Binding CommanderApproverName, Mode=OneWay}" />
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTemplateColumn Header="Lãnh đạo duyệt"
+                                                Width="1.0*"
+                                                MinWidth="120"
+                                                MaxWidth="200"
+                                                Visibility="{Binding Data.IsLeaderApproverColumnVisible, Source={StaticResource ViewModelProxy}, Converter={StaticResource BooleanToVisibilityConverter}}"  ClipboardContentBinding="{Binding LeaderApproverName}" SortMemberPath="LeaderApproverName">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBox Style="{StaticResource SelectableRecordCellText}" Text="{Binding LeaderApproverName, Mode=OneWay}" />
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTemplateColumn Header="Phiếu chuyển đơn số"
+                                                Width="0.9*"
+                                                MinWidth="110"
+                                                MaxWidth="170"
+                                                Visibility="{Binding Data.IsTransferDocumentNumberColumnVisible, Source={StaticResource ViewModelProxy}, Converter={StaticResource BooleanToVisibilityConverter}}"  ClipboardContentBinding="{Binding TransferDocumentNumber}" SortMemberPath="TransferDocumentNumber">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBox Style="{StaticResource SelectableRecordCellText}" Text="{Binding TransferDocumentNumber, Mode=OneWay}" />
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTemplateColumn Header="Ngày chuyển đơn"
+                                                Width="0.85*"
+                                                MinWidth="105"
+                                                MaxWidth="150"
+                                                Visibility="{Binding Data.IsTransferDocumentDateColumnVisible, Source={StaticResource ViewModelProxy}, Converter={StaticResource BooleanToVisibilityConverter}}"  ClipboardContentBinding="{Binding TransferDocumentDate}" SortMemberPath="TransferDocumentDate">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBox Style="{StaticResource SelectableRecordCellText}" Text="{Binding TransferDocumentDate, Mode=OneWay}" />
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTemplateColumn Header="Đơn vị chuyển đến"
+                                                Width="1.05*"
+                                                MinWidth="130"
+                                                MaxWidth="280"
+                                                Visibility="{Binding Data.IsTransferredToAgencyColumnVisible, Source={StaticResource ViewModelProxy}, Converter={StaticResource BooleanToVisibilityConverter}}"  ClipboardContentBinding="{Binding TransferredToAgency}" SortMemberPath="TransferredToAgency">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBox Style="{StaticResource SelectableRecordCellText}" Text="{Binding TransferredToAgency, Mode=OneWay}" />
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTemplateColumn Header="Kết quả của đơn vị"
+                                                Width="1.3*"
+                                                MinWidth="160"
+                                                MaxWidth="420"
+                                                Visibility="{Binding Data.IsAgencyResultColumnVisible, Source={StaticResource ViewModelProxy}, Converter={StaticResource BooleanToVisibilityConverter}}"  ClipboardContentBinding="{Binding AgencyResult}" SortMemberPath="AgencyResult">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBox Style="{StaticResource SelectableRecordCellText}" Text="{Binding AgencyResult, Mode=OneWay}" ToolTip="{Binding AgencyResult}" />
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
@@ -613,7 +687,7 @@
                         </DataGrid.Columns>
                     </DataGrid>
 
-                    <Grid Margin="0,12,0,0">
+                    <Grid Grid.Row="2" Margin="0,12,0,0">
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                             <TextBlock Text="Số dòng"
                                        Style="{StaticResource MutedText}"
@@ -674,10 +748,10 @@
                             </Button>
                         </StackPanel>
                     </Grid>
-                </StackPanel>
+                </Grid>
             </Border>
-            </StackPanel>
-        </ScrollViewer>
+        </Grid>
+        </Grid>
 
         <Grid Background="#9906164A"
               Visibility="{Binding IsDetailOpen, Converter={StaticResource BooleanToVisibilityConverter}}">

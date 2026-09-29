@@ -406,11 +406,9 @@
             </StackPanel>
         </ScrollViewer>
 
-        <ScrollViewer x:Name="ProcessingDetailScrollViewer"
-                      VerticalScrollBarVisibility="Auto"
-                      ScrollChanged="ProcessingDetailScrollViewer_ScrollChanged">
-            <ScrollViewer.Style>
-                <Style TargetType="ScrollViewer">
+        <Grid>
+            <Grid.Style>
+                <Style TargetType="Grid">
                     <Setter Property="Visibility" Value="Collapsed" />
                     <Style.Triggers>
                         <DataTrigger Binding="{Binding IsProcessingDetailOpen}" Value="True">
@@ -418,20 +416,43 @@
                         </DataTrigger>
                     </Style.Triggers>
                 </Style>
-            </ScrollViewer.Style>
+            </Grid.Style>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+            <ScrollViewer x:Name="ProcessingDetailScrollViewer"
+                          Grid.Row="0"
+                          VerticalScrollBarVisibility="Auto"
+                          ScrollChanged="ProcessingDetailScrollViewer_ScrollChanged">
             <StackPanel>
                 <Grid Margin="0,0,0,18">
                     <StackPanel>
                         <TextBlock Text="CHI TIẾT XỬ LÝ HỒ SƠ" Style="{StaticResource PageTitleText}" />
                         <TextBlock Text="{Binding SelectedProcessingDetail.RecordCode, StringFormat=Hồ sơ: {0}}" Style="{StaticResource MutedText}" Margin="0,4,0,0" />
                     </StackPanel>
-                    <Button Style="{StaticResource SecondaryButton}" HorizontalAlignment="Right" Command="{Binding BackToQueueCommand}">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="&#xE72B;" FontFamily="Segoe MDL2 Assets" Margin="0,0,8,0" />
-                            <TextBlock Text="Quay lại" />
-                        </StackPanel>
-                    </Button>
                 </Grid>
+
+                <Border Background="#FFF7E8"
+                        BorderBrush="#FFE0A8"
+                        BorderThickness="1"
+                        CornerRadius="6"
+                        Padding="12,8"
+                        Margin="0,0,0,12"
+                        Visibility="{Binding HasResubmissionNote, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#xE7BA;"
+                                   FontFamily="Segoe MDL2 Assets"
+                                   FontSize="16"
+                                   Foreground="#8A5200"
+                                   VerticalAlignment="Center"
+                                   Margin="0,0,8,0" />
+                        <TextBlock Text="{Binding ResubmissionNote}"
+                                   Foreground="#8A5200"
+                                   TextWrapping="Wrap"
+                                   VerticalAlignment="Center" />
+                    </StackPanel>
+                </Border>
 
                 <Border Style="{StaticResource CardBorder}" Margin="0,0,0,12">
                     <Grid>
@@ -856,11 +877,11 @@
                                       Text="{Binding ProcessingProcessorName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                       IsEditable="True"
                                       IsTextSearchEnabled="True"
+                                      IsEnabled="{Binding CanChangeProcessor}"
+                                      ToolTip="Chỉ có Admin được thay đổi người xử lý."
                                       Margin="0,0,0,12" />
                             <TextBlock Style="{StaticResource FieldLabelText}"><Run Text="Nội dung xử lý" /><Run Text=" *" Foreground="#E11414" /></TextBlock>
-                            <TextBox Height="96" TextWrapping="Wrap" AcceptsReturn="True" VerticalContentAlignment="Top" Text="{Binding ProcessingContent, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,12" />
-                            <TextBlock Text="Ghi chú" Style="{StaticResource FieldLabelText}" />
-                            <TextBox Height="80" TextWrapping="Wrap" AcceptsReturn="True" VerticalContentAlignment="Top" Text="{Binding ProcessingNote, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,18" />
+                            <TextBox Height="96" TextWrapping="Wrap" AcceptsReturn="True" VerticalContentAlignment="Top" Text="{Binding ProcessingContent, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,18" />
                             <TextBlock Text="Tài liệu liên quan" Style="{StaticResource FieldLabelText}" />
                             <Grid Margin="0,0,0,8">
                                 <Grid.ColumnDefinitions>
@@ -927,21 +948,43 @@
                                     </StackPanel>
                                 </Border>
                             </Grid>
-                            <Grid>
-                                <Button Style="{StaticResource DangerButton}" HorizontalAlignment="Left" Command="{Binding BackToQueueCommand}">
-                                    <TextBlock Text="Hủy xử lý" Foreground="#E11414" />
-                                </Button>
-                                <Button HorizontalAlignment="Right"
-                                        Command="{Binding SaveProcessingCommand}"
-                                        Style="{StaticResource PrimaryButton}">
-                                    <TextBlock Text="Cập nhật" Foreground="White" />
-                                </Button>
-                            </Grid>
                         </StackPanel>
                     </Border>
                 </Grid>
             </StackPanel>
-        </ScrollViewer>
+            </ScrollViewer>
+
+            <Border Grid.Row="1" Background="{StaticResource SurfaceBrush}"
+                    BorderBrush="{StaticResource LineBrush}" BorderThickness="0,1,0,0"
+                    Padding="0,12,0,0" Margin="0,12,0,0">
+                <Grid>
+                    <Button Style="{StaticResource SecondaryButton}"
+                            MinWidth="118"
+                            HorizontalAlignment="Left"
+                            Command="{Binding BackToQueueCommand}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE72B;" FontFamily="Segoe MDL2 Assets" Margin="0,0,8,0" />
+                            <TextBlock Text="Quay lại" />
+                        </StackPanel>
+                    </Button>
+                    <StackPanel Orientation="Horizontal"
+                                HorizontalAlignment="Right"
+                                IsEnabled="{Binding CanUpdateProcessing}">
+                        <Button Style="{StaticResource DangerButton}"
+                                MinWidth="118"
+                                Margin="0,0,12,0"
+                                Command="{Binding BackToQueueCommand}">
+                            <TextBlock Text="Hủy xử lý" Foreground="#E11414" />
+                        </Button>
+                        <Button Style="{StaticResource PrimaryButton}"
+                                MinWidth="138"
+                                Command="{Binding SaveProcessingCommand}">
+                            <TextBlock Text="Cập nhật" Foreground="White" />
+                        </Button>
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </Grid>
 
         <Canvas x:Name="TransferAreaOverlayCanvas"
                 Background="Transparent"

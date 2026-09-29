@@ -40,7 +40,7 @@ namespace QuanLyHoSo.Models
         public string OriginalRecordCode { get; set; }
         public string ResolutionSummary { get; set; }
         public bool IsSameCase { get; set; }
-        public bool CanLinkAsResubmission => IsSameCase && Status == "Đã giải quyết" && string.IsNullOrEmpty(OriginalRecordCode);
+        public bool CanLinkAsResubmission => IsSameCase && string.IsNullOrEmpty(OriginalRecordCode);
         public string Relationship => string.IsNullOrEmpty(OriginalRecordCode) ? "Hồ sơ gốc" : "Gửi lại " + OriginalRecordCode;
     }
 
@@ -164,5 +164,11 @@ namespace QuanLyHoSo.Models
         public string Status { get; set; }
         public string UpdatedAt { get; set; }
         public string ProcessorName { get; set; }
+        public string CommanderApproverName { get; set; }
+        public string LeaderApproverName { get; set; }
+        public string TransferDocumentNumber { get; set; }
+        public string TransferDocumentDate { get; set; }
+        public string TransferredToAgency { get; set; }
+        public string AgencyResult { get; set; }
     }
 }

@@ -38,20 +38,9 @@ namespace QuanLyHoSo.Views.Records
             if (current is DataGridRow row) row.IsSelected = true;
         }
 
-        private void RecordListScrollViewer_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
-        {
-            if (sender is ScrollViewer scrollViewer && e.Source is not ScrollViewer)
-            {
-                scrollViewer.ScrollToVerticalOffset(scrollViewer.VerticalOffset - e.Delta);
-                e.Handled = true;
-            }
-        }
-
         private void RecordListDataGrid_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
         {
             CloseAreaFilterPanel();
-            RecordListScrollViewer.ScrollToVerticalOffset(RecordListScrollViewer.VerticalOffset - e.Delta);
-            e.Handled = true;
         }
 
         private void ColumnSelectorButton_Click(object sender, RoutedEventArgs e)
@@ -146,14 +135,6 @@ namespace QuanLyHoSo.Views.Records
             }
 
             CloseAreaFilterPanel();
-        }
-
-        private void RecordListScrollViewer_ScrollChanged(object sender, ScrollChangedEventArgs e)
-        {
-            if (AreaFilterPanel.Visibility == Visibility.Visible)
-            {
-                CloseAreaFilterPanel();
-            }
         }
 
         private static bool IsWithin(DependencyObject source, DependencyObject parent)

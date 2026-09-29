@@ -103,6 +103,13 @@
                                      CharacterCasing="Upper"
                                      MaxLength="14"
                                      ToolTip="Định dạng: HS-&lt;năm&gt;-&lt;6 chữ số&gt;. Ví dụ: HS-2026-000123" />
+                            <TextBlock Text="{Binding RecordCodeWarning}"
+                                       Foreground="#D42D16"
+                                       FontSize="12"
+                                       FontWeight="SemiBold"
+                                       TextWrapping="Wrap"
+                                       Margin="0,4,0,0"
+                                       Visibility="{Binding HasDuplicateRecordCode, Converter={StaticResource BooleanToVisibilityConverter}}" />
                         </StackPanel>
                         <StackPanel Grid.Column="1" Margin="0,0,14,14">
                             <TextBlock Style="{StaticResource InputLabelText}"><Run Text="Ngày tiếp nhận" /><Run Text=" *" Foreground="#E11414" /></TextBlock>

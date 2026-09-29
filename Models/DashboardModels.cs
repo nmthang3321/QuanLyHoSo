@@ -63,5 +63,12 @@ namespace QuanLyHoSo.Models
         public string Status { get; set; }
         public string UpdatedAt { get; set; }
         public string ProcessorName { get; set; }
+        public string CommanderApproverName { get; set; }
+        public string LeaderApproverName { get; set; }
+        public string TransferDocumentNumber { get; set; }
+        public string TransferDocumentDate { get; set; }
+        public string TransferredToAgency { get; set; }
+        public string AgencyResult { get; set; }
+        public string OriginalRecordCode { get; set; }
     }
 }

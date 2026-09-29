@@ -32,7 +32,7 @@ namespace QuanLyHoSo.ViewModels
         private readonly IApplicationDataService _dataService;
         private readonly Action _goBack;
         private readonly Action<string> _editRecord;
-        private readonly Action<string> _classifyRecord;
+        private readonly Action<string, string> _classifyRecord;
         private readonly RelayCommand _nextPageCommand;
         private readonly RelayCommand _previousPageCommand;
         private readonly RelayCommand _refreshCommand;
@@ -69,17 +69,17 @@ namespace QuanLyHoSo.ViewModels
         private int _totalPages = 1;
         private string _totalRecordsText;
 
-        public RecordListViewModel(Action goBack, Action<string> editRecord, Action<string> classifyRecord)
+        public RecordListViewModel(Action goBack, Action<string> editRecord, Action<string, string> classifyRecord)
             : this(AppDataService.Instance, goBack, editRecord, classifyRecord)
         {
         }
 
-        public RecordListViewModel(IApplicationDataService dataService, Action goBack, Action<string> editRecord, Action<string> classifyRecord)
+        public RecordListViewModel(IApplicationDataService dataService, Action goBack, Action<string> editRecord, Action<string, string> classifyRecord)
         {
             _dataService = dataService ?? throw new ArgumentNullException(nameof(dataService));
             _goBack = goBack ?? (() => { });
             _editRecord = editRecord ?? (_ => { });
-            _classifyRecord = classifyRecord ?? (_ => { });
+            _classifyRecord = classifyRecord ?? ((_, _) => { });
             Records = new ObservableCollection<RecordListRowViewModel>();
 
             Statuses = new ObservableCollection<string>
@@ -114,11 +114,16 @@ namespace QuanLyHoSo.ViewModels
                 new("ReceivedDate", "Ngày tiếp nhận"),
                 new("Status", "Trạng thái"),
                 new("UpdatedAt", "Cập nhật cuối"),
-                new("ProcessorName", "Người xử lý")
+                new("ProcessorName", "Người xử lý"),
+                new("CommanderApproverName", "Chỉ huy duyệt", isVisible: false),
+                new("LeaderApproverName", "Lãnh đạo duyệt", isVisible: false),
+                new("TransferDocumentNumber", "Phiếu chuyển đơn số", isVisible: false),
+                new("TransferDocumentDate", "Ngày chuyển đơn", isVisible: false),
+                new("TransferredToAgency", "Đơn vị chuyển đến", isVisible: false),
+                new("AgencyResult", "Kết quả của đơn vị", isVisible: false)
             };
             foreach (var column in ColumnOptions)
             {
-                column.IsVisible = true;
                 column.PropertyChanged += ColumnOption_PropertyChanged;
                 _columnOptionsByKey[column.Key] = column;
             }
@@ -365,6 +370,42 @@ namespace QuanLyHoSo.ViewModels
             set => SetColumnVisibility("ProcessorName", value);
         }
 
+        public bool IsCommanderApproverColumnVisible
+        {
+            get => GetColumnVisibility("CommanderApproverName");
+            set => SetColumnVisibility("CommanderApproverName", value);
+        }
+
+        public bool IsLeaderApproverColumnVisible
+        {
+            get => GetColumnVisibility("LeaderApproverName");
+            set => SetColumnVisibility("LeaderApproverName", value);
+        }
+
+        public bool IsTransferDocumentNumberColumnVisible
+        {
+            get => GetColumnVisibility("TransferDocumentNumber");
+            set => SetColumnVisibility("TransferDocumentNumber", value);
+        }
+
+        public bool IsTransferDocumentDateColumnVisible
+        {
+            get => GetColumnVisibility("TransferDocumentDate");
+            set => SetColumnVisibility("TransferDocumentDate", value);
+        }
+
+        public bool IsTransferredToAgencyColumnVisible
+        {
+            get => GetColumnVisibility("TransferredToAgency");
+            set => SetColumnVisibility("TransferredToAgency", value);
+        }
+
+        public bool IsAgencyResultColumnVisible
+        {
+            get => GetColumnVisibility("AgencyResult");
+            set => SetColumnVisibility("AgencyResult", value);
+        }
+
         public DateTime? FromDate
         {
             get => _fromDate;
@@ -570,7 +611,6 @@ namespace QuanLyHoSo.ViewModels
                 }
 
                 _pageSize = pageSize;
-                OnPropertyChanged(nameof(TableHeight));
                 RequestReloadFromFirstPage();
             }
         }
@@ -580,8 +620,6 @@ namespace QuanLyHoSo.ViewModels
             get => _totalRecordsText;
             private set => SetProperty(ref _totalRecordsText, value);
         }
-
-        public int TableHeight => 38 + _pageSize * 34;
 
         public RecordFormDraft SelectedRecordDetail
         {
@@ -1014,6 +1052,36 @@ namespace QuanLyHoSo.ViewModels
             {
                 yield return new ExportColumn("Người xử lý", record => record.ProcessorName);
             }
+
+            if (IsCommanderApproverColumnVisible)
+            {
+                yield return new ExportColumn("Chỉ huy duyệt", record => record.CommanderApproverName);
+            }
+
+            if (IsLeaderApproverColumnVisible)
+            {
+                yield return new ExportColumn("Lãnh đạo duyệt", record => record.LeaderApproverName);
+            }
+
+            if (IsTransferDocumentNumberColumnVisible)
+            {
+                yield return new ExportColumn("Phiếu chuyển đơn số", record => record.TransferDocumentNumber);
+            }
+
+            if (IsTransferDocumentDateColumnVisible)
+            {
+                yield return new ExportColumn("Ngày chuyển đơn", record => record.TransferDocumentDate);
+            }
+
+            if (IsTransferredToAgencyColumnVisible)
+            {
+                yield return new ExportColumn("Đơn vị chuyển đến", record => record.TransferredToAgency);
+            }
+
+            if (IsAgencyResultColumnVisible)
+            {
+                yield return new ExportColumn("Kết quả của đơn vị", record => record.AgencyResult);
+            }
         }
 
         private static void WriteXlsx(string filePath, IReadOnlyList<ExportRecordPreview> records, IReadOnlyList<ExportColumn> columns)
@@ -1129,7 +1197,14 @@ namespace QuanLyHoSo.ViewModels
 
         private void ClassifyRecord(string recordCode)
         {
-            _classifyRecord(recordCode);
+            var row = Records.FirstOrDefault(item => string.Equals(item.RecordCode, recordCode, StringComparison.Ordinal));
+            if (row != null && row.IsResubmission && !string.IsNullOrWhiteSpace(row.OriginalRecordCode))
+            {
+                _classifyRecord(row.OriginalRecordCode, row.RecordCode);
+                return;
+            }
+
+            _classifyRecord(recordCode, null);
         }
 
         private async Task DeleteSelectedRecordsAsync()
