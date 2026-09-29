@@ -40,7 +40,7 @@ namespace QuanLyHoSo.Presentation.Converters
                         "All" => "Tất cả hồ sơ chưa giải quyết trong phạm vi bạn được xem.",
                         "NeedClassify" => "Hồ sơ ở trạng thái Mới tiếp nhận hoặc Đang phân loại.",
                         "Processing" => "Hồ sơ ở trạng thái Đã phân công hoặc Đang xác minh.",
-                        "Waiting" => "Hồ sơ ở trạng thái Chờ kết quả hoặc Đang chờ bổ sung tài liệu.",
+                        "Waiting" => "Hồ sơ đang ở giai đoạn kết quả ban đầu, chuyển cơ quan khác hoặc chờ kết quả.",
                         "DueSoon" => "Hồ sơ chưa giải quyết có ngày dự kiến trả kết quả từ hôm nay đến hết 7 ngày tới.",
                         "Overdue" => "Hồ sơ chưa giải quyết đã qua ngày dự kiến trả kết quả.",
                         "HighPriority" => "Hồ sơ chưa giải quyết có mức độ Nghiêm trọng, Rất nghiêm trọng hoặc Đặc biệt nghiêm trọng.",
@@ -54,7 +54,7 @@ namespace QuanLyHoSo.Presentation.Converters
                     "TỔNG HỒ SƠ" => "Tổng số hồ sơ tiếp nhận, gồm mọi trạng thái và cả hồ sơ gửi lại.",
                     "ĐANG XỬ LÝ" => "Số hồ sơ ở trạng thái Đang phân loại, Đã phân công, Đang xác minh hoặc Đang xử lý.",
                     "ĐÃ GIẢI QUYẾT" => "Số hồ sơ ở trạng thái Đã giải quyết; không tính hồ sơ gửi lại vào số đã giải quyết.",
-                    "CHỜ KẾT QUẢ" => "Số hồ sơ ở trạng thái Chờ kết quả hoặc Đang chờ bổ sung tài liệu.",
+                    "CHỜ KẾT QUẢ" => "Số hồ sơ đang ở giai đoạn kết quả ban đầu, chuyển cơ quan khác hoặc chờ kết quả.",
                     _ => string.Empty
                 };
                 return dashboardDescription + " Thống kê theo ngày tiếp nhận trong kỳ đang chọn và phạm vi bạn được xem; không tính hồ sơ trong thùng rác. Mức tăng/giảm so với kỳ trước có cùng độ dài.";

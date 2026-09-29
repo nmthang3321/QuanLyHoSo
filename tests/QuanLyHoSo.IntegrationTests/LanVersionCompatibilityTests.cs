@@ -1,3 +1,4 @@
+using System;
 using System.Net;
 using System.Net.Http;
 using System.Text;
@@ -14,7 +15,7 @@ namespace QuanLyHoSo.IntegrationTests
         [Fact]
         [Trait("Category", "Regression")]
         [Trait("Category", "Integration")]
-        public async Task LanServer_ShouldReportHealthAndRejectMismatchedClientVersion()
+        public async Task LanServer_ShouldAllowClientVersionToDifferFromServerVersion()
         {
             using var database = new TestDatabase();
             var portProbe = new System.Net.Sockets.TcpListener(IPAddress.Loopback, 0);
@@ -41,19 +42,86 @@ namespace QuanLyHoSo.IntegrationTests
 
                 Assert.Equal(HttpStatusCode.OK, healthResponse.StatusCode);
                 Assert.Equal(LanProtocolVersion.Current, health.ServerVersion);
-                Assert.Equal(LanProtocolVersion.Current, health.RequiredClientVersion);
-                Assert.False(health.IsClientVersionSupported);
+                Assert.Null(health.RequiredClientVersion);
+                Assert.True(health.IsClientVersionSupported);
 
                 using var loginResponse = await client.PostAsync("api/auth/login", new StringContent("{}", Encoding.UTF8, "application/json"));
-                var error = await loginResponse.Content.ReadAsStringAsync();
-
-                Assert.Equal((HttpStatusCode)426, loginResponse.StatusCode);
-                Assert.Contains(LanProtocolVersion.Current, error);
+                Assert.NotEqual((HttpStatusCode)426, loginResponse.StatusCode);
             }
             finally
             {
                 server.Stop();
             }
+        }
+
+        [Fact]
+        [Trait("Category", "Regression")]
+        [Trait("Category", "Integration")]
+        public async Task LanClient_ShouldAdaptLegacyVersionHeaderForOlderServer()
+        {
+            using var database = new TestDatabase();
+            var portProbe = new System.Net.Sockets.TcpListener(IPAddress.Loopback, 0);
+            portProbe.Start();
+            var port = ((IPEndPoint)portProbe.LocalEndpoint).Port;
+            portProbe.Stop();
+
+            var serverUrl = "http://127.0.0.1:" + port;
+            AppPathSettings.UseServerMode(database.DatabasePath, System.IO.Path.Combine(database.RootPath, "logs"), serverUrl);
+
+            using var listener = new HttpListener();
+            listener.Prefixes.Add(serverUrl + "/");
+            listener.Start();
+
+            string initialLegacyVersion = null;
+            string actualClientVersion = null;
+            string adaptedLegacyVersion = null;
+            var legacyRequiredVersion = string.Equals(LanProtocolVersion.Current, "9.9.9", StringComparison.OrdinalIgnoreCase)
+                ? "8.8.8"
+                : "9.9.9";
+            var legacyServer = Task.Run(async () =>
+            {
+                var healthContext = await listener.GetContextAsync();
+                initialLegacyVersion = healthContext.Request.Headers[LanProtocolVersion.ClientVersionHeader];
+                actualClientVersion = healthContext.Request.Headers[LanProtocolVersion.ActualClientVersionHeader];
+                await WriteJsonAsync(healthContext, new LanHealthResponse
+                {
+                    Ok = true,
+                    ServerVersion = legacyRequiredVersion,
+                    RequiredClientVersion = legacyRequiredVersion,
+                    IsClientVersionSupported = false
+                });
+
+                var loginContext = await listener.GetContextAsync();
+                adaptedLegacyVersion = loginContext.Request.Headers[LanProtocolVersion.ClientVersionHeader];
+                await WriteJsonAsync(loginContext, null);
+            });
+
+            try
+            {
+                using var client = new LanDataClient();
+                client.Ping();
+                client.Call<object>("auth/login", new LoginRequest());
+                await legacyServer.WaitAsync(TimeSpan.FromSeconds(5));
+
+                Assert.Equal(LanProtocolVersion.Current, initialLegacyVersion);
+                Assert.Equal(LanProtocolVersion.Current, actualClientVersion);
+                Assert.NotEqual(initialLegacyVersion, adaptedLegacyVersion);
+                Assert.Equal(legacyRequiredVersion, adaptedLegacyVersion);
+            }
+            finally
+            {
+                listener.Stop();
+            }
+        }
+
+        private static async Task WriteJsonAsync(HttpListenerContext context, object value)
+        {
+            var content = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(value));
+            context.Response.StatusCode = (int)HttpStatusCode.OK;
+            context.Response.ContentType = "application/json";
+            context.Response.ContentLength64 = content.Length;
+            await context.Response.OutputStream.WriteAsync(content);
+            context.Response.Close();
         }
     }
 }

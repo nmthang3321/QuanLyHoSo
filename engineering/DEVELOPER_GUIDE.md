@@ -69,18 +69,18 @@ Audit history should cover record creation/edit/deletion, attachment changes, pr
 - The server uses SQLite.
 - Attachment binaries are not stored directly in the database.
 - Managed files are stored in an application-controlled directory; the database stores metadata and relative paths.
-- Supported file types are PDF, JPG, and PNG.
+- Supported file types are PDF, Word (`.doc`/`.docx`), JPG/JPEG, and PNG.
 - The maximum size is 10 MB per file.
 - Prefer soft deletion or `IsActive = false` for records or catalog entries that must remain historically traceable.
 
-Over LAN, attachment handling currently stores metadata/path only; physical upload or copying from a client workstation to the server has not been implemented.
+Over LAN, attachment drafts carry file bytes to the server. The durable copies live below `QuanLyHoSoFiles\Attachments`, generated forms live below `QuanLyHoSoFiles\GeneratedDocuments`, and clients download files through the authenticated API. Full `.qlhbackup` packages include both the SQLite database and these managed files.
 
 ## 6. Processing workflow
 
 The business workflow is:
 
 ```text
-Receive -> Classify -> Assign -> Verify -> Extend (optional) -> Await result -> Archive
+Receive -> Classify -> Assign -> Verify -> Initial result -> Transfer agency -> Await result -> Archive
 ```
 
 Each processing update must preserve the old and new status, workflow step, timestamp, processor, processing content, note, and correlation ID. State transitions must be controlled by explicit rules rather than arbitrary status assignment.

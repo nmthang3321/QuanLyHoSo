@@ -1,3 +1,4 @@
+using System;
 using QuanLyHoSo.Infrastructure.Network;
 using Xunit;
 
@@ -7,22 +8,13 @@ namespace QuanLyHoSo.UnitTests
     {
         [Fact]
         [Trait("Category", "Regression")]
-        public void IsCompatible_ShouldRequireExactThreePartVersion()
+        public void Current_ShouldExposeAThreePartProductVersion()
         {
-            Assert.True(LanProtocolVersion.IsCompatible(LanProtocolVersion.Current));
-            Assert.True(LanProtocolVersion.IsCompatible(LanProtocolVersion.Current + ".0"));
-            Assert.False(LanProtocolVersion.IsCompatible("0.0.0"));
-            Assert.False(LanProtocolVersion.IsCompatible(null));
-        }
+            Assert.True(Version.TryParse(LanProtocolVersion.Current, out var version));
 
-        [Fact]
-        [Trait("Category", "Regression")]
-        public void BuildMismatchMessage_ShouldIdentifyBothVersions()
-        {
-            var message = LanProtocolVersion.BuildMismatchMessage("0.9.0");
-
-            Assert.Contains("0.9.0", message);
-            Assert.Contains(LanProtocolVersion.Current, message);
+            Assert.True(version.Major >= 0);
+            Assert.True(version.Minor >= 0);
+            Assert.True(version.Build >= 0);
         }
     }
 }

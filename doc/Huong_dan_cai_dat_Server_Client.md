@@ -46,6 +46,15 @@ Bộ cài Server tự đăng ký URL và mở cổng TCP `5055` cho các thiết
 C:\ProgramData\QuanLyHoSo\Data\quanlyhoso.db
 ```
 
+File đính kèm và biểu mẫu Word được lưu tập trung cạnh cơ sở dữ liệu tại:
+
+```text
+C:\ProgramData\QuanLyHoSo\Data\QuanLyHoSoFiles\Attachments
+C:\ProgramData\QuanLyHoSo\Data\QuanLyHoSoFiles\GeneratedDocuments
+```
+
+Không tự ý xóa hoặc di chuyển thư mục `QuanLyHoSoFiles`. Khi sao lưu để phòng mất dữ liệu, nên dùng chức năng **Sao lưu ngay** trong phần mềm để tạo gói `.qlhbackup`; gói này chứa cả cơ sở dữ liệu và toàn bộ kho file. File `.db` cũ vẫn có thể khôi phục nhưng chỉ chứa dữ liệu SQLite, không chứa file đính kèm hoặc biểu mẫu đã tạo.
+
 Ở lần cài mới, hệ thống tạo database trống, các danh mục mặc định và tài khoản quản trị `admin` với mật khẩu ban đầu `admin123`. Hệ thống không tạo hồ sơ minh họa trong database của khách hàng. Người dùng phải đổi mật khẩu quản trị sau lần đăng nhập đầu tiên.
 
 ## 2. Cài từng máy Client
@@ -100,21 +109,19 @@ Có thể truyền URL của Server bằng tham số khi cài đặt tự độn
 .\QuanLyHoSo-Client-Setup-1.0.0-win-x64.exe /SERVERURL="http://SERVER-PC:5055"
 ```
 
-## 4. Đồng bộ phiên bản Server và Client
+## 4. Quản lý phiên bản và cập nhật Client
 
-Server và tất cả máy Client phải sử dụng cùng một phiên bản phát hành. Mỗi Client gửi số phiên bản khi kết nối; Server kiểm tra trước khi cho phép đăng nhập và sử dụng API nghiệp vụ.
+Server và Client được quản lý phiên bản độc lập. Server không từ chối đăng nhập hoặc API nghiệp vụ chỉ vì số phiên bản Client khác số phiên bản Server. Bước kiểm tra kết nối trong bộ cài Client chỉ xác nhận Server đang hoạt động và có thể truy cập qua mạng.
 
-Nếu phiên bản không khớp, Client sẽ hiển thị thông báo không tương thích và yêu cầu cài đúng phiên bản đang chạy trên Server. Cơ chế này ngăn Client cũ gửi dữ liệu theo cấu trúc hoặc quy trình nghiệp vụ đã thay đổi.
+Chức năng **Cập nhật phần mềm** trong trang Cài đặt chỉ thay thế ứng dụng Client trên máy trạm đang sử dụng. Gói cập nhật nội bộ phải là file ZIP có tên `QuanLyHoSo-Client-<phiên_bản>.zip`, ví dụ `QuanLyHoSo-Client-1.0.1.zip`. Gói này không cập nhật ứng dụng Server và không thay đổi cơ sở dữ liệu trên Server.
 
-Khi triển khai bản mới:
+Khi triển khai bản Client mới:
 
-1. Thông báo thời gian bảo trì và yêu cầu người dùng đóng ứng dụng Client.
-2. Sao lưu dữ liệu trên Server.
-3. Cập nhật Server lên phiên bản mới.
-4. Cập nhật toàn bộ Client bằng bộ cài có cùng số phiên bản.
-5. Mở lại Client, đăng nhập và kiểm tra các chức năng chính.
+1. Yêu cầu người dùng lưu công việc và đóng ứng dụng Client khi bắt đầu cài đặt.
+2. Phân phối gói Client mới qua chức năng cập nhật nội bộ hoặc bộ cài Client.
+3. Mở lại Client, đăng nhập và kiểm tra các chức năng chính.
 
-Không nên tiếp tục vận hành thường xuyên khi Server và Client khác phiên bản. Việc kiểm tra kết nối trong bộ cài Client cũng xác nhận Server đang chạy phiên bản tương thích.
+Chỉ cập nhật Server khi bản phát hành có thay đổi dành riêng cho Server, cơ sở dữ liệu hoặc LAN API. Trước khi cập nhật Server, cần sao lưu dữ liệu và thông báo thời gian bảo trì; không cần đổi số phiên bản Client chỉ để trùng với Server.
 
 ## 5. Lưu ý
 

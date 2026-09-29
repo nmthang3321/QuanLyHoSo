@@ -76,8 +76,7 @@ begin
     Request.SetRequestHeader('X-QuanLyHoSo-Version', '{#AppVersion}');
     Request.Send('{}');
     ResponseText := Request.ResponseText;
-    Result := (Request.Status = 200) and
-      (Pos('"IsClientVersionSupported":true', ResponseText) > 0);
+    Result := (Request.Status = 200) and (Pos('"Ok":true', ResponseText) > 0);
   except
     Result := False;
   end;

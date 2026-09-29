@@ -18,6 +18,7 @@ namespace QuanLyHoSo.Models
         public string FileName { get; set; }
         public string FileSize { get; set; }
         public string FilePath { get; set; }
+        public byte[] Content { get; set; }
     }
 
     public static class RecordStatuses

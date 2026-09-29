@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Linq;
 using QuanLyHoSo.Infrastructure.Data;
+using QuanLyHoSo.Models;
 using Xunit;
 
 namespace QuanLyHoSo.IntegrationTests
@@ -79,6 +80,76 @@ namespace QuanLyHoSo.IntegrationTests
             Assert.False(File.Exists(safetyPath));
         }
 
+        [Fact]
+        [Trait("Category", "Critical")]
+        [Trait("Category", "Attachments")]
+        public void SaveRecord_WithAttachmentContent_ShouldStorePhysicalFileOnServer()
+        {
+            using var database = new TestDatabase();
+            var sourcePath = Path.Combine(database.RootPath, "client-source.txt");
+            var expectedContent = new byte[] { 10, 20, 30, 40, 50 };
+            File.WriteAllBytes(sourcePath, expectedContent);
+            var draft = database.NewRecord("central-attachment");
+            draft.Attachments = new[]
+            {
+                new AttachmentDraft
+                {
+                    FileName = "evidence.txt",
+                    FileSize = "5 B",
+                    FilePath = sourcePath,
+                    Content = expectedContent
+                }
+            };
+
+            var code = database.Service.SaveRecordForm(draft);
+            File.Delete(sourcePath);
+            var storedAttachment = Assert.Single(database.Service.GetRecordForm(code).Attachments);
+
+            Assert.Contains("QuanLyHoSoFiles", storedAttachment.FilePath, StringComparison.OrdinalIgnoreCase);
+            Assert.True(File.Exists(storedAttachment.FilePath));
+            Assert.Equal(expectedContent, File.ReadAllBytes(storedAttachment.FilePath));
+            Assert.Equal(storedAttachment.FilePath, database.Service.GetAttachmentFilePath(code, storedAttachment.FileName));
+        }
+
+        [Fact]
+        [Trait("Category", "Critical")]
+        [Trait("Category", "Backup")]
+        public void FullBackupRestore_ShouldRecoverDatabaseAndPhysicalAttachments()
+        {
+            using var database = new TestDatabase();
+            var originalBytes = new byte[] { 1, 3, 5, 7, 9 };
+            var draft = database.NewRecord("full-backup");
+            var originalContent = draft.Content;
+            draft.Attachments = new[]
+            {
+                new AttachmentDraft
+                {
+                    FileName = "full-backup.txt",
+                    FileSize = "5 B",
+                    FilePath = Path.Combine(database.RootPath, "client-full-backup.txt"),
+                    Content = originalBytes
+                }
+            };
+            var code = database.Service.SaveRecordForm(draft);
+            var storedPath = Assert.Single(database.Service.GetRecordForm(code).Attachments).FilePath;
+            var packagePath = Path.Combine(database.RootPath, "exports", "complete.qlhbackup");
+            var safetyPath = Path.Combine(database.RootPath, "exports", "before-restore.qlhbackup");
+            database.Service.BackupApplicationData(packagePath);
+
+            var modified = database.Service.GetRecordForm(code);
+            modified.Content = "changed after full backup";
+            database.Service.SaveRecordForm(modified, code);
+            File.WriteAllBytes(storedPath, new byte[] { 99 });
+
+            database.Service.RestoreApplicationDataPackage(packagePath, safetyPath);
+
+            var restored = database.Service.GetRecordForm(code);
+            var restoredAttachment = Assert.Single(restored.Attachments);
+            Assert.Equal(originalContent, restored.Content);
+            Assert.Equal(originalBytes, File.ReadAllBytes(restoredAttachment.FilePath));
+            Assert.True(File.Exists(safetyPath));
+        }
+
         [Theory]
         [InlineData(null)]
         [InlineData("")]
@@ -120,8 +191,9 @@ namespace QuanLyHoSo.IntegrationTests
                 Assert.True(File.Exists(createdPath));
             }
 
-            var retainedBackups = Directory.GetFiles(backupFolder, "quanlyhoso_*.db");
+            var retainedBackups = Directory.GetFiles(backupFolder, "quanlyhoso_*.*");
             Assert.Equal(10, retainedBackups.Length);
+            Assert.All(retainedBackups, path => Assert.Equal(".qlhbackup", Path.GetExtension(path)));
             Assert.DoesNotContain(firstBackup, retainedBackups);
             Assert.DoesNotContain(legacyBackup, retainedBackups);
             Assert.DoesNotContain(safetyBackup, retainedBackups);

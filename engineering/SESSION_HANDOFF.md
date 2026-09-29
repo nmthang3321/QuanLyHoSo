@@ -1,6 +1,27 @@
 # Session handoff - QuanLyHoSo
 
-Last updated: 2026-09-17
+Last updated: 2026-09-29
+
+## Current application changes - 2026-09-29
+
+- Record code is editable at intake and accepts externally supplied values only in the form `HS-<year>-<6 digits>`; duplicate codes are rejected. Automatic next-code generation remains the default convenience value.
+- A fresh production database no longer seeds processor names. Sample-data mode still contains named processors for demonstrations.
+- All new attachment bytes are uploaded to the Server and stored below `QuanLyHoSoFiles\Attachments`; generated Word files are stored below `QuanLyHoSoFiles\GeneratedDocuments`. Clients download files through the authenticated API and use local copies only as cache. Accessible legacy paths migrate into managed storage during initialization.
+- The normal `.qlhbackup` format includes SQLite plus all server-managed attachments and generated documents. Restore stages and validates the package and creates a complete pre-restore safety package. Legacy `.db` files remain supported but are database-only.
+- The processing strip now has exactly eight steps: `Tiếp nhận`, `Phân loại`, `Phân công`, `Xác minh`, `Kết quả xử lý ban đầu`, `Chuyển cơ quan khác`, `Chờ kết quả`, and `Lưu hồ sơ`. Old `Đang chờ bổ sung tài liệu` values normalize to step 5; `Đã giải quyết` maps to step 8.
+- Saving `Chuyển cơ quan khác` records the transfer step and automatically advances the current status to `Chờ kết quả`.
+- The initial-result document popup starts `Nhận xét` and `Đề xuất` blank and requires both as multiline text. It also requires `Tên đội trưởng` and `Tên lãnh đạo duyệt`; `Cán bộ đề xuất` comes from the record's current processor. Generated Word documents preserve line breaks.
+- Release build verification completed with zero errors. Unit tests passed 56/56 and integration tests passed 57/57. Existing warnings include .NET 5 end-of-support and NU1900 when NuGet vulnerability metadata is unavailable.
+- Markdown documentation was updated for these changes. The customer PDF was intentionally not regenerated in this documentation pass.
+
+## Independent Client updates - 2026-09-28
+
+- Client and Server product versions are independent. LAN health and business routes no longer require exact product-version equality, and the Client installer checks server availability rather than version compatibility.
+- For rollout against an older strict Server, the new Client automatically adopts the Server-requested value in the legacy `X-QuanLyHoSo-Version` header after health checking, while reporting its real version in `X-QuanLyHoSo-Client-Version`. This permits a Client-only upgrade without first updating the Server.
+- The Settings update flow updates only the current Client workstation. Internal discovery and download accept only packages named `QuanLyHoSo-Client-<version>.zip`; Server packages are never selected.
+- The legacy health response version fields remain for compatibility and diagnostics. `ServerVersion` reports the actual Server version, `RequiredClientVersion` is empty, and `IsClientVersionSupported` is always true.
+- Verification completed after the change: Release build passed with zero errors; the full non-UI suite passed 87 tests (43 unit and 44 integration), including different-version and older-Server compatibility regressions; smoke passed 6/6.
+- The customer PDF was regenerated from the canonical builder. It remains 58 A4 portrait pages with zero rotation and embedded Arial; every rendered page was visually reviewed, and stale exact-version requirement phrases are absent.
 
 This file is the compact starting context for future maintenance sessions. For detailed behavior, follow the links in `engineering/INDEX.md` instead of loading every document.
 
@@ -46,29 +67,29 @@ Documentation routing:
 
 ## Automatic backup and Settings layout - 2026-09-16
 
-- The server checks automatic backup on startup and once per hour while running. It creates a new SQLite online backup when the latest automatic backup is at least seven days old.
-- Automatic filenames use `quanlyhoso_auto_yyyyMMdd_HHmmss.db` under `%LocalAppData%\QuanLyHoSo\Backup` on the server.
-- Cleanup retains the ten newest `quanlyhoso_*.db` files across automatic, manual, legacy, and pre-restore safety backups. Cleanup runs on each automatic check.
+- The server checks automatic backup on startup and once per hour while running. It creates a new complete package when the latest automatic backup is at least seven days old.
+- Automatic filenames use `quanlyhoso_auto_yyyyMMdd_HHmmss.qlhbackup` under `%LocalAppData%\QuanLyHoSo\Backup` on the server.
+- Cleanup retains the ten newest recognized `.qlhbackup` and legacy `.db` files across automatic, manual, and pre-restore safety backups. Cleanup runs on each automatic check.
 - The Data Backup card is split into automatic-backup status, manual backup, and restore sections. Long paths use ellipsis and tooltips; restore uses a mild warning treatment.
 - In the Admin layout, Data Backup is to the left of Quick Actions. Quick Actions is top-aligned and keeps its content height instead of stretching to match the backup card.
-- Restore uploads use a temporary `.restore_upload_*.db` file, which is deleted after the restore attempt finishes.
+- Restore uploads use staging data that is deleted after the restore attempt finishes. A complete pre-restore `.qlhbackup` safety package is created before live database/files are replaced.
 
 See `engineering/features/BACKUP_RESTORE.md` and `engineering/pages/SETTINGS_HOME.md`.
 
 ## Initial-result transfer documents - 2026-09-14
 
-- Confirming document creation opens an overlay for transfer number, transfer date, and complaint-forwarding date. All three values are required; cancel keeps the form, success closes the overlay, and errors keep it open.
-- The read-only preview includes sender name, receive source, content summary, note, proposal, and contact address. A newly entered `ProcessingNote` takes precedence over the stored note.
+- Confirming document creation opens an overlay for transfer number, transfer date, complaint-forwarding date, team leader, approving leader, review, and proposal. These values are required; cancel keeps the form, success closes the overlay, and errors keep it open.
+- Review and proposal always open blank, accept long multiline input, and do not read stored record notes. The proposing officer comes from the current `Người xử lý` field.
 - `InitialResultDocumentDetails` travels through the service/LAN boundary to the generator. Client and server must therefore be updated together; no schema change was introduced.
 - The extra values are used only for the current document-generation operation and are not stored as record fields.
-- The three Word templates preserve their existing runs/styles and map the highlighted regions to the new values.
+- The three Word templates preserve their existing runs/styles and map the highlighted regions to the new values. The generator preserves review/proposal line breaks and replaces the complete static leader name so no rank prefix remains.
 
 ## Processing and form behavior - 2026-09-14
 
-- The seven workflow icons have Vietnamese guidance tooltips. Step 6 is displayed as `Chờ kết quả`; stored history keys and status mappings were not changed.
+- The workflow has eight Vietnamese guidance icons in business order. `Chuyển cơ quan khác` is step 6, `Chờ kết quả` is step 7, and `Lưu hồ sơ` is step 8; no leadership-approval icon is displayed.
 - Destination agency is required when forwarding to another agency.
 - The record-input action bar is fixed below the scrollable content and is disabled while the comparison overlay is open.
-- Every field in General Information is required, including phone number, contact address, incident address, and generated record code. Whitespace-only values are rejected.
+- Every field in General Information is required, including phone number, contact address, incident address, and record code. Record code is editable but must match `HS-<year>-<6 digits>` and be unique; whitespace-only values are rejected.
 - Leaders can open processing details in read-only mode but cannot save, delete, or otherwise update processing.
 - All roles land on Dashboard after sign-in, including after mandatory password changes.
 - Processing details now fall back to the record-form attachment list when the processing payload contains no attachments, preventing persisted files from being shown as missing. A ViewModel regression test covers this case.
@@ -112,12 +133,12 @@ See `engineering/features/RECORD_RESUBMISSION.md`.
 - The server has a compact WPF administration/tray UI. Closing or minimizing hides it to the tray; only the explicit exit action stops the server.
 - The client sends a 30-second heartbeat. The server considers unique machine names active for 90 seconds.
 - The server can start/stop LAN listening, reset the built-in `admin`, open data/log folders, and copy the client URL.
-- Attachment operations over LAN currently store metadata/path only; physical client-to-server file upload is not implemented.
+- Attachment operations upload content to Server-managed storage. Authenticated clients download the durable copy; full backup/restore includes the managed file tree.
 - Technical log files matching `quanlyhoso-yyyyMMdd.log` are retained for 30 days.
 
 ## Verification baseline
 
-- Latest pre-push noninteractive verification on 2026-09-17: `tests/Scripts/run-all.ps1` passed 86 tests (43 unit/ViewModel and 43 integration); Release build completed with zero errors. UI tests were not included. Build warnings included the existing .NET 5 end-of-support warning and NU1900 because NuGet vulnerability metadata could not be fetched.
+- Latest noninteractive verification on 2026-09-28: Release build completed with zero errors; unit tests passed 56/56 and integration tests passed 57/57. UI tests were not included. Build warnings included the existing .NET 5 end-of-support warning and NU1900 because NuGet vulnerability metadata could not be fetched.
 - Historical full verification on 2026-09-14: Release solution build and `tests/Scripts/run-all.ps1 -IncludeUI` passed 80 tests (40 unit, 39 integration, 1 UI smoke).
 - Test projects target .NET 8 while the application remains on .NET 5.
 - Each integration test uses an isolated temporary database. Generated test reports are ignored by Git.

@@ -4,7 +4,7 @@
 |---|---|
 | Mức tài liệu | Thiết kế tổng thể (High Level Design) |
 | Đối tượng đọc | Khách hàng, cán bộ quản lý và đơn vị triển khai |
-| Ngày cập nhật | 17/09/2026 |
+| Ngày cập nhật | 29/09/2026 |
 
 ## 1. Mục đích tài liệu
 
@@ -155,7 +155,7 @@ Cho phép tiếp nhận hồ sơ mới với các nhóm thông tin:
 - Mức độ vụ việc và ngày hẹn trả kết quả.
 - Tài liệu liên quan.
 
-Hệ thống kiểm tra các trường bắt buộc, cấp mã hồ sơ và ghi nhận người tạo. Khi phát hiện lịch sử của cùng người gửi, người dùng có thể đối chiếu trước khi quyết định tạo hồ sơ độc lập hoặc ghi nhận hồ sơ gửi lại.
+Hệ thống kiểm tra các trường bắt buộc, gợi ý mã hồ sơ và ghi nhận người tạo. Người dùng có thể nhập mã từ nguồn bên ngoài theo định dạng `HS-<năm>-<6 chữ số>`; hệ thống từ chối mã sai định dạng hoặc bị trùng. Khi phát hiện lịch sử của cùng người gửi, người dùng có thể đối chiếu trước khi quyết định tạo hồ sơ độc lập hoặc ghi nhận hồ sơ gửi lại.
 
 ### 6.3 Danh sách hồ sơ
 
@@ -212,15 +212,13 @@ Quy trình thực tế có thể thay đổi theo nội dung xử lý, nhưng lu
 
 ```mermaid
 flowchart LR
-    A[Tiếp nhận hồ sơ] --> B[Phân loại]
-    B --> C[Phân công cán bộ]
-    C --> D[Xác minh và xử lý]
-    D --> E{Cần chờ thông tin?}
-    E -->|Có| F[Chờ kết quả hoặc bổ sung tài liệu]
-    F --> D
-    E -->|Không| G{Kết quả xử lý}
-    G -->|Hoàn tất| H[Đã giải quyết]
-    G -->|Không thuộc thẩm quyền| I[Chuyển cơ quan khác]
+    A[Tiếp nhận] --> B[Phân loại]
+    B --> C[Phân công]
+    C --> D[Xác minh]
+    D --> E[Kết quả xử lý ban đầu]
+    E --> F[Chuyển cơ quan khác]
+    F --> G[Chờ kết quả]
+    G --> H[Lưu hồ sơ]
 ```
 
 Tại mỗi bước, hệ thống có thể ghi nhận thời gian, cán bộ thực hiện, nội dung xử lý và trạng thái mới. Lịch sử đã ghi giúp đơn vị truy vết quá trình giải quyết hồ sơ.
@@ -303,7 +301,7 @@ Giới hạn hiện tại:
 
 ### Sao lưu thủ công
 
-Admin có thể yêu cầu Server tạo một bản sao an toàn và lưu/tải bản sao về vị trí đã chọn.
+Admin có thể yêu cầu Server tạo gói `.qlhbackup` và tải về vị trí đã chọn. Gói chứa một bản SQLite nhất quán cùng toàn bộ file đính kèm và biểu mẫu Word do Server quản lý.
 
 ### Khôi phục
 
@@ -311,8 +309,10 @@ Trước khi thay dữ liệu hiện tại, hệ thống:
 
 1. Kiểm tra file được chọn.
 2. Tạo bản sao an toàn của dữ liệu đang dùng.
-3. Khôi phục cơ sở dữ liệu.
+3. Khôi phục cơ sở dữ liệu và kho file được quản lý.
 4. Kiểm tra nhanh tính toàn vẹn.
+
+Hệ thống vẫn nhận bản sao `.db` cũ để tương thích, nhưng loại này chỉ khôi phục cơ sở dữ liệu và không chứa file đính kèm hoặc biểu mẫu đã tạo.
 5. Xóa tệp tải lên tạm thời sau khi hoàn tất.
 
 Khôi phục ảnh hưởng tới toàn bộ người dùng. Admin cần thông báo dừng thao tác phát sinh dữ liệu trước khi thực hiện.
@@ -328,14 +328,14 @@ Nhật ký giúp trả lời các câu hỏi như: ai đã thao tác, thao tác 
 
 ## 13. Cập nhật phần mềm
 
-Hệ thống hỗ trợ kiểm tra gói cập nhật nội bộ. Khi nâng cấp:
+Hệ thống hỗ trợ kiểm tra gói cập nhật Client nội bộ:
 
-- Client và Server bắt buộc sử dụng cùng phiên bản phát hành.
-- Client gửi phiên bản trong mỗi kết nối; Server công bố phiên bản yêu cầu qua kiểm tra trạng thái.
-- Server từ chối đăng nhập và thao tác nghiệp vụ khi Client thiếu phiên bản hoặc có phiên bản khác, đồng thời Client hiển thị yêu cầu cập nhật.
-- Cần sao lưu dữ liệu trước khi nâng cấp.
-- Nên dừng thao tác nhập liệu trong thời gian cập nhật Server.
-- Cập nhật Server trước, sau đó cập nhật toàn bộ Client ngay trong cùng đợt bảo trì.
+- Phiên bản Client và Server được quản lý độc lập; chênh lệch số phiên bản không làm Server từ chối đăng nhập hoặc API nghiệp vụ.
+- Client vẫn gửi số phiên bản trong kết nối và Server vẫn trả số phiên bản của mình qua API trạng thái để phục vụ chẩn đoán.
+- Chức năng **Cập nhật phần mềm** chỉ tải và thay thế ứng dụng Client trên máy trạm hiện tại.
+- Server chỉ công bố gói ZIP dành cho Client có tên `QuanLyHoSo-Client-<phiên_bản>.zip`; gói Server không được chọn làm gói cập nhật trong ứng dụng.
+- Việc cập nhật Client không cập nhật Server và không thay đổi cơ sở dữ liệu trên Server.
+- Chỉ cập nhật Server khi có thay đổi dành cho Server, schema dữ liệu hoặc LAN API; cần sao lưu dữ liệu và dừng thao tác nhập liệu trong thời gian bảo trì Server.
 - Cơ sở dữ liệu hiện có được giữ lại; quá trình cập nhật không tự tạo lại dữ liệu mẫu.
 
 ## 14. Khả năng hoạt động và xử lý sự cố
@@ -345,7 +345,7 @@ Hệ thống hỗ trợ kiểm tra gói cập nhật nội bộ. Khi nâng cấp
 | Server tắt | Client không đăng nhập hoặc tải dữ liệu được. | Khởi động máy và ứng dụng Server. |
 | Mất mạng LAN | Máy bị mất kết nối không thể lưu dữ liệu mới. | Khôi phục mạng rồi thực hiện lại thao tác. |
 | Sai URL Server | Client báo không kết nối được. | Kiểm tra cấu hình địa chỉ và cổng. |
-| Client và Server khác phiên bản | Client không được đăng nhập hoặc thực hiện thao tác nghiệp vụ. | Cài Client có cùng phiên bản đang chạy trên Server. |
+| Client và Server khác phiên bản | Không bị chặn chỉ vì số phiên bản khác nhau. | Tiếp tục sử dụng; chỉ cập nhật thành phần có bản sửa đổi cần triển khai. |
 | Database bị khóa hoặc lỗi | Một số thao tác dữ liệu thất bại. | Dừng thao tác, kiểm tra nhật ký và dùng bản sao lưu khi cần. |
 | Cập nhật từ máy khác | Màn hình đang mở có thể chưa hiển thị ngay. | Mở lại trang hoặc thực hiện thao tác tải lại theo màn hình. |
 
@@ -368,7 +368,7 @@ Chưa bao gồm:
 - Cơ chế thông báo đẩy thời gian thực tới mọi màn hình đang mở.
 - Kho quản lý tài liệu chuyên dụng thay thế hoàn toàn hệ thống tệp.
 
-Đối với tệp đính kèm, phiên bản hiện tại trao đổi thông tin tệp và đường dẫn qua API nhưng chưa thực hiện tải nội dung tệp vật lý từ Client lên Server. Đơn vị triển khai cần thống nhất thư mục dùng chung hoặc quy trình lưu tệp phù hợp cho tới khi chức năng tải tệp tập trung được bổ sung.
+Tệp đính kèm được Client tải lên Server và lưu trong kho `QuanLyHoSoFiles\Attachments`; biểu mẫu được tạo trong `QuanLyHoSoFiles\GeneratedDocuments`. Cơ sở dữ liệu lưu thông tin tham chiếu, còn nội dung file được Client tải qua API có xác thực khi người dùng mở hoặc tải xuống.
 
 Các nội dung trên có thể được phát triển ở giai đoạn sau tùy nhu cầu và hạ tầng của đơn vị.
 

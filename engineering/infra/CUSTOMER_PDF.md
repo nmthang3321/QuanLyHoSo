@@ -106,8 +106,8 @@ instead of the older reset-password dialog referenced by the usage guide.
 4. Compare embedded image RGB pixels against the original PNGs, and check text bounds,
    missing glyphs, and the fonts actually used in PDF text.
 
-The latest 2026-09-17 refreshed PDF has 58 pages, all A4 portrait, 37 figure
-placements, and 48 bookmarks. All 33 unique embedded images matched the original
-PNG RGB pixels exactly. Text-bound and missing-glyph checks passed; all pages were
-rendered with Poppler and visually reviewed. These results apply to this export,
-not automatically to future regenerations. Application code was not changed.
+The latest 2026-09-28 refreshed PDF has 58 pages, all A4 portrait with zero rotation
+and embedded Arial. All pages were rendered with Poppler and visually reviewed after
+the Client-only update policy was documented; no clipping, overlap, or stale exact-
+version requirement was found. These results apply to this export, not automatically
+to future regenerations.

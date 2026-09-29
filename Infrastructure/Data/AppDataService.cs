@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text.RegularExpressions;
@@ -21,9 +22,10 @@ namespace QuanLyHoSo.Infrastructure.Data
     {
         private const string RecordCodePrefix = "HS";
         private const int RecordCodeSequenceWidth = 6;
+        private const int ProcessStepCount = 8;
         private const string ProtectedCalculationCatalogType = "Priority";
-        private const string AutomaticBackupFilePattern = "quanlyhoso_auto_*.db";
-        private const string RetainedBackupFilePattern = "quanlyhoso_*.db";
+        private const string BackupPackageExtension = ".qlhbackup";
+        private const string AutomaticBackupFilePattern = "quanlyhoso_auto_*.qlhbackup";
         private const int AutomaticBackupIntervalDays = 7;
         private const int AutomaticBackupRetentionCount = 10;
         private static readonly Lazy<AppDataService> LazyInstance = new Lazy<AppDataService>(() => new AppDataService());
@@ -31,10 +33,18 @@ namespace QuanLyHoSo.Infrastructure.Data
         private readonly string _connectionString;
         private readonly LanDataClient _lanClient;
         private readonly LanDataServer _lanServer;
+        private readonly string _storageRoot;
+        private readonly string _attachmentsRoot;
+        private readonly string _generatedDocumentsRoot;
+        private readonly string _attachmentCacheRoot;
 
         private AppDataService()
         {
             DatabasePath = AppPathSettings.Current.DatabasePath;
+            _storageRoot = GetStorageRoot(DatabasePath);
+            _attachmentsRoot = Path.Combine(_storageRoot, "Attachments");
+            _generatedDocumentsRoot = Path.Combine(_storageRoot, "GeneratedDocuments");
+            _attachmentCacheRoot = GetAttachmentCacheRoot();
             if (AppPathSettings.Current.IsClientMode)
             {
                 _lanClient = new LanDataClient();
@@ -59,6 +69,10 @@ namespace QuanLyHoSo.Infrastructure.Data
             }
 
             DatabasePath = Path.GetFullPath(databasePath);
+            _storageRoot = GetStorageRoot(DatabasePath);
+            _attachmentsRoot = Path.Combine(_storageRoot, "Attachments");
+            _generatedDocumentsRoot = Path.Combine(_storageRoot, "GeneratedDocuments");
+            _attachmentCacheRoot = GetAttachmentCacheRoot();
             Directory.CreateDirectory(Path.GetDirectoryName(DatabasePath));
             _connectionString = new SqliteConnectionStringBuilder { DataSource = DatabasePath }.ToString();
         }
@@ -121,6 +135,7 @@ namespace QuanLyHoSo.Infrastructure.Data
             MigrateLegacyPriorityColumnIfNeeded(connection);
             EnsureRecordTrashSchema(connection);
             RepairRecordForeignKeys(connection);
+            MigrateAccessibleAttachmentsToServerStorage(connection);
             SeedUsers(connection);
             SeedAreas(connection);
             EnsureStandardOrganizationAreas(connection);
@@ -128,6 +143,7 @@ namespace QuanLyHoSo.Infrastructure.Data
             NormalizeSeverityCatalog(connection);
             NormalizeRecordSeverity(connection);
             NormalizeProcessingHistoryTitles(connection);
+            NormalizeProcessingStatuses(connection);
             if (seedSampleRecords)
             {
                 SeedRecords(connection);
@@ -1760,11 +1776,11 @@ LIMIT 1;";
             var total = CountRecords(connection, fromDate, toDate);
             var processing = CountRecordsByStatuses(connection, fromDate, toDate, "Đang phân loại", "Đã phân công", "Đang xác minh", "Đang xử lý");
             var resolved = CountRecordsByStatuses(connection, fromDate, toDate, "Đã giải quyết");
-            var waiting = CountRecordsByStatuses(connection, fromDate, toDate, "Chờ kết quả", "Đang chờ bổ sung tài liệu");
+            var waiting = CountRecordsByStatuses(connection, fromDate, toDate, "Kết quả xử lý ban đầu", "Chuyển cơ quan khác", "Chờ kết quả");
             var previousTotal = CountRecords(connection, previousFromDate, previousToDate);
             var previousProcessing = CountRecordsByStatuses(connection, previousFromDate, previousToDate, "Đang phân loại", "Đã phân công", "Đang xác minh", "Đang xử lý");
             var previousResolved = CountRecordsByStatuses(connection, previousFromDate, previousToDate, "Đã giải quyết");
-            var previousWaiting = CountRecordsByStatuses(connection, previousFromDate, previousToDate, "Chờ kết quả", "Đang chờ bổ sung tài liệu");
+            var previousWaiting = CountRecordsByStatuses(connection, previousFromDate, previousToDate, "Kết quả xử lý ban đầu", "Chuyển cơ quan khác", "Chờ kết quả");
 
             return new List<DashboardMetric>
             {
@@ -2085,9 +2101,34 @@ LIMIT 1;";
             {
                 throw new InvalidOperationException("Hồ sơ không còn trong danh sách làm việc. Vui lòng tải lại; nếu hồ sơ đã xóa, hãy khôi phục từ thùng rác.");
             }
+
             if (recordId.HasValue)
             {
                 EnsureCanEditRecord(connection, transaction, recordId.Value);
+            }
+            else
+            {
+                EnsureCanCreateRecords();
+            }
+
+            var requestedRecordCode = RecordCodeRules.Normalize(record.RecordCode);
+            if (!recordId.HasValue && requestedRecordCode.Length == 0)
+            {
+                requestedRecordCode = GenerateNextRecordCode(connection, transaction, DateTime.Today.Year);
+            }
+
+            var recordCodeWasChanged = !recordId.HasValue ||
+                !string.Equals(requestedRecordCode, NormalizeDbText(originalRecordCode), StringComparison.Ordinal);
+            if (recordCodeWasChanged && !RecordCodeRules.IsValid(requestedRecordCode))
+            {
+                throw new InvalidOperationException(
+                    $"Số hồ sơ / Số đơn phải đúng định dạng HS-<năm>-<6 chữ số>. Ví dụ: {RecordCodeRules.FormatExample}.");
+            }
+
+            EnsureRecordCodeAvailable(connection, transaction, requestedRecordCode, recordId);
+            record.RecordCode = requestedRecordCode;
+            if (recordId.HasValue)
+            {
                 using var metadata = connection.CreateCommand();
                 metadata.Transaction = transaction;
                 metadata.CommandText = "SELECT OriginalRecordCode, ResubmissionReason FROM Records WHERE Id = $id;";
@@ -2118,7 +2159,7 @@ LIMIT 1;";
                     EnsureNoLinkedResubmissions(connection, transaction, originalRecordCode);
             }
             var now = DateTime.Now.ToString("O", CultureInfo.InvariantCulture);
-            var savedRecordCode = NormalizeDbText(record.RecordCode);
+            var savedRecordCode = requestedRecordCode;
 
             if (recordId.HasValue)
             {
@@ -2153,16 +2194,13 @@ WHERE Id = $recordId;";
                 updateCommand.Parameters.AddWithValue("$senderId", ResolveSenderId(connection, transaction, record));
                 AddRecordFormParameters(updateCommand, record, now);
                 updateCommand.ExecuteNonQuery();
-                ReplaceAttachments(connection, transaction, recordId.Value, record.Attachments);
+                ReplaceAttachments(connection, transaction, recordId.Value, PrepareAttachmentsForServerStorage(savedRecordCode, record.Attachments));
                 WriteDatabaseLog(connection, transaction, "Hồ sơ", "Sửa", savedRecordCode, $"Cập nhật hồ sơ {savedRecordCode}.");
             }
             else
             {
-                EnsureCanCreateRecords();
                 var originalId = ValidateResubmission(connection, transaction, record);
                 var senderId = ResolveSenderId(connection, transaction, record);
-                savedRecordCode = GenerateNextRecordCode(connection, transaction, DateTime.Today.Year);
-                record.RecordCode = savedRecordCode;
                 using var insertCommand = connection.CreateCommand();
                 insertCommand.Transaction = transaction;
                 insertCommand.CommandText = @"
@@ -2185,7 +2223,7 @@ SELECT last_insert_rowid();";
                 insertCommand.Parameters.AddWithValue("$processor", AuthContext.IsOfficer ? AuthContext.CurrentDisplayName : NormalizeDbText(record.ReceiverName));
                 insertCommand.Parameters.AddWithValue("$createdAt", now);
                 var insertedId = Convert.ToInt32(insertCommand.ExecuteScalar(), CultureInfo.InvariantCulture);
-                ReplaceAttachments(connection, transaction, insertedId, record.Attachments);
+                ReplaceAttachments(connection, transaction, insertedId, PrepareAttachmentsForServerStorage(savedRecordCode, record.Attachments));
                 WriteDatabaseLog(connection, transaction, "Hồ sơ", "Thêm", savedRecordCode,
                     originalId.HasValue ? $"Lưu hồ sơ gửi lại {savedRecordCode}, tham chiếu {record.OriginalRecordCode}; không xác minh lại." : $"Thêm mới hồ sơ {savedRecordCode}.");
             }
@@ -2322,6 +2360,30 @@ WHERE RecordCode = $code AND DeletedAt <> '' AND DeletionBatchId = $batch;";
             return value == null ? (int?)null : Convert.ToInt32(value, CultureInfo.InvariantCulture);
         }
 
+        private static void EnsureRecordCodeAvailable(
+            SqliteConnection connection,
+            SqliteTransaction transaction,
+            string recordCode,
+            int? currentRecordId)
+        {
+            using var command = connection.CreateCommand();
+            command.Transaction = transaction;
+            command.CommandText = @"
+SELECT 1
+FROM Records
+WHERE RecordCode = $recordCode
+  AND ($currentRecordId IS NULL OR Id <> $currentRecordId)
+LIMIT 1;";
+            command.Parameters.AddWithValue("$recordCode", recordCode);
+            command.Parameters.AddWithValue("$currentRecordId", currentRecordId.HasValue
+                ? (object)currentRecordId.Value
+                : DBNull.Value);
+            if (command.ExecuteScalar() != null)
+            {
+                throw new InvalidOperationException($"Số hồ sơ / Số đơn {recordCode} đã tồn tại.");
+            }
+        }
+
         private static void AddRecordFormParameters(SqliteCommand command, RecordFormDraft record, string updatedAt)
         {
             command.Parameters.AddWithValue("$recordCode", NormalizeDbText(record.RecordCode));
@@ -2375,6 +2437,201 @@ WHERE RecordCode = $code AND DeletedAt <> '' AND DeletionBatchId = $batch;";
             }
         }
 
+        private IReadOnlyList<AttachmentDraft> PrepareAttachmentsForServerStorage(string recordCode, IReadOnlyList<AttachmentDraft> attachments)
+        {
+            if (attachments == null || attachments.Count == 0)
+            {
+                return Array.Empty<AttachmentDraft>();
+            }
+
+            var recordFolder = Path.Combine(_attachmentsRoot, SanitizePathSegment(recordCode, "record"));
+            Directory.CreateDirectory(recordFolder);
+            var managedRoot = Path.GetFullPath(_storageRoot).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+            var result = new List<AttachmentDraft>(attachments.Count);
+
+            foreach (var attachment in attachments.Where(item => item != null))
+            {
+                var fileName = Path.GetFileName(attachment.FileName ?? string.Empty);
+                if (string.IsNullOrWhiteSpace(fileName))
+                {
+                    throw new InvalidDataException("Tệp đính kèm không có tên hợp lệ.");
+                }
+
+                var destinationPath = Path.Combine(recordFolder, fileName);
+                if (attachment.Content != null && attachment.Content.Length > 0)
+                {
+                    File.WriteAllBytes(destinationPath, attachment.Content);
+                }
+                else if (!string.IsNullOrWhiteSpace(attachment.FilePath) && File.Exists(attachment.FilePath))
+                {
+                    var sourcePath = Path.GetFullPath(attachment.FilePath);
+                    var sourceIsManaged = sourcePath.StartsWith(managedRoot, StringComparison.OrdinalIgnoreCase);
+                    if (!sourceIsManaged || !string.Equals(sourcePath, Path.GetFullPath(destinationPath), StringComparison.OrdinalIgnoreCase))
+                    {
+                        File.Copy(sourcePath, destinationPath, true);
+                    }
+                }
+                else
+                {
+                    // Preserve legacy metadata if the old source is no longer reachable.
+                    // New client uploads always carry Content and therefore use the server path above.
+                    result.Add(new AttachmentDraft
+                    {
+                        FileName = fileName,
+                        FileSize = attachment.FileSize,
+                        FilePath = attachment.FilePath
+                    });
+                    continue;
+                }
+
+                result.Add(new AttachmentDraft
+                {
+                    FileName = fileName,
+                    FileSize = string.IsNullOrWhiteSpace(attachment.FileSize)
+                        ? new FileInfo(destinationPath).Length.ToString(CultureInfo.InvariantCulture)
+                        : attachment.FileSize,
+                    FilePath = destinationPath
+                });
+            }
+
+            return result;
+        }
+
+        private void MigrateAccessibleAttachmentsToServerStorage(SqliteConnection connection)
+        {
+            var items = new List<(int Id, string RecordCode, string FileName, string FilePath)>();
+            using (var command = connection.CreateCommand())
+            {
+                command.CommandText = @"
+SELECT a.Id, r.RecordCode, a.FileName, a.FilePath
+FROM RecordAttachments a
+INNER JOIN Records r ON r.Id = a.RecordId
+WHERE a.FilePath <> '';";
+                using var reader = command.ExecuteReader();
+                while (reader.Read())
+                {
+                    items.Add((reader.GetInt32(0), reader.GetString(1), reader.GetString(2), reader.GetString(3)));
+                }
+            }
+
+            var managedRoot = Path.GetFullPath(_storageRoot).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+            foreach (var item in items)
+            {
+                if (string.IsNullOrWhiteSpace(item.FilePath) || !File.Exists(item.FilePath))
+                {
+                    continue;
+                }
+
+                var sourcePath = Path.GetFullPath(item.FilePath);
+                if (sourcePath.StartsWith(managedRoot, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                try
+                {
+                    var recordFolder = Path.Combine(_attachmentsRoot, SanitizePathSegment(item.RecordCode, "record"));
+                    Directory.CreateDirectory(recordFolder);
+                    var destinationPath = Path.Combine(recordFolder, Path.GetFileName(item.FileName));
+                    File.Copy(sourcePath, destinationPath, true);
+
+                    using var update = connection.CreateCommand();
+                    update.CommandText = "UPDATE RecordAttachments SET FilePath = $filePath WHERE Id = $id;";
+                    update.Parameters.AddWithValue("$filePath", destinationPath);
+                    update.Parameters.AddWithValue("$id", item.Id);
+                    update.ExecuteNonQuery();
+                }
+                catch (Exception ex)
+                {
+                    AppLogger.Warning("Attachments", "MigrateToServerStorage", "Could not migrate a legacy attachment; its existing path was preserved.", ex, item.RecordCode);
+                }
+            }
+        }
+
+        public string GetAttachmentFilePath(string recordCode, string fileName)
+        {
+            if (string.IsNullOrWhiteSpace(recordCode) || string.IsNullOrWhiteSpace(fileName))
+            {
+                throw new FileNotFoundException("Không tìm thấy tệp đính kèm.");
+            }
+
+            if (AppPathSettings.Current.IsClientMode)
+            {
+                var cacheFolder = Path.Combine(_attachmentCacheRoot, SanitizePathSegment(recordCode, "record"));
+                Directory.CreateDirectory(cacheFolder);
+                var destinationPath = Path.Combine(cacheFolder, Path.GetFileName(fileName));
+                _lanClient.DownloadFile("attachments/download", new AttachmentDownloadRequest
+                {
+                    RecordCode = recordCode,
+                    FileName = fileName
+                }, destinationPath);
+                return destinationPath;
+            }
+
+            using var connection = OpenConnection();
+            if (!AuthContext.CanAccessRecord(GetRecordProcessorName(connection, recordCode)))
+            {
+                throw new UnauthorizedAccessException("Bạn không có quyền truy cập tệp đính kèm của hồ sơ này.");
+            }
+
+            using var command = connection.CreateCommand();
+            command.CommandText = @"
+SELECT a.FilePath
+FROM RecordAttachments a
+INNER JOIN Records r ON r.Id = a.RecordId
+WHERE r.RecordCode = $recordCode AND a.FileName = $fileName
+ORDER BY a.Id DESC LIMIT 1;";
+            command.Parameters.AddWithValue("$recordCode", NormalizeDbText(recordCode));
+            command.Parameters.AddWithValue("$fileName", Path.GetFileName(fileName));
+            var path = Convert.ToString(command.ExecuteScalar(), CultureInfo.InvariantCulture);
+            if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
+            {
+                throw new FileNotFoundException("Không tìm thấy tệp đính kèm trên máy server.", path);
+            }
+
+            return path;
+        }
+
+        public void DownloadAttachment(string recordCode, string fileName, string destinationPath)
+        {
+            if (string.IsNullOrWhiteSpace(destinationPath))
+            {
+                throw new ArgumentException("Destination path is required.", nameof(destinationPath));
+            }
+
+            var destinationFolder = Path.GetDirectoryName(destinationPath);
+            if (!string.IsNullOrWhiteSpace(destinationFolder))
+            {
+                Directory.CreateDirectory(destinationFolder);
+            }
+
+            if (AppPathSettings.Current.IsClientMode)
+            {
+                _lanClient.DownloadFile("attachments/download", new AttachmentDownloadRequest
+                {
+                    RecordCode = recordCode,
+                    FileName = fileName
+                }, destinationPath);
+                return;
+            }
+
+            var sourcePath = GetAttachmentFilePath(recordCode, fileName);
+            if (!string.Equals(Path.GetFullPath(sourcePath), Path.GetFullPath(destinationPath), StringComparison.OrdinalIgnoreCase))
+            {
+                File.Copy(sourcePath, destinationPath, true);
+            }
+        }
+
+        private static string SanitizePathSegment(string value, string fallback)
+        {
+            var invalidCharacters = Path.GetInvalidFileNameChars();
+            var sanitized = new string((value ?? string.Empty)
+                .Trim()
+                .Select(character => invalidCharacters.Contains(character) ? '_' : character)
+                .ToArray());
+            return string.IsNullOrWhiteSpace(sanitized) ? fallback : sanitized;
+        }
+
         private IReadOnlyList<AttachmentDraft> MergeInitialResultDocuments(
             SqliteConnection connection,
             SqliteTransaction transaction,
@@ -2413,7 +2670,7 @@ WHERE RecordCode = $code AND DeletedAt <> '' AND DeletionBatchId = $batch;";
             try
             {
                 var record = ReadRecordFormById(connection, transaction, recordId);
-                return InitialResultDocumentGenerator.Generate(record, recordCode, processingDate, GetGeneratedDocumentsRoot(), existingAttachments, documentDetails);
+                return InitialResultDocumentGenerator.Generate(record, recordCode, processingDate, _generatedDocumentsRoot, existingAttachments, documentDetails);
             }
             catch (Exception ex)
             {
@@ -2458,12 +2715,15 @@ WHERE RecordCode = $code AND DeletedAt <> '' AND DeletionBatchId = $batch;";
             insertCommand.ExecuteNonQuery();
         }
 
-        private static string GetGeneratedDocumentsRoot()
+        private static string GetStorageRoot(string databasePath)
         {
-            return Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "QuanLyHoSo",
-                "GeneratedDocuments");
+            var databaseFolder = Path.GetDirectoryName(Path.GetFullPath(databasePath));
+            return Path.Combine(databaseFolder ?? AppContext.BaseDirectory, "QuanLyHoSoFiles");
+        }
+
+        private static string GetAttachmentCacheRoot()
+        {
+            return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "QuanLyHoSo", "AttachmentCache");
         }
 
         private static string GetDefaultBackupFolder()
@@ -2660,6 +2920,11 @@ LIMIT 1;";
                 return;
             }
 
+            var requestedStatus = NormalizeDbText(status);
+            var persistedStatus = string.Equals(requestedStatus, "Chuyển cơ quan khác", StringComparison.Ordinal)
+                ? "Chờ kết quả"
+                : requestedStatus;
+
             using var connection = OpenConnection();
             using var transaction = connection.BeginTransaction();
             var recordId = GetRecordId(connection, transaction, recordCode);
@@ -2677,11 +2942,11 @@ LIMIT 1;";
                 if (!string.IsNullOrEmpty(Convert.ToString(check.ExecuteScalar())))
                     throw new InvalidOperationException("Hồ sơ gửi lại đã tham chiếu kết quả giải quyết; không được đưa vào xác minh lại.");
             }
-            if (status == RecordStatuses.ResubmittedResolved)
+            if (persistedStatus == RecordStatuses.ResubmittedResolved)
                 throw new InvalidOperationException("Chỉ có thể đánh dấu hồ sơ gửi lại khi tạo hồ sơ và liên kết hồ sơ đã giải quyết.");
-            if (status != "Đã giải quyết") EnsureNoLinkedResubmissions(connection, transaction, recordCode);
-            EnsureCanUpdateProcessingStatus(status);
-            if (generateInitialResultDocuments && GetProcessStepNumber(status) == 5)
+            if (persistedStatus != "Đã giải quyết") EnsureNoLinkedResubmissions(connection, transaction, recordCode);
+            EnsureCanUpdateProcessingStatus(persistedStatus);
+            if (generateInitialResultDocuments && GetProcessStepNumber(persistedStatus) == 5)
             {
                 var validation = documentDetails?.GetValidationMessage() ?? "Vui lòng nhập thông tin phiếu chuyển đơn trước khi tạo tài liệu.";
                 if (!string.IsNullOrEmpty(validation)) throw new InvalidOperationException(validation);
@@ -2698,18 +2963,18 @@ SET Status = $status,
     UpdatedAt = $updatedAt
 WHERE Id = $recordId;";
             updateCommand.Parameters.AddWithValue("$recordId", recordId.Value);
-            updateCommand.Parameters.AddWithValue("$status", NormalizeDbText(status));
+            updateCommand.Parameters.AddWithValue("$status", persistedStatus);
             updateCommand.Parameters.AddWithValue("$processor", NormalizeDbText(processorName));
             updateCommand.Parameters.AddWithValue("$transferAreaName", NormalizeDbText(transferAreaName));
             updateCommand.Parameters.AddWithValue("$note", NormalizeDbText(note));
             updateCommand.Parameters.AddWithValue("$updatedAt", processedAt.ToString("O", CultureInfo.InvariantCulture));
             updateCommand.ExecuteNonQuery();
-            var attachmentsToSave = generateInitialResultDocuments && GetProcessStepNumber(status) == 5
+            var attachmentsToSave = generateInitialResultDocuments && GetProcessStepNumber(persistedStatus) == 5
                 ? MergeInitialResultDocuments(connection, transaction, recordId.Value, recordCode, processedAt, attachments, documentDetails)
                 : attachments;
-            ReplaceAttachments(connection, transaction, recordId.Value, attachmentsToSave);
+            ReplaceAttachments(connection, transaction, recordId.Value, PrepareAttachmentsForServerStorage(recordCode, attachmentsToSave));
 
-            var currentStep = GetProcessStepNumber(status);
+            var currentStep = GetProcessStepNumber(persistedStatus);
             DeleteProcessHistoryFromStep(connection, transaction, recordId.Value, currentStep);
 
             for (var step = 1; step <= currentStep; step++)
@@ -2717,7 +2982,7 @@ WHERE Id = $recordId;";
                 var definition = GetProcessStepDefinition(step);
                 var stepContent = step == currentStep
                     ? NormalizeDbText(content)
-                    : $"Tự động ghi nhận bước {definition.Title.ToLower(CultureInfo.GetCultureInfo("vi-VN"))} khi hồ sơ được chuyển đến bước {status}.";
+                    : $"Tự động ghi nhận bước {definition.Title.ToLower(CultureInfo.GetCultureInfo("vi-VN"))} khi hồ sơ được chuyển đến bước {persistedStatus}.";
                 var isCompleted = step < currentStep || currentStep >= 6;
 
                 if (step < currentStep && HasProcessHistory(connection, transaction, recordId.Value, definition.Title))
@@ -2737,7 +3002,10 @@ WHERE Id = $recordId;";
             }
 
             EnsureCatalogItem(connection, transaction, "ProcessorName", processorName);
-            WriteDatabaseLog(connection, transaction, "Xử lý hồ sơ", "Sửa", recordCode, $"Cập nhật trạng thái hồ sơ thành \"{NormalizeDbText(status)}\".");
+            var statusLog = string.Equals(requestedStatus, persistedStatus, StringComparison.Ordinal)
+                ? $"Cập nhật trạng thái hồ sơ thành \"{persistedStatus}\"."
+                : $"Ghi nhận chuyển cơ quan khác và tự động cập nhật trạng thái hồ sơ thành \"{persistedStatus}\".";
+            WriteDatabaseLog(connection, transaction, "Xử lý hồ sơ", "Sửa", recordCode, statusLog);
 
             transaction.Commit();
             NotifyCatalogChanged("ProcessorName");
@@ -2748,7 +3016,7 @@ WHERE Id = $recordId;";
             var allOpen = CountOpenProcessingRecords(connection);
             var needClassify = CountRecordsByStatuses(connection, null, null, "Mới tiếp nhận", "Đang phân loại");
             var processing = CountRecordsByStatuses(connection, null, null, "Đã phân công", "Đang xác minh");
-            var waiting = CountRecordsByStatuses(connection, null, null, "Chờ kết quả", "Đang chờ bổ sung tài liệu");
+            var waiting = CountRecordsByStatuses(connection, null, null, "Kết quả xử lý ban đầu", "Chuyển cơ quan khác", "Chờ kết quả");
             var dueSoon = CountDueSoonOpenRecords(connection);
             var overdue = CountOverdueOpenRecords(connection);
             var highPriority = CountHighPriorityOpenRecords(connection);
@@ -3149,12 +3417,12 @@ LIMIT $take;";
                     return null;
                 }
 
-                var fileName = $"quanlyhoso_auto_{checkTimeUtc:yyyyMMdd_HHmmss}.db";
+                var fileName = $"quanlyhoso_auto_{checkTimeUtc:yyyyMMdd_HHmmss}{BackupPackageExtension}";
                 var destinationPath = Path.Combine(backupFolder, fileName);
-                var temporaryPath = Path.Combine(backupFolder, $".automatic_backup_{Guid.NewGuid():N}.tmp");
+                var temporaryPath = Path.Combine(backupFolder, $".automatic_backup_{Guid.NewGuid():N}{BackupPackageExtension}");
                 try
                 {
-                    BackupDatabase(temporaryPath);
+                    BackupApplicationData(temporaryPath);
                     File.Move(temporaryPath, destinationPath);
                 }
                 finally
@@ -3183,7 +3451,9 @@ LIMIT $take;";
         private static void DeleteExpiredBackups(string backupFolder)
         {
             var orderedBackups = Directory
-                .EnumerateFiles(backupFolder, RetainedBackupFilePattern, SearchOption.TopDirectoryOnly)
+                .EnumerateFiles(backupFolder, "quanlyhoso_*.*", SearchOption.TopDirectoryOnly)
+                .Where(path => string.Equals(Path.GetExtension(path), BackupPackageExtension, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(Path.GetExtension(path), ".db", StringComparison.OrdinalIgnoreCase))
                 .Select(path => new FileInfo(path))
                 .OrderByDescending(file => file.LastWriteTimeUtc)
                 .ThenByDescending(file => file.Name, StringComparer.OrdinalIgnoreCase)
@@ -3198,11 +3468,65 @@ LIMIT $take;";
         private string CreateBackupFileCore(string fileName)
         {
             var safeFileName = Path.GetFileName(string.IsNullOrWhiteSpace(fileName)
-                ? $"quanlyhoso_backup_{DateTime.Now:yyyyMMdd_HHmmss}.db"
+                ? $"quanlyhoso_backup_{DateTime.Now:yyyyMMdd_HHmmss}{BackupPackageExtension}"
                 : fileName);
             var destinationPath = Path.Combine(GetDefaultBackupFolder(), safeFileName);
-            BackupDatabase(destinationPath);
+            if (string.Equals(Path.GetExtension(safeFileName), ".db", StringComparison.OrdinalIgnoreCase))
+            {
+                // Compatibility for older clients. Current clients request .qlhbackup,
+                // which includes the database and every server-managed file.
+                BackupDatabase(destinationPath);
+            }
+            else
+            {
+                if (!string.Equals(Path.GetExtension(safeFileName), BackupPackageExtension, StringComparison.OrdinalIgnoreCase))
+                {
+                    safeFileName = Path.GetFileNameWithoutExtension(safeFileName) + BackupPackageExtension;
+                    destinationPath = Path.Combine(GetDefaultBackupFolder(), safeFileName);
+                }
+                BackupApplicationData(destinationPath);
+            }
             return destinationPath;
+        }
+
+        internal void BackupApplicationData(string destinationPath)
+        {
+            if (string.IsNullOrWhiteSpace(destinationPath))
+            {
+                throw new ArgumentException("Destination path is required.", nameof(destinationPath));
+            }
+
+            var destinationFolder = Path.GetDirectoryName(Path.GetFullPath(destinationPath));
+            Directory.CreateDirectory(destinationFolder);
+            var temporaryFolder = Path.Combine(destinationFolder, $".backup_stage_{Guid.NewGuid():N}");
+            var databaseSnapshotPath = Path.Combine(temporaryFolder, "quanlyhoso.db");
+            Directory.CreateDirectory(temporaryFolder);
+            try
+            {
+                BackupDatabase(databaseSnapshotPath);
+                if (File.Exists(destinationPath))
+                {
+                    File.Delete(destinationPath);
+                }
+
+                using var archive = ZipFile.Open(destinationPath, ZipArchiveMode.Create);
+                archive.CreateEntryFromFile(databaseSnapshotPath, "database/quanlyhoso.db", CompressionLevel.Optimal);
+                if (Directory.Exists(_storageRoot))
+                {
+                    foreach (var sourcePath in Directory.EnumerateFiles(_storageRoot, "*", SearchOption.AllDirectories))
+                    {
+                        var relativePath = Path.GetRelativePath(_storageRoot, sourcePath).Replace('\\', '/');
+                        archive.CreateEntryFromFile(sourcePath, $"files/{relativePath}", CompressionLevel.Optimal);
+                    }
+                }
+            }
+            finally
+            {
+                if (Directory.Exists(temporaryFolder))
+                {
+                    Directory.Delete(temporaryFolder, true);
+                }
+            }
         }
 
         public void DownloadBackupFile(string fileName, string destinationPath)
@@ -3273,13 +3597,26 @@ LIMIT $take;";
 
             var backupFolder = GetDefaultBackupFolder();
             Directory.CreateDirectory(backupFolder);
-            var uploadPath = Path.Combine(backupFolder, $".restore_upload_{Guid.NewGuid():N}.db");
-            var safetyBackupPath = Path.Combine(backupFolder, $"quanlyhoso_before_restore_{DateTime.Now:yyyyMMdd_HHmmss}.db");
+            var extension = string.Equals(Path.GetExtension(fileName), BackupPackageExtension, StringComparison.OrdinalIgnoreCase)
+                ? BackupPackageExtension
+                : ".db";
+            var databaseFolder = Path.GetDirectoryName(DatabasePath);
+            var uploadPath = Path.Combine(databaseFolder, $".restore_upload_{Guid.NewGuid():N}{extension}");
+            var safetyBackupPath = Path.Combine(backupFolder, $"quanlyhoso_before_restore_{DateTime.Now:yyyyMMdd_HHmmss}{BackupPackageExtension}");
 
             try
             {
                 File.WriteAllBytes(uploadPath, content);
-                RestoreDatabaseFromFile(uploadPath, safetyBackupPath);
+                if (string.Equals(extension, BackupPackageExtension, StringComparison.OrdinalIgnoreCase))
+                {
+                    RestoreApplicationDataPackage(uploadPath, safetyBackupPath);
+                }
+                else
+                {
+                    ValidateDatabaseFile(uploadPath);
+                    BackupApplicationData(safetyBackupPath);
+                    RestoreDatabaseOnly(uploadPath);
+                }
                 return safetyBackupPath;
             }
             finally
@@ -3322,9 +3659,11 @@ LIMIT $take;";
             }
 
             var safeFileName = Path.GetFileName(fileName ?? string.Empty);
-            if (string.IsNullOrWhiteSpace(safeFileName))
+            if (string.IsNullOrWhiteSpace(safeFileName) ||
+                !safeFileName.StartsWith("QuanLyHoSo-Client-", StringComparison.OrdinalIgnoreCase) ||
+                !safeFileName.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
             {
-                throw new FileNotFoundException("Update package was not found.");
+                throw new FileNotFoundException("Client update package was not found.");
             }
 
             var packagePath = Path.Combine(GetInternalUpdatePackageFolder(), safeFileName);
@@ -3356,6 +3695,93 @@ LIMIT $take;";
 
             ValidateDatabaseFile(sourcePath);
             BackupDatabase(safetyBackupPath);
+
+            RestoreDatabaseOnly(sourcePath);
+        }
+
+        internal void RestoreApplicationDataPackage(string packagePath, string safetyBackupPath)
+        {
+            var databaseFolder = Path.GetDirectoryName(DatabasePath);
+            var stagingFolder = Path.Combine(databaseFolder, $".restore_stage_{Guid.NewGuid():N}");
+            var rollbackFolder = Path.Combine(databaseFolder, $".files_rollback_{Guid.NewGuid():N}");
+            Directory.CreateDirectory(stagingFolder);
+            try
+            {
+                var stagingRoot = Path.GetFullPath(stagingFolder).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+                using (var archive = ZipFile.OpenRead(packagePath))
+                {
+                    foreach (var entry in archive.Entries)
+                    {
+                        var destinationPath = Path.GetFullPath(Path.Combine(stagingFolder, entry.FullName.Replace('/', Path.DirectorySeparatorChar)));
+                        if (!destinationPath.StartsWith(stagingRoot, StringComparison.OrdinalIgnoreCase))
+                        {
+                            throw new InvalidDataException("Gói sao lưu chứa đường dẫn không hợp lệ.");
+                        }
+
+                        if (string.IsNullOrEmpty(entry.Name))
+                        {
+                            Directory.CreateDirectory(destinationPath);
+                            continue;
+                        }
+
+                        Directory.CreateDirectory(Path.GetDirectoryName(destinationPath));
+                        entry.ExtractToFile(destinationPath, true);
+                    }
+                }
+
+                var databaseSnapshotPath = Path.Combine(stagingFolder, "database", "quanlyhoso.db");
+                ValidateDatabaseFile(databaseSnapshotPath);
+                BackupApplicationData(safetyBackupPath);
+
+                var stagedFilesFolder = Path.Combine(stagingFolder, "files");
+                if (Directory.Exists(_storageRoot))
+                {
+                    Directory.Move(_storageRoot, rollbackFolder);
+                }
+
+                try
+                {
+                    if (Directory.Exists(stagedFilesFolder))
+                    {
+                        Directory.Move(stagedFilesFolder, _storageRoot);
+                    }
+                    else
+                    {
+                        Directory.CreateDirectory(_storageRoot);
+                    }
+
+                    RestoreDatabaseOnly(databaseSnapshotPath);
+                }
+                catch
+                {
+                    if (Directory.Exists(_storageRoot))
+                    {
+                        Directory.Delete(_storageRoot, true);
+                    }
+                    if (Directory.Exists(rollbackFolder))
+                    {
+                        Directory.Move(rollbackFolder, _storageRoot);
+                    }
+                    throw;
+                }
+
+                if (Directory.Exists(rollbackFolder))
+                {
+                    Directory.Delete(rollbackFolder, true);
+                }
+            }
+            finally
+            {
+                if (Directory.Exists(stagingFolder))
+                {
+                    Directory.Delete(stagingFolder, true);
+                }
+            }
+        }
+
+        private void RestoreDatabaseOnly(string sourcePath)
+        {
+            ValidateDatabaseFile(sourcePath);
 
             using var source = OpenDatabaseFile(sourcePath);
             using var destination = OpenConnection();
@@ -3396,7 +3822,7 @@ LIMIT $take;";
                 return null;
             }
 
-            return Directory.EnumerateFiles(packageFolder, "*.zip")
+            return Directory.EnumerateFiles(packageFolder, "QuanLyHoSo-Client-*.zip")
                 .Select(path => new FileInfo(path))
                 .Select(file => new InternalUpdatePackage(file, TryParseVersionFromFileName(file.Name)))
                 .Where(package => package.Version != null)
@@ -3849,6 +4275,39 @@ WHERE Title = 'Gia hạn';";
             {
                 AppLogger.Info("Database", "NormalizeProcessingHistoryTitles", $"Updated {updatedRows} legacy processing history title(s).");
             }
+
+            ExecuteNonQuery(connection, @"
+UPDATE ProcessHistories
+SET Title = 'Chờ kết quả'
+WHERE Title = 'Kết thúc'
+  AND (
+      EXISTS (
+          SELECT 1 FROM Records r
+          WHERE r.Id = ProcessHistories.RecordId
+            AND r.Status <> 'Đã giải quyết'
+      )
+      OR EXISTS (
+          SELECT 1 FROM ProcessHistories saved
+          WHERE saved.RecordId = ProcessHistories.RecordId
+            AND saved.Title = 'Lưu hồ sơ'
+      )
+  );");
+            ExecuteNonQuery(connection, "UPDATE ProcessHistories SET Title = 'Lưu hồ sơ' WHERE Title = 'Kết thúc';");
+            ExecuteNonQuery(connection, "DELETE FROM ProcessHistories WHERE Title = 'Lãnh đạo duyệt';");
+        }
+
+        private static void NormalizeProcessingStatuses(SqliteConnection connection)
+        {
+            using var command = connection.CreateCommand();
+            command.CommandText = @"
+UPDATE Records
+SET Status = 'Kết quả xử lý ban đầu'
+WHERE Status IN ('Đang chờ bổ sung tài liệu', 'Chờ bổ sung tài liệu', 'Chờ lãnh đạo duyệt');";
+            var updatedRows = command.ExecuteNonQuery();
+            if (updatedRows > 0)
+            {
+                AppLogger.Info("Database", "NormalizeProcessingStatuses", $"Updated {updatedRows} legacy processing status value(s).");
+            }
         }
 
         private static void CreateIndexes(SqliteConnection connection)
@@ -4003,13 +4462,6 @@ VALUES (
                 ("Priority", "Nghiêm trọng"),
                 ("Priority", "Rất nghiêm trọng"),
                 ("Priority", "Đặc biệt nghiêm trọng"),
-                ("ProcessorName", "Trần Văn B"),
-                ("ProcessorName", "Trần Văn C"),
-                ("ProcessorName", "Lê Thị D"),
-                ("ProcessorName", "Lê Võ Mỹ Ý"),
-                ("ProcessorName", "Nguyễn Minh Thắng"),
-                ("ProcessorName", "Nguyễn Thị H"),
-                ("ProcessorName", "Phạm Văn K"),
                 ("ExpectedHandlingMethod", "Đề nghị kiểm tra, xử lý"),
                 ("ExpectedHandlingMethod", "Chuyển cơ quan có thẩm quyền"),
                 ("ExpectedHandlingMethod", "Theo dõi, tổng hợp")
@@ -4056,7 +4508,7 @@ VALUES (
                 "Đặc biệt nghiêm trọng"
             };
             var methods = ReadCatalog(connection, "ExpectedHandlingMethod");
-            var statuses = new[] { "Mới tiếp nhận", "Đang phân loại", "Đã phân công", "Đang xác minh", "Chờ kết quả", "Đang chờ bổ sung tài liệu", "Đã giải quyết", "Chuyển cơ quan khác" };
+            var statuses = new[] { "Mới tiếp nhận", "Đang phân loại", "Đã phân công", "Đang xác minh", "Kết quả xử lý ban đầu", "Chuyển cơ quan khác", "Chờ kết quả", "Đã giải quyết" };
             var processors = new[]
             {
                 "Lê Thị D",
@@ -4111,7 +4563,7 @@ VALUES (
                 }
                 else if (profileRoll < profile.CompletedChance + profile.HighOnTimeChance + profile.PendingChance + profile.OverdueChance)
                 {
-                    status = "Đang chờ bổ sung tài liệu";
+                    status = "Kết quả xử lý ban đầu";
                 }
                 else
                 {
@@ -4231,14 +4683,14 @@ SELECT last_insert_rowid();";
                 histories.Add(("Phân công", receivedDate.AddHours(5), "Phân công cán bộ phụ trách xử lý hồ sơ.", true));
             }
 
-            if (status == "Đang xác minh" || status == "Chờ kết quả" || status == "Đang chờ bổ sung tài liệu" || status == "Đã giải quyết")
+            if (GetProcessStepNumber(status) >= 4)
             {
                 histories.Add(("Xác minh", updatedAt, "Cập nhật tiến độ xác minh hồ sơ.", status != "Đang xác minh"));
             }
 
             if (status == "Đã giải quyết")
             {
-                histories.Add(("Kết thúc", updatedAt.AddHours(2), "Hoàn tất xử lý và lưu hồ sơ.", true));
+                histories.Add(("Lưu hồ sơ", updatedAt.AddHours(2), "Hoàn tất xử lý và lưu hồ sơ.", true));
             }
 
             foreach (var history in histories)
@@ -4324,7 +4776,8 @@ ORDER BY ProcessedAt;";
                 CreateStep(4, currentStep, history),
                 CreateStep(5, currentStep, history),
                 CreateStep(6, currentStep, history),
-                CreateStep(7, currentStep, history)
+                CreateStep(7, currentStep, history),
+                CreateStep(8, currentStep, history)
             };
         }
 
@@ -4347,9 +4800,9 @@ ORDER BY ProcessedAt;";
                 IsDone = stepNumber < currentStep,
                 IsCurrent = stepNumber == currentStep,
                 HasPreviousStep = stepNumber > 1,
-                HasNextStep = stepNumber < 7,
+                HasNextStep = stepNumber < ProcessStepCount,
                 IsPreviousConnectorDone = stepNumber > 1 && stepNumber <= currentStep,
-                IsNextConnectorDone = stepNumber < 7 && stepNumber < currentStep
+                IsNextConnectorDone = stepNumber < ProcessStepCount && stepNumber < currentStep
             };
         }
 
@@ -4379,8 +4832,12 @@ ORDER BY ProcessedAt;";
                 "Đã phân công" => 3,
                 "Đang xác minh" => 4,
                 "Đang chờ bổ sung tài liệu" => 5,
-                "Chờ kết quả" => 6,
-                "Đã giải quyết" => 7,
+                "Chờ bổ sung tài liệu" => 5,
+                "Kết quả xử lý ban đầu" => 5,
+                "Chờ lãnh đạo duyệt" => 5,
+                "Chuyển cơ quan khác" => 6,
+                "Chờ kết quả" => 7,
+                "Đã giải quyết" => 8,
                 _ => 4
             };
         }
@@ -4402,15 +4859,16 @@ ORDER BY ProcessedAt;";
                 3 => ("\uE77B", "Segoe MDL2 Assets", "Phân công"),
                 4 => ("\uE721", "Segoe MDL2 Assets", "Xác minh"),
                 5 => ("analytics", "pack://application:,,,/Assets/Fonts/#Material Symbols Outlined", "Kết quả xử lý ban đầu"),
-                6 => ("\uE73E", "Segoe MDL2 Assets", "Kết thúc"),
-                7 => ("\uE74E", "Segoe MDL2 Assets", "Lưu hồ sơ"),
+                6 => ("\uE8AB", "Segoe MDL2 Assets", "Chuyển cơ quan khác"),
+                7 => ("\uE823", "Segoe MDL2 Assets", "Chờ kết quả"),
+                8 => ("\uE74E", "Segoe MDL2 Assets", "Lưu hồ sơ"),
                 _ => ("\uE8A5", "Segoe MDL2 Assets", "Tiếp nhận")
             };
         }
 
         private static int GetHistoryStepOrder(string title)
         {
-            for (var step = 1; step <= 7; step++)
+            for (var step = 1; step <= ProcessStepCount; step++)
             {
                 if (GetProcessStepDefinition(step).Title == title)
                 {
@@ -4455,7 +4913,7 @@ VALUES ($recordId, $title, $processedAt, $processor, $content, $isCompleted);";
         private static void AddPendingProcessHistoryItems(List<ProcessHistoryItem> result, string status)
         {
             var currentStep = GetProcessStepNumber(status);
-            for (var step = 1; step <= 7; step++)
+            for (var step = 1; step <= ProcessStepCount; step++)
             {
                 var definition = GetProcessStepDefinition(step);
                 if (result.Any(item => item.Title == definition.Title))
@@ -4479,7 +4937,7 @@ VALUES ($recordId, $title, $processedAt, $processor, $content, $isCompleted);";
         private static void DeleteProcessHistoryFromStep(SqliteConnection connection, SqliteTransaction transaction, int recordId, int firstStep)
         {
             var titles = new List<string>();
-            for (var step = firstStep; step <= 7; step++)
+            for (var step = firstStep; step <= ProcessStepCount; step++)
             {
                 titles.Add(GetProcessStepDefinition(step).Title);
             }
@@ -4998,7 +5456,16 @@ AreaName IN (
             return sortOption switch
             {
                 "Ngày tiếp nhận cũ nhất trước" => "ReceivedDate ASC, Id ASC",
-                "Trạng thái" => "Status ASC, ReceivedDate DESC, Id DESC",
+                "Trạng thái" => @"CASE Status
+                    WHEN 'Mới tiếp nhận' THEN 1
+                    WHEN 'Đang phân loại' THEN 2
+                    WHEN 'Đã phân công' THEN 3
+                    WHEN 'Đang xác minh' THEN 4
+                    WHEN 'Kết quả xử lý ban đầu' THEN 5
+                    WHEN 'Chuyển cơ quan khác' THEN 6
+                    WHEN 'Chờ kết quả' THEN 7
+                    WHEN 'Đã giải quyết' THEN 8
+                    ELSE 9 END ASC, ReceivedDate DESC, Id DESC",
                 "Địa bàn" => "AreaName ASC, ReceivedDate DESC, Id DESC",
                 _ => "ReceivedDate DESC, Id DESC"
             };
@@ -5015,7 +5482,7 @@ AreaName IN (
                     conditions.Add("Status IN ('Đã phân công', 'Đang xác minh')");
                     break;
                 case "Waiting":
-                    conditions.Add("Status IN ('Chờ kết quả', 'Đang chờ bổ sung tài liệu')");
+                    conditions.Add("Status IN ('Kết quả xử lý ban đầu', 'Chuyển cơ quan khác', 'Chờ kết quả')");
                     break;
                 case "DueSoon":
                     conditions.Add("ExpectedResultDate <> '' AND ExpectedResultDate >= $today AND ExpectedResultDate <= $dueSoon");
@@ -5040,7 +5507,7 @@ AreaName IN (
                 "Đang phân loại" => "Hoàn tất phân loại",
                 "Đã phân công" => "Bắt đầu xử lý",
                 "Đang xác minh" => "Cập nhật xác minh",
-                "Đang chờ bổ sung tài liệu" => "Theo dõi bổ sung",
+                "Kết quả xử lý ban đầu" => "Tạo và kiểm tra tài liệu",
                 "Chờ kết quả" => "Theo dõi kết quả",
                 "Chuyển cơ quan khác" => "Theo dõi chuyển tiếp",
                 _ => "Cập nhật xử lý"
@@ -5354,7 +5821,7 @@ WHERE Status NOT IN ('Đã giải quyết', 'Đã giải quyết — hồ sơ g�
                 "Đang phân loại" => "#F5B132",
                 "Đã phân công" => "#0B5CFF",
                 "Chờ kết quả" => "#7B4DE3",
-                "Đang chờ bổ sung tài liệu" => "#FF5A1F",
+                "Kết quả xử lý ban đầu" => "#FF5A1F",
                 "Chuyển cơ quan khác" => "#1F4AB8",
                 _ => "#5C6B91"
             };

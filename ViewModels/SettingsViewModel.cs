@@ -1332,7 +1332,7 @@ namespace QuanLyHoSo.ViewModels
             using var dialog = new Forms.OpenFileDialog
             {
                 Title = "Chọn file sao lưu để khôi phục",
-                Filter = "SQLite database (*.db)|*.db|All files (*.*)|*.*",
+                Filter = "Bản sao đầy đủ QuanLyHoSo (*.qlhbackup)|*.qlhbackup|SQLite cũ (*.db)|*.db|All files (*.*)|*.*",
                 Multiselect = false,
                 InitialDirectory = Directory.Exists(BackupFolder)
                     ? BackupFolder
@@ -1382,7 +1382,7 @@ namespace QuanLyHoSo.ViewModels
                 }
 
                 Directory.CreateDirectory(BackupFolder);
-                var fileName = $"quanlyhoso_backup_{DateTime.Now:yyyyMMdd_HHmmss}.db";
+                var fileName = $"quanlyhoso_backup_{DateTime.Now:yyyyMMdd_HHmmss}.qlhbackup";
                 var localPath = Path.Combine(BackupFolder, fileName);
                 await Task.Run(() =>
                 {
@@ -1466,7 +1466,7 @@ namespace QuanLyHoSo.ViewModels
                 if (!Version.TryParse(latestVersion, out var latest) ||
                     !Version.TryParse(currentVersion, out var current))
                 {
-                    UpdateStatus = "Không đọc được số phiên bản từ gói cập nhật nội bộ. Tên file nên có dạng QuanLyHoSo-1.0.1.zip.";
+                    UpdateStatus = "Không đọc được số phiên bản từ gói cập nhật Client. Tên file nên có dạng QuanLyHoSo-Client-1.0.1.zip.";
                     return;
                 }
 
@@ -1521,7 +1521,9 @@ namespace QuanLyHoSo.ViewModels
                     : release.HtmlUrl;
                 _latestReleaseDownloadUrl = release?.Assets?
                     .Where(asset => !string.IsNullOrWhiteSpace(asset.BrowserDownloadUrl))
-                    .FirstOrDefault(asset => asset.Name?.EndsWith(".zip", StringComparison.OrdinalIgnoreCase) == true)
+                    .FirstOrDefault(asset =>
+                        asset.Name?.StartsWith("QuanLyHoSo-Client-", StringComparison.OrdinalIgnoreCase) == true &&
+                        asset.Name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
                     ?.BrowserDownloadUrl;
                 _latestReleaseVersion = latestVersion;
 
@@ -1529,7 +1531,7 @@ namespace QuanLyHoSo.ViewModels
                 {
                     if (string.IsNullOrWhiteSpace(_latestReleaseDownloadUrl))
                     {
-                        UpdateStatus = $"Có bản {latestVersion}, nhưng release chưa có file .zip để cập nhật tự động. Hãy upload bản publish .zip vào Assets.";
+                        UpdateStatus = $"Có bản Client {latestVersion}, nhưng release chưa có gói QuanLyHoSo-Client-*.zip để cập nhật tự động.";
                         return;
                     }
 
@@ -1597,7 +1599,7 @@ namespace QuanLyHoSo.ViewModels
                     "Updates");
                 Directory.CreateDirectory(updateFolder);
 
-                var packagePath = Path.Combine(updateFolder, $"QuanLyHoSo-{_latestReleaseVersion}.zip");
+                var packagePath = Path.Combine(updateFolder, $"QuanLyHoSo-Client-{_latestReleaseVersion}.zip");
                 if (_latestUpdateIsInternalPackage)
                 {
                     await Task.Run(() => _dataService.DownloadInternalUpdatePackage(_latestReleaseDownloadUrl, packagePath));

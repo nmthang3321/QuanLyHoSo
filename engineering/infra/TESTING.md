@@ -1,6 +1,6 @@
 # Infrastructure - Automated testing
 
-Updated: 2026-09-16
+Updated: 2026-09-29
 
 ## Purpose and routing
 
@@ -13,8 +13,8 @@ Protect current behavior with priority on data integrity, authorization, and reg
 
 ## Architecture
 
-- `QuanLyHoSo.UnitTests`: xUnit + Moq for password hashing, role/record authorization, commands, ViewModel notifications/disposal, area selection/filtering, and password-change validation.
-- `QuanLyHoSo.IntegrationTests`: xUnit + real isolated SQLite through Core for schema/seeds/auth/users, record lifecycle, Unicode/attachment metadata, search/pagination, authorization/rollback, trash, backup/restore, automatic retention, and document generation.
+- `QuanLyHoSo.UnitTests`: xUnit + Moq for password hashing, role/record authorization, commands, ViewModel notifications/disposal, area selection/filtering, record-code rules, processing compatibility, and password-change validation.
+- `QuanLyHoSo.IntegrationTests`: xUnit + real isolated SQLite through Core for schema/seeds/auth/users, record lifecycle, Unicode/attachment content and managed storage, search/pagination, authorization/rollback, trash, full-package and legacy backup/restore, automatic retention, workflow transitions, and document generation.
 - `QuanLyHoSo.UITests`: xUnit + FlaUI UIA3 launching the real WPF executable and verifying the login surface.
 - Tests target `net8.0`/`net8.0-windows`; production stays on .NET 5.
 - Coverlet generates per-run Cobertura coverage; percentages from separate runs are not additive.
@@ -54,8 +54,8 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tests\Scripts\run-all.
 
 ## Coverage gaps
 
-- P0: complete processing transitions, forbidden/repeated transitions, and restart during workflow.
-- P1: export contents, remaining LAN/auth/disconnect cases, concurrency, file locks/permissions, and authenticated end-to-end UI workflows.
+- P0: remaining forbidden/repeated processing transitions and restart during workflow.
+- P1: export contents, remaining LAN/auth/disconnect cases, concurrency, managed-file locks/permissions, and authenticated end-to-end UI workflows.
 - P2: remaining document-generation failure and file-lock scenarios.
 
 When adding tests, keep them under `tests/`, assert concrete behavior, cover normal/boundary/negative paths, and never use production data. Reproduce confirmed bugs before fixing them. Update `engineering/infra/TEST_MATRIX.md` when coverage changes.

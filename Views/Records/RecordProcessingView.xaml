@@ -495,7 +495,7 @@
                         <ItemsControl ItemsSource="{Binding ProcessSteps}">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
-                                    <UniformGrid Columns="7" />
+                                    <UniformGrid Columns="8" />
                                 </ItemsPanelTemplate>
                             </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
@@ -554,16 +554,19 @@
                                                                         <Setter Property="Text" Value="Phân công: Admin giao hồ sơ cho cán bộ phụ trách. Cán bộ nhận hồ sơ để tiến hành xác minh." />
                                                                     </DataTrigger>
                                                                     <DataTrigger Binding="{Binding StepNumber}" Value="4">
-                                                                        <Setter Property="Text" Value="Xác minh: Cán bộ làm rõ vụ việc với người gửi đơn. Nếu chuyển cơ quan khác, phải chọn cơ quan chuyển đến và theo dõi phản hồi để có cơ sở ghi kết quả xử lý ban đầu." />
+                                                                        <Setter Property="Text" Value="Xác minh: Cán bộ làm rõ nội dung vụ việc và tổng hợp căn cứ để đề xuất kết quả xử lý ban đầu." />
                                                                     </DataTrigger>
                                                                     <DataTrigger Binding="{Binding StepNumber}" Value="5">
-                                                                        <Setter Property="Text" Value="Kết quả xử lý ban đầu: Ghi nội dung xử lý ban đầu dựa trên xác minh hoặc phản hồi của cơ quan nhận chuyển; bổ sung tài liệu liên quan. Hiện bước này tương ứng trạng thái Đang chờ bổ sung tài liệu trong hệ thống." />
+                                                                        <Setter Property="Text" Value="Kết quả xử lý ban đầu: Cán bộ ghi kết quả xác minh, tạo các file theo template và kiểm tra tài liệu trước khi trình duyệt." />
                                                                     </DataTrigger>
                                                                     <DataTrigger Binding="{Binding StepNumber}" Value="6">
-                                                                        <Setter Property="Text" Value="Chờ kết quả: Theo dõi kết quả giải quyết tiếp theo sau khi đã ghi kết quả xử lý ban đầu. Hồ sơ ở bước này vẫn chưa được tính là đã giải quyết." />
+                                                                        <Setter Property="Text" Value="Chuyển cơ quan khác: Sau khi hoàn thành kết quả xử lý ban đầu, chọn cơ quan nhận và chuyển hồ sơ để tiếp tục xử lý." />
                                                                     </DataTrigger>
                                                                     <DataTrigger Binding="{Binding StepNumber}" Value="7">
-                                                                        <Setter Property="Text" Value="Lưu hồ sơ: Khi có kết quả giải quyết, cập nhật nội dung và tài liệu cuối cùng, chọn trạng thái Đã giải quyết rồi lưu để hoàn tất hồ sơ." />
+                                                                        <Setter Property="Text" Value="Chờ kết quả: Theo dõi phản hồi và kết quả xử lý từ cơ quan nhận chuyển." />
+                                                                    </DataTrigger>
+                                                                    <DataTrigger Binding="{Binding StepNumber}" Value="8">
+                                                                        <Setter Property="Text" Value="Lưu hồ sơ: Khi chuyển sang trạng thái Đã giải quyết, cập nhật kết quả cuối cùng, đính kèm tài liệu liên quan và lưu hoàn tất hồ sơ." />
                                                                     </DataTrigger>
                                                                 </Style.Triggers>
                                                             </Style>
@@ -650,15 +653,12 @@
                                                     </Style>
                                                 </TextBlock.Style>
                                             </TextBlock>
-                                            <TextBlock FontWeight="SemiBold" FontFamily="Segoe UI">
+                                            <TextBlock FontWeight="SemiBold" FontFamily="Segoe UI" TextWrapping="Wrap" TextAlignment="Center">
                                                 <TextBlock.Style>
                                                     <Style TargetType="TextBlock">
                                                         <Setter Property="Text" Value="{Binding Title}" />
                                                         <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
                                                         <Style.Triggers>
-                                                            <DataTrigger Binding="{Binding StepNumber}" Value="6">
-                                                                <Setter Property="Text" Value="Chờ kết quả" />
-                                                            </DataTrigger>
                                                             <DataTrigger Binding="{Binding IsDone}" Value="True">
                                                                 <Setter Property="Foreground" Value="#24A148" />
                                                             </DataTrigger>
@@ -1169,7 +1169,7 @@
                     <Border Background="#F5F8FC" BorderBrush="{StaticResource LineBrush}" BorderThickness="1" CornerRadius="4" Padding="14" Margin="0,4,0,0">
                         <StackPanel>
                             <TextBlock Text="NỘI DUNG ĐIỀN VÀO PHIẾU" FontWeight="SemiBold" Margin="0,0,0,4" />
-                            <TextBlock Text="Thông tin lấy từ hồ sơ, chỉ xem tại đây." Style="{StaticResource MutedText}" Margin="0,0,0,12" />
+                            <TextBlock Text="Thông tin hồ sơ được dùng để tham khảo khi nhập nội dung phiếu." Style="{StaticResource MutedText}" Margin="0,0,0,12" />
                             <TextBlock Text="Đơn ghi tên" Style="{StaticResource FieldLabelText}" />
                             <TextBox Text="{Binding DocumentPreviewRecord.SenderName, Mode=OneWay}" IsReadOnly="True" Margin="0,0,0,12" />
                             <TextBlock Text="Địa chỉ liên hệ" Style="{StaticResource FieldLabelText}" />
@@ -1178,10 +1178,24 @@
                             <TextBox Text="{Binding DocumentPreviewRecord.ReceiveSource, Mode=OneWay}" IsReadOnly="True" Margin="0,0,0,12" />
                             <TextBlock Text="Tóm tắt nội dung" Style="{StaticResource FieldLabelText}" />
                             <TextBox Text="{Binding DocumentPreviewRecord.Content, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" MinHeight="64" MaxHeight="130" VerticalScrollBarVisibility="Auto" Margin="0,0,0,12" />
-                            <TextBlock Text="Nhận xét" Style="{StaticResource FieldLabelText}" />
-                            <TextBox Text="{Binding DocumentPreviewRecord.Note, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" MinHeight="64" MaxHeight="130" VerticalScrollBarVisibility="Auto" Margin="0,0,0,12" />
-                            <TextBlock Text="Đề xuất" Style="{StaticResource FieldLabelText}" />
-                            <TextBox Text="{Binding DocumentPreviewRecord.AdditionalNote, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" MinHeight="64" MaxHeight="130" VerticalScrollBarVisibility="Auto" />
+                            <TextBlock Style="{StaticResource FieldLabelText}"><Run Text="Nhận xét" /><Run Text=" *" Foreground="#E11414" /></TextBlock>
+                            <TextBox Text="{Binding DocumentReview, UpdateSourceTrigger=PropertyChanged}" TextWrapping="Wrap" AcceptsReturn="True" AcceptsTab="True" MinHeight="120" MaxHeight="240" VerticalContentAlignment="Top" VerticalScrollBarVisibility="Auto" Margin="0,0,0,12" />
+                            <TextBlock Style="{StaticResource FieldLabelText}"><Run Text="Đề xuất" /><Run Text=" *" Foreground="#E11414" /></TextBlock>
+                            <TextBox Text="{Binding DocumentProposal, UpdateSourceTrigger=PropertyChanged}" TextWrapping="Wrap" AcceptsReturn="True" AcceptsTab="True" MinHeight="120" MaxHeight="240" VerticalContentAlignment="Top" VerticalScrollBarVisibility="Auto" Margin="0,0,0,12" />
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Margin="0,0,8,0">
+                                    <TextBlock Style="{StaticResource FieldLabelText}"><Run Text="Tên đội trưởng" /><Run Text=" *" Foreground="#E11414" /></TextBlock>
+                                    <TextBox Text="{Binding DocumentCommanderApproverName, UpdateSourceTrigger=PropertyChanged}" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="1" Margin="8,0,0,0">
+                                    <TextBlock Style="{StaticResource FieldLabelText}"><Run Text="Tên lãnh đạo duyệt" /><Run Text=" *" Foreground="#E11414" /></TextBlock>
+                                    <TextBox Text="{Binding DocumentLeaderApproverName, UpdateSourceTrigger=PropertyChanged}" />
+                                </StackPanel>
+                            </Grid>
                         </StackPanel>
                     </Border>
                     </StackPanel>

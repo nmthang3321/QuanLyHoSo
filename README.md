@@ -16,6 +16,8 @@ Các biểu mẫu Word được phần mềm sử dụng nằm trong `doc/templa
 - **QuanLyHoSo Server**: cài trên máy chủ lưu trữ dữ liệu.
 - **QuanLyHoSo Client**: cài trên các máy trạm và kết nối tới máy chủ trong mạng nội bộ.
 
-Server và các máy Client phải dùng cùng phiên bản phát hành. Khi nâng cấp, cập nhật Server trước và cập nhật toàn bộ Client ngay sau đó; Client khác phiên bản sẽ được yêu cầu cập nhật trước khi đăng nhập.
+Server và Client được quản lý phiên bản độc lập. Chức năng **Cập nhật phần mềm** trong ứng dụng chỉ cập nhật Client; không cần nâng cấp Server chỉ để khớp số phiên bản với Client.
+
+Dữ liệu nghiệp vụ, file đính kèm và biểu mẫu được lưu tập trung trên Server. Chức năng sao lưu mặc định tạo gói `.qlhbackup` gồm cơ sở dữ liệu cùng toàn bộ file do ứng dụng quản lý; file `.db` cũ vẫn được hỗ trợ để tương thích nhưng chỉ chứa dữ liệu cơ sở dữ liệu.
 
 Thông tin chi tiết về cài đặt, đăng nhập và sử dụng các chức năng được trình bày trong các tài liệu hướng dẫn phía trên.

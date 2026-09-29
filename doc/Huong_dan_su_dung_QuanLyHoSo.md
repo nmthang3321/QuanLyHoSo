@@ -2,8 +2,8 @@
 
 - **Phạm vi:** Tiếp nhận, phân loại, xử lý và theo dõi hồ sơ
 - **Đối tượng sử dụng:** Quản trị hệ thống, Lãnh đạo và Cán bộ
-- **Phiên bản tài liệu:** 1.1
-- **Ngày cập nhật:** 16/09/2026
+- **Phiên bản tài liệu:** 1.2
+- **Ngày cập nhật:** 29/09/2026
 
 > Các tên người, số điện thoại, địa chỉ, mã hồ sơ và số liệu trong hình là dữ liệu minh họa. Giao diện và số liệu thực tế thay đổi theo tài khoản, quyền được cấp và thời điểm sử dụng.
 
@@ -205,7 +205,7 @@ Trang này chỉ hiển thị cho Admin, dùng để tạo hồ sơ mới hoặc
 
 Điền các trường có dấu `*`:
 
-1. **Số hồ sơ/Số đơn:** được hệ thống gợi ý theo quy tắc mã hồ sơ.
+1. **Số hồ sơ/Số đơn:** hệ thống gợi ý sẵn nhưng người dùng có thể nhập mã từ nguồn bên ngoài. Mã phải đúng dạng `HS-<năm>-<6 chữ số>`, ví dụ `HS-2026-000001`, và không được trùng hồ sơ đã có.
 2. **Ngày tiếp nhận**.
 3. **Nguồn tiếp nhận**.
 4. **Người tiếp nhận**.
@@ -235,6 +235,8 @@ Chọn:
 3. Có thể tải xuống hoặc xóa file khỏi danh sách bằng biểu tượng tương ứng.
 
 Định dạng hỗ trợ: PDF, Word (`.doc`, `.docx`), JPG/JPEG và PNG. Dung lượng tối đa 10 MB cho mỗi file.
+
+Khi lưu hồ sơ, nội dung file được tải lên và lưu tập trung trên Server. Đường dẫn file ở máy Client chỉ dùng để chọn file ban đầu; các máy khác mở hoặc tải file từ Server.
 
 ### 7.4 Lưu hồ sơ và đối chiếu lịch sử người gửi
 
@@ -353,7 +355,7 @@ Các thẻ phía trên cho biết số lượng:
 - Tất cả hồ sơ đang mở.
 - Cần phân loại.
 - Đang xử lý.
-- Chờ bổ sung.
+- Kết quả xử lý ban đầu.
 - Sắp đến hạn.
 - Quá hạn.
 - Mức độ cao.
@@ -373,7 +375,7 @@ Lãnh đạo có thể xem toàn bộ hàng chờ nhưng không cập nhật n�
 Trang gồm:
 
 - Thông tin tóm tắt hồ sơ.
-- Sơ đồ bảy bước của quy trình.
+- Sơ đồ tám bước của quy trình.
 - Lịch sử xử lý theo thời gian.
 - Khối cập nhật trạng thái, ngày xử lý, người xử lý, nội dung và ghi chú.
 - Danh sách tài liệu liên quan.
@@ -385,8 +387,9 @@ Quy trình tiêu chuẩn:
 3. Phân công.
 4. Xác minh.
 5. Kết quả xử lý ban đầu.
-6. Kết thúc.
-7. Lưu hồ sơ.
+6. Chuyển cơ quan khác.
+7. Chờ kết quả.
+8. Lưu hồ sơ.
 
 ### 9.3 Cập nhật tiến độ
 
@@ -409,6 +412,8 @@ Quy trình tiêu chuẩn:
 4. Chọn đúng cơ quan tiếp nhận.
 5. Nhập nội dung bàn giao và bấm **Cập nhật**.
 
+Sau khi lưu, hệ thống ghi nhận bước **Chuyển cơ quan khác** đã hoàn thành và tự chuyển trạng thái hiện tại sang **Chờ kết quả**.
+
 ### 9.5 Tạo biểu mẫu Word ở bước kết quả ban đầu
 
 ![Xác nhận thông tin tạo tài liệu kết quả xử lý](GUI/admin/2026-09-16_21h34_53.png)
@@ -421,9 +426,11 @@ Khi lưu bước **Kết quả xử lý ban đầu**, nếu hồ sơ còn thiế
 Nếu chọn **Yes**, hệ thống mở cửa sổ xem trước thông tin sẽ điền vào phiếu:
 
 1. Nhập **Phiếu chuyển đơn số**, **Ngày phiếu chuyển đơn** và **Chuyển đơn tố cáo đề ngày**.
-2. Kiểm tra các nội dung chỉ đọc được lấy từ hồ sơ như đơn ghi tên, địa chỉ liên hệ, nguồn đơn, tóm tắt nội dung, nhận xét và đề xuất.
-3. Cuộn bên trong cửa sổ để đọc hết nội dung dài; các nút thao tác vẫn nằm ở cuối cửa sổ.
-4. Bấm **Xác nhận** để cập nhật xử lý và tạo tài liệu, hoặc **Hủy bỏ** để quay lại trang chi tiết mà chưa lưu bước này.
+2. Nhập **Tên đội trưởng** và **Tên lãnh đạo duyệt**. Không cần nhập riêng Cán bộ đề xuất vì hệ thống lấy từ trường **Người xử lý** của hồ sơ.
+3. Nhập **Nhận xét** và **Đề xuất**. Hai ô này luôn để trống khi mở cửa sổ, không lấy nội dung ghi chú từ cơ sở dữ liệu, cho phép nhập nội dung dài và xuống nhiều dòng.
+4. Kiểm tra các nội dung chỉ đọc được lấy từ hồ sơ như đơn ghi tên, địa chỉ liên hệ, nguồn đơn và tóm tắt nội dung.
+5. Cuộn bên trong cửa sổ để đọc hết nội dung dài; các nút thao tác vẫn nằm ở cuối cửa sổ.
+6. Bấm **Xác nhận** để cập nhật xử lý và tạo tài liệu, hoặc **Hủy bỏ** để quay lại trang chi tiết mà chưa lưu bước này.
 
 Hệ thống có thể tạo:
 
@@ -436,8 +443,8 @@ Sau khi tạo, kiểm tra file trong **Tài liệu liên quan**, tải xuống v
 ### 9.6 Lưu ý về tài liệu đính kèm
 
 - Không xóa file đã dùng làm căn cứ xử lý nếu chưa có bản thay thế.
-- Nếu thấy tên tài liệu nhưng không mở được, đường dẫn file có thể chỉ tồn tại trên máy đã đính kèm ban đầu.
-- Với hệ thống nhiều máy, cần bảo đảm file nằm ở vị trí mà máy chủ hoặc máy đang thao tác có thể truy cập.
+- File đính kèm và biểu mẫu Word được lưu tập trung trên Server; Client tải file về bộ nhớ đệm cục bộ khi mở.
+- Với file cũ tạo trước cơ chế lưu tập trung, hệ thống sẽ chuyển vào kho Server nếu đường dẫn nguồn còn truy cập được. Nếu file nguồn cũ đã mất, cần bổ sung lại file.
 - Sau khi cập nhật, nên quay lại rồi mở lại đúng hồ sơ để kiểm tra danh sách tài liệu đã được tải đầy đủ.
 
 ---
@@ -509,7 +516,7 @@ Các chức năng chung gồm:
 - **Nhật ký hệ thống:** xem lịch sử thao tác của tài khoản hiện tại.
 - **Đổi mật khẩu:** cập nhật mật khẩu cá nhân.
 - **Thông tin phần mềm:** phiên bản, môi trường chạy, chế độ dữ liệu và URL máy chủ.
-- **Cập nhật phần mềm:** kiểm tra và cài đặt gói cập nhật nội bộ.
+- **Cập nhật phần mềm Client:** kiểm tra và cài đặt gói Client nội bộ.
 
 ### 11.2 Xem nhật ký hệ thống
 
@@ -540,7 +547,7 @@ Admin xem được nhật ký hệ thống rộng hơn; Lãnh đạo và Cán b�
 3. Bấm **Cập nhật** để tải gói từ máy chủ.
 4. Lưu công việc trước khi cài đặt hoặc khởi động lại ứng dụng.
 
-Server và Client phải dùng cùng phiên bản. Nếu Server đã được nâng cấp và Client còn ở bản cũ, hệ thống sẽ không cho đăng nhập hoặc tiếp tục thao tác; hãy cài bộ Client có đúng số phiên bản được thông báo.
+Chức năng này chỉ cập nhật Client trên máy đang sử dụng, không cập nhật Server hoặc cơ sở dữ liệu. Phiên bản Client và Server có thể khác nhau; hệ thống không chặn đăng nhập chỉ vì số phiên bản không trùng khớp.
 
 ### 11.5 Quản lý danh mục - chỉ Admin
 
@@ -621,12 +628,12 @@ Khối sao lưu nằm trên trang Cài đặt của Admin.
 
 1. Chọn thư mục lưu bản sao thủ công trên máy đang sử dụng.
 2. Bấm **Sao lưu ngay**.
-3. Chờ máy chủ tạo bản sao an toàn và tải file `.db` về thư mục đã chọn.
+3. Chờ máy chủ tạo bản sao đầy đủ dạng `.qlhbackup` và tải về thư mục đã chọn. Gói này gồm cơ sở dữ liệu, toàn bộ file đính kèm và các biểu mẫu đã tạo.
 4. Kiểm tra trạng thái và thời điểm sao lưu gần nhất.
 
 #### Khôi phục
 
-1. Chọn đúng file cơ sở dữ liệu `.db`.
+1. Ưu tiên chọn đúng file `.qlhbackup` để khôi phục đầy đủ cơ sở dữ liệu, file đính kèm và biểu mẫu đã tạo. Hệ thống vẫn nhận file `.db` cũ nhưng file này chỉ khôi phục dữ liệu trong cơ sở dữ liệu, không có các file vật lý đi kèm.
 2. Bấm **Khôi phục dữ liệu**.
 3. Đọc kỹ cảnh báo và xác nhận.
 4. Chờ kiểm tra dữ liệu và khôi phục hoàn tất.
@@ -634,7 +641,7 @@ Khối sao lưu nằm trên trang Cài đặt của Admin.
 
 > Khôi phục sẽ thay đổi dữ liệu dùng chung của toàn bộ người dùng. Chỉ thực hiện khi đã thông báo người đang sử dụng hệ thống và đã tạo bản sao hiện trạng.
 
-Trước khi thay dữ liệu, máy chủ tự tạo một bản an toàn có tên dạng `quanlyhoso_before_restore_...db`. File tải lên tạm thời `.restore_upload_...db` được xóa sau khi thao tác hoàn tất, kể cả khi khôi phục gặp lỗi.
+Trước khi thay dữ liệu, máy chủ tự tạo một gói `.qlhbackup` an toàn chứa hiện trạng cơ sở dữ liệu và kho file. Dữ liệu tải lên tạm thời được xóa sau khi thao tác hoàn tất, kể cả khi khôi phục gặp lỗi.
 
 ---
 
@@ -681,7 +688,7 @@ Trước khi thay dữ liệu, máy chủ tự tạo một bản an toàn có t�
 - Kiểm tra Caps Lock và kiểu gõ bàn phím.
 - Kiểm tra máy chủ có ở trạng thái **Đang hoạt động**.
 - Kiểm tra URL máy chủ trong trang Cài đặt.
-- Nếu có thông báo phiên bản không tương thích, cài Client có cùng phiên bản với Server rồi mở lại ứng dụng.
+- Nếu Client báo lỗi khi tải gói cập nhật, kiểm tra kết nối Server rồi thử lại hoặc liên hệ Admin để nhận đúng gói `QuanLyHoSo-Client-<phiên_bản>.zip`.
 - Liên hệ Admin nếu tài khoản bị khóa hoặc quên mật khẩu.
 
 ### 13.2 Bị yêu cầu đổi mật khẩu ngay sau đăng nhập
@@ -705,11 +712,9 @@ Trước khi thay dữ liệu, máy chủ tự tạo một bản an toàn có t�
 
 ### 13.5 Tài liệu có tên nhưng không mở được
 
-- File gốc có thể đã bị di chuyển, đổi tên hoặc xóa.
-- Đường dẫn file có thể nằm trên một máy khác.
-- Kiểm tra kết nối đến vị trí lưu file.
-- Thử tải tài liệu về máy nếu nút tải khả dụng.
-- Nếu file cũ không còn đường dẫn hợp lệ, liên hệ người đã đính kèm hoặc Admin để bổ sung lại.
+- Kiểm tra kết nối từ Client tới Server rồi thử tải lại tài liệu.
+- Kiểm tra Server còn đủ dung lượng và thư mục dữ liệu `QuanLyHoSoFiles` còn nguyên vẹn.
+- Nếu đây là file cũ chưa chuyển được vào kho tập trung vì đường dẫn nguồn không còn hợp lệ, liên hệ người đã đính kèm hoặc Admin để bổ sung lại.
 
 ### 13.6 Không thấy thông báo mới ngay lập tức
 
@@ -735,7 +740,7 @@ Trước khi thay dữ liệu, máy chủ tự tạo một bản an toàn có t�
 - Kiểm tra mã hồ sơ trước khi sửa, xóa, khôi phục hoặc cập nhật quy trình.
 - Không xóa vĩnh viễn nếu chưa có bản sao lưu phù hợp.
 - Sao lưu định kỳ và lưu ít nhất một bản ở vị trí an toàn.
-- Không tự ý di chuyển file đính kèm sau khi đã liên kết với hồ sơ.
+- Không tự ý di chuyển, đổi tên hoặc xóa nội dung trong thư mục dữ liệu `QuanLyHoSoFiles` trên Server.
 - Khi khôi phục cơ sở dữ liệu, thông báo cho người dùng và dừng thao tác phát sinh dữ liệu mới.
 - Báo Admin khi phát hiện sai quyền, dữ liệu bất thường hoặc thao tác không được ghi vào nhật ký.
 

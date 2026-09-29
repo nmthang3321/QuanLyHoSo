@@ -24,6 +24,7 @@ namespace QuanLyHoSo.Infrastructure.Network
             };
             _httpClient.DefaultRequestHeaders.TryAddWithoutValidation("X-QuanLyHoSo-Client", Environment.MachineName);
             _httpClient.DefaultRequestHeaders.TryAddWithoutValidation(LanProtocolVersion.ClientVersionHeader, LanProtocolVersion.Current);
+            _httpClient.DefaultRequestHeaders.TryAddWithoutValidation(LanProtocolVersion.ActualClientVersionHeader, LanProtocolVersion.Current);
             _jsonOptions = new JsonSerializerOptions
             {
                 PropertyNameCaseInsensitive = true
@@ -34,13 +35,17 @@ namespace QuanLyHoSo.Infrastructure.Network
         public void Ping()
         {
             var health = Call<LanHealthResponse>("health", null);
-            if (health == null || !health.IsClientVersionSupported ||
-                !string.Equals(health.ServerVersion, LanProtocolVersion.Current, StringComparison.OrdinalIgnoreCase))
+            if (health?.Ok != true)
             {
-                var serverVersion = string.IsNullOrWhiteSpace(health?.ServerVersion) ? "không xác định" : health.ServerVersion;
-                throw new LanVersionMismatchException(
-                    $"Phiên bản Client ({LanProtocolVersion.Current}) không tương thích với Server ({serverVersion}). " +
-                    $"Vui lòng cài Client phiên bản {health?.RequiredClientVersion ?? serverVersion}.");
+                throw new InvalidOperationException("Máy server không trả về trạng thái sẵn sàng.");
+            }
+
+            if (!health.IsClientVersionSupported && !string.IsNullOrWhiteSpace(health.RequiredClientVersion))
+            {
+                _httpClient.DefaultRequestHeaders.Remove(LanProtocolVersion.ClientVersionHeader);
+                _httpClient.DefaultRequestHeaders.TryAddWithoutValidation(
+                    LanProtocolVersion.ClientVersionHeader,
+                    health.RequiredClientVersion.Trim());
             }
         }
 

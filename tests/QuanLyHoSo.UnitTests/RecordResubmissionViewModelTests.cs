@@ -88,7 +88,7 @@ namespace QuanLyHoSo.UnitTests
         private static Mock<IApplicationDataService> NewService()
         {
             var service = new Mock<IApplicationDataService>();
-            service.Setup(x => x.GetNextRecordCode()).Returns("HS-TEST-NEW");
+            service.Setup(x => x.GetNextRecordCode()).Returns("HS-2026-000001");
             service.Setup(x => x.GetCatalogValues(It.IsAny<string>(), It.IsAny<bool>())).Returns(Array.Empty<string>());
             service.Setup(x => x.GetProcessorNames(It.IsAny<bool>())).Returns(Array.Empty<string>());
             service.Setup(x => x.GetAreaNames(It.IsAny<bool>())).Returns(Array.Empty<string>());

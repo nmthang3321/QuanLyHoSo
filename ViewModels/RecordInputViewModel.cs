@@ -23,6 +23,7 @@ namespace QuanLyHoSo.ViewModels
         private readonly IApplicationDataService _dataService;
         private readonly Action _goBack;
         private string _editingRecordCode;
+        private string _recordCode;
         private RecordFormDraft _originalDraft;
         private RecordFormDraft _pendingDraft;
         private bool _isSenderHistoryOpen;
@@ -131,7 +132,11 @@ namespace QuanLyHoSo.ViewModels
         public bool IsEditingExistingRecord => !string.IsNullOrWhiteSpace(_editingRecordCode);
         public string SaveButtonText => IsEditingExistingRecord ? "Cập nhật" : "Lưu";
 
-        public string RecordCode { get; set; }
+        public string RecordCode
+        {
+            get => _recordCode;
+            set => SetProperty(ref _recordCode, value);
+        }
         public string ReceiveSource { get; set; }
         public string ReceiverName { get; set; }
         public string SenderName { get; set; }
@@ -277,7 +282,8 @@ namespace QuanLyHoSo.ViewModels
                 {
                     FileName = fileInfo.Name,
                     FileSize = FormatFileSize(fileInfo.Length),
-                    FilePath = fileInfo.FullName
+                    FilePath = fileInfo.FullName,
+                    Content = System.IO.File.ReadAllBytes(fileInfo.FullName)
                 });
             }
 
@@ -320,10 +326,11 @@ namespace QuanLyHoSo.ViewModels
                 return;
             }
 
+            RecordCode = RecordCodeRules.Normalize(RecordCode);
             var validationMessage = ValidateRequiredFields();
             if (!string.IsNullOrWhiteSpace(validationMessage))
             {
-                MessageBox.Show(validationMessage, "Thiếu thông tin bắt buộc", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show(validationMessage, "Kiểm tra thông tin", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
@@ -599,23 +606,27 @@ namespace QuanLyHoSo.ViewModels
 
         private void OpenAttachment(object parameter)
         {
-            if (parameter is not AttachmentDraft attachment || string.IsNullOrWhiteSpace(attachment.FilePath))
+            if (parameter is not AttachmentDraft attachment || string.IsNullOrWhiteSpace(attachment.FileName))
             {
                 MessageBox.Show("Tài liệu này chưa có đường dẫn file để mở.", "Xem tài liệu", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
 
-            if (!System.IO.File.Exists(attachment.FilePath))
+            try
             {
-                MessageBox.Show("Không tìm thấy file trên máy. Vui lòng chọn lại tài liệu.", "Xem tài liệu", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
+                var localPath = attachment.Content != null && System.IO.File.Exists(attachment.FilePath)
+                    ? attachment.FilePath
+                    : _dataService.GetAttachmentFilePath(RecordCode, attachment.FileName);
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = localPath,
+                    UseShellExecute = true
+                });
             }
-
-            Process.Start(new ProcessStartInfo
+            catch (Exception ex)
             {
-                FileName = attachment.FilePath,
-                UseShellExecute = true
-            });
+                MessageBox.Show($"Không thể mở tài liệu.\n{ex.Message}", "Xem tài liệu", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
         }
 
         private string ValidateRequiredFields()
@@ -642,6 +653,14 @@ namespace QuanLyHoSo.ViewModels
 
             if (missingFields.Count == 0)
             {
+                var normalizedRecordCode = RecordCodeRules.Normalize(RecordCode);
+                var recordCodeWasChanged = !IsEditingExistingRecord ||
+                    !string.Equals(normalizedRecordCode, RecordCodeRules.Normalize(_editingRecordCode), StringComparison.Ordinal);
+                if (recordCodeWasChanged && !RecordCodeRules.IsValid(normalizedRecordCode))
+                {
+                    return $"Số hồ sơ / Số đơn phải đúng định dạng HS-<năm>-<6 chữ số>.\n\nVí dụ: {RecordCodeRules.FormatExample}";
+                }
+
                 return string.Empty;
             }
 

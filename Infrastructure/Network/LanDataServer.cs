@@ -149,22 +149,19 @@ namespace QuanLyHoSo.Infrastructure.Network
                 }
 
                 var route = context.Request.Url.AbsolutePath.Trim('/').Replace("api/", string.Empty);
-                var clientVersion = context.Request.Headers[LanProtocolVersion.ClientVersionHeader];
-                if (!string.Equals(route, "health", StringComparison.OrdinalIgnoreCase) &&
-                    !LanProtocolVersion.IsCompatible(clientVersion))
-                {
-                    await WriteErrorAsync(context, 426, LanProtocolVersion.BuildMismatchMessage(clientVersion));
-                    return;
-                }
-
                 TrackClient(context.Request);
-                var result = Dispatch(route, await ReadBodyAsync(context.Request), clientVersion);
+                var result = Dispatch(route, await ReadBodyAsync(context.Request));
                 if (string.Equals(route, "settings/update/download", StringComparison.OrdinalIgnoreCase)
-                    || string.Equals(route, "settings/backup/download", StringComparison.OrdinalIgnoreCase))
+                    || string.Equals(route, "settings/backup/download", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(route, "attachments/download", StringComparison.OrdinalIgnoreCase))
                 {
                     var contentType = string.Equals(route, "settings/backup/download", StringComparison.OrdinalIgnoreCase)
-                        ? "application/x-sqlite3"
-                        : "application/zip";
+                        ? string.Equals(Path.GetExtension(result as string), ".db", StringComparison.OrdinalIgnoreCase)
+                            ? "application/x-sqlite3"
+                            : "application/zip"
+                        : string.Equals(route, "attachments/download", StringComparison.OrdinalIgnoreCase)
+                            ? "application/octet-stream"
+                            : "application/zip";
                     await WriteFileAsync(context, result as string, contentType);
                     return;
                 }
@@ -194,7 +191,7 @@ namespace QuanLyHoSo.Infrastructure.Network
             _activeClients[clientMachine] = DateTime.UtcNow;
         }
 
-        private object Dispatch(string route, string body, string clientVersion)
+        private object Dispatch(string route, string body)
         {
             if (string.Equals(route, "health", StringComparison.OrdinalIgnoreCase))
             {
@@ -203,8 +200,8 @@ namespace QuanLyHoSo.Infrastructure.Network
                     Ok = true,
                     Machine = Environment.MachineName,
                     ServerVersion = LanProtocolVersion.Current,
-                    RequiredClientVersion = LanProtocolVersion.Current,
-                    IsClientVersionSupported = LanProtocolVersion.IsCompatible(clientVersion)
+                    RequiredClientVersion = null,
+                    IsClientVersionSupported = true
                 };
             }
 
@@ -300,6 +297,9 @@ namespace QuanLyHoSo.Infrastructure.Network
                         return _dataService.CountExportRecords(exportCount.FromDate, exportCount.ToDate, exportCount.Status, exportCount.CaseType, exportCount.Field, exportCount.AreaName, exportCount.ProcessorName, exportCount.SearchText);
                     case "records/detail":
                         return _dataService.GetRecordForm(ReadData<RecordCodeRequest>(body).RecordCode);
+                    case "attachments/download":
+                        var attachment = ReadData<AttachmentDownloadRequest>(body);
+                        return _dataService.GetAttachmentFilePath(attachment.RecordCode, attachment.FileName);
                     case "records/next-code":
                         return _dataService.GetNextRecordCode();
                     case "records/similar":
@@ -471,7 +471,7 @@ namespace QuanLyHoSo.Infrastructure.Network
         {
             if (string.IsNullOrWhiteSpace(filePath) || !File.Exists(filePath))
             {
-                await WriteErrorAsync(context, 404, "Update package was not found.");
+                await WriteErrorAsync(context, 404, "File was not found.");
                 return;
             }
 

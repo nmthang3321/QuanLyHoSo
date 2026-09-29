@@ -519,7 +519,7 @@ def appendix_story():
     ]
     checklist = [
         "Đã sao lưu database trước khi nâng cấp Server.",
-        "Server và toàn bộ Client có cùng số phiên bản.",
+        "Đã xác định đúng phiên bản riêng của Server và Client cần triển khai.",
         "Server hiển thị trạng thái đang hoạt động và đúng địa chỉ kết nối.",
         "Client đăng nhập, xem Tổng quan và tải danh sách hồ sơ thành công.",
         "Tài khoản Cán bộ chỉ xem Tổng quan và hồ sơ thuộc phạm vi cá nhân.",
@@ -536,7 +536,7 @@ def appendix_story():
         Paragraph("C. Thông tin cần gửi khi yêu cầu hỗ trợ", styles["H1VN"]),
         Paragraph("Cung cấp tên máy, vai trò tài khoản, thời điểm xảy ra lỗi, thao tác vừa thực hiện, ảnh chụp thông báo, phiên bản Client/Server và file nhật ký liên quan. Không gửi mật khẩu hoặc dữ liệu nhạy cảm qua kênh công khai.", styles["BodyVN"]),
         Paragraph("D. Quy tắc phiên bản", styles["H1VN"]),
-        Paragraph("Client gửi phiên bản trong mỗi kết nối. Server chỉ cho phép đăng nhập và thao tác nghiệp vụ khi phiên bản Client khớp chính xác phiên bản Server. API kiểm tra trạng thái vẫn phản hồi để bộ cài và công cụ chẩn đoán xác định phiên bản cần dùng.", styles["QuoteVN"]),
+        Paragraph("Phiên bản Client và Server được quản lý độc lập. Client gửi phiên bản để chẩn đoán, nhưng Server không chặn đăng nhập chỉ vì số phiên bản khác nhau. Chức năng cập nhật trong ứng dụng chỉ cài gói Client trên máy trạm hiện tại.", styles["QuoteVN"]),
     ])
     return story
 

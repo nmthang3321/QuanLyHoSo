@@ -21,6 +21,7 @@ namespace QuanLyHoSo.Presentation.Converters
                 "Phân công" => isForeground ? "#0B5CFF" : "#E7F0FF",
                 "Đã phân công" => isForeground ? "#0B5CFF" : "#E7F0FF",
                 "Chờ kết quả" => isForeground ? "#5B35C8" : "#EFE9FF",
+                "Kết quả xử lý ban đầu" => isForeground ? "#D42D16" : "#FFE8E3",
                 "Đang xử lý" => isForeground ? "#B45C00" : "#FFF0D6",
                 "Đang chờ bổ sung tài liệu" => isForeground ? "#D42D16" : "#FFE8E3",
                 "Chờ bổ sung tài liệu" => isForeground ? "#D42D16" : "#FFE8E3",

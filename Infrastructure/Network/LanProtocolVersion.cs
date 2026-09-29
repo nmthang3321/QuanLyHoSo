@@ -6,19 +6,9 @@ namespace QuanLyHoSo.Infrastructure.Network
     public static class LanProtocolVersion
     {
         public const string ClientVersionHeader = "X-QuanLyHoSo-Version";
+        public const string ActualClientVersionHeader = "X-QuanLyHoSo-Client-Version";
 
         public static string Current => GetProductVersion(Assembly.GetEntryAssembly());
-
-        public static bool IsCompatible(string clientVersion)
-        {
-            return string.Equals(Normalize(clientVersion), Current, StringComparison.OrdinalIgnoreCase);
-        }
-
-        public static string BuildMismatchMessage(string clientVersion)
-        {
-            var receivedVersion = string.IsNullOrWhiteSpace(clientVersion) ? "không xác định" : clientVersion.Trim();
-            return $"Phiên bản Client ({receivedVersion}) không tương thích với Server ({Current}). Vui lòng cập nhật Client lên phiên bản {Current}.";
-        }
 
         private static string GetProductVersion(Assembly assembly)
         {

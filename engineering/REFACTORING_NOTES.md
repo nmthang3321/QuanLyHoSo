@@ -58,9 +58,9 @@ Removed a large commented-out duplicate leadership-notification query after conf
 
 Credentials and session tokens travel over plain HTTP on the configured LAN. Session validation prevents role forgery but not network interception. A production deployment should terminate TLS with a managed certificate or place the service behind an authenticated encrypted tunnel. This needs deployment/certificate decisions and cannot be introduced without changing configuration and connectivity behavior.
 
-### HIGH — attachment paths are workstation-local
+### Resolved later — attachment paths were workstation-local
 
-Attachments currently persist a `FilePath` string. A file chosen on one client may not exist on the server or another client. Correcting this needs an approved upload/storage/download contract and migration policy; silently copying or rewriting paths would change saved-data and output behavior.
+Attachments now upload their content to server-managed storage and download through the authenticated LAN API. Accessible legacy paths migrate during initialization, and `.qlhbackup` packages include the managed file tree. Inaccessible legacy source paths still require manual file recovery.
 
 ### HIGH — .NET 5 is out of support
 

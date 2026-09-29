@@ -24,11 +24,12 @@ namespace QuanLyHoSo.IntegrationTests
                 "Field",
                 "ContentGroup",
                 "Priority",
-                "ProcessorName",
                 "ExpectedHandlingMethod"
             };
             Assert.All(catalogTypes, catalogType =>
                 Assert.NotEmpty(database.Service.GetCatalogValues(catalogType)));
+            Assert.Empty(database.Service.GetCatalogValues("ProcessorName"));
+            Assert.Empty(database.Service.GetProcessorNames());
             Assert.Equal(0, database.Service.CountRecords());
             Assert.NotNull(database.Service.AuthenticateUser("admin", "admin123"));
         }
@@ -41,6 +42,8 @@ namespace QuanLyHoSo.IntegrationTests
             using var database = new TestDatabase(seedSampleRecords: true);
 
             Assert.Equal(105, database.Service.CountRecords());
+            Assert.Equal(7, database.Service.GetCatalogValues("ProcessorName").Count);
+            Assert.Equal(7, database.Service.GetProcessorNames().Count);
         }
 
         [Fact]

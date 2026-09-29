@@ -89,11 +89,11 @@ namespace QuanLyHoSo.ViewModels
                 "Đang phân loại",
                 "Đã phân công",
                 "Đang xác minh",
+                "Kết quả xử lý ban đầu",
+                "Chuyển cơ quan khác",
                 "Chờ kết quả",
-                "Đang chờ bổ sung tài liệu",
                 "Đã giải quyết",
-                RecordStatuses.ResubmittedResolved,
-                "Chuyển cơ quan khác"
+                RecordStatuses.ResubmittedResolved
             };
             var caseTypesTask = Task.Run(() => _dataService.GetCatalogValues("CaseType", includeAll: true));
             var fieldsTask = Task.Run(() => _dataService.GetCatalogValues("Field", includeAll: true));

@@ -17,6 +17,7 @@ namespace QuanLyHoSo.Infrastructure.Documents
         private static readonly XName RunPropertiesName = WordNamespace + "rPr";
         private static readonly XName HighlightName = WordNamespace + "highlight";
         private static readonly XName TextName = WordNamespace + "t";
+        private static readonly XName BreakName = WordNamespace + "br";
 
         private static readonly DocumentTemplateDefinition[] Templates =
         {
@@ -78,7 +79,11 @@ namespace QuanLyHoSo.Infrastructure.Documents
                 }
 
                 var outputPath = GetWritableOutputPath(outputFolder, template.OutputFileName);
-                CreateWordDocument(templatePath, outputPath, BuildReplacementValues(template.Kind, record, recordCode, processingDate, documentDetails));
+                CreateWordDocument(
+                    templatePath,
+                    outputPath,
+                    BuildReplacementValues(template.Kind, record, recordCode, processingDate, documentDetails),
+                    BuildNameReplacements(documentDetails));
 
                 generated.Add(new AttachmentDraft
                 {
@@ -108,7 +113,11 @@ namespace QuanLyHoSo.Infrastructure.Documents
             return Path.Combine(Environment.CurrentDirectory, "doc", "templates");
         }
 
-        private static void CreateWordDocument(string templatePath, string outputPath, IReadOnlyList<string> replacements)
+        private static void CreateWordDocument(
+            string templatePath,
+            string outputPath,
+            IReadOnlyList<string> replacements,
+            IReadOnlyDictionary<string, string> textReplacements)
         {
             File.Copy(templatePath, outputPath, true);
 
@@ -118,6 +127,7 @@ namespace QuanLyHoSo.Infrastructure.Documents
             {
                 var document = LoadXml(entry);
                 ReplaceHighlightedRuns(document, replacements, ref replacementIndex);
+                ReplaceTextOccurrences(document, textReplacements);
                 SaveXml(archive, entry, document);
             }
             if (replacementIndex != replacements.Count)
@@ -216,10 +226,103 @@ namespace QuanLyHoSo.Infrastructure.Documents
                 run.AddFirst(runProperties);
             }
 
-            run.Add(new XElement(
-                TextName,
-                new XAttribute(XNamespace.Xml + "space", "preserve"),
-                text));
+            var lines = (text ?? string.Empty)
+                .Replace("\r\n", "\n")
+                .Replace('\r', '\n')
+                .Split('\n');
+            for (var index = 0; index < lines.Length; index++)
+            {
+                if (index > 0)
+                {
+                    run.Add(new XElement(BreakName));
+                }
+                run.Add(new XElement(
+                    TextName,
+                    new XAttribute(XNamespace.Xml + "space", "preserve"),
+                    lines[index]));
+            }
+        }
+
+        private static void ReplaceTextOccurrences(XDocument document, IReadOnlyDictionary<string, string> replacements)
+        {
+            if (replacements == null || replacements.Count == 0)
+            {
+                return;
+            }
+
+            foreach (var paragraph in document.Descendants(ParagraphName))
+            {
+                var textNodes = paragraph.Descendants(TextName).ToList();
+                if (textNodes.Count == 0)
+                {
+                    continue;
+                }
+
+                foreach (var replacement in replacements)
+                {
+                    var combinedText = string.Concat(textNodes.Select(node => node.Value));
+                    var matchIndex = combinedText.IndexOf(replacement.Key, StringComparison.Ordinal);
+                    while (matchIndex >= 0)
+                    {
+                        ReplaceTextOccurrence(textNodes, matchIndex, replacement.Key.Length, replacement.Value ?? string.Empty);
+                        combinedText = string.Concat(textNodes.Select(node => node.Value));
+                        matchIndex = combinedText.IndexOf(replacement.Key, matchIndex + (replacement.Value?.Length ?? 0), StringComparison.Ordinal);
+                    }
+                }
+            }
+        }
+
+        private static void ReplaceTextOccurrence(IReadOnlyList<XElement> textNodes, int startIndex, int length, string replacement)
+        {
+            var position = 0;
+            var endIndex = startIndex + length;
+            XElement startNode = null;
+            XElement endNode = null;
+            var startOffset = 0;
+            var endOffset = 0;
+
+            foreach (var node in textNodes)
+            {
+                var nodeEnd = position + node.Value.Length;
+                if (startNode == null && startIndex >= position && startIndex < nodeEnd)
+                {
+                    startNode = node;
+                    startOffset = startIndex - position;
+                }
+                if (endIndex > position && endIndex <= nodeEnd)
+                {
+                    endNode = node;
+                    endOffset = endIndex - position;
+                    break;
+                }
+                position = nodeEnd;
+            }
+
+            if (startNode == null || endNode == null)
+            {
+                return;
+            }
+
+            var prefix = startNode.Value.Substring(0, startOffset);
+            var suffix = endNode.Value.Substring(endOffset);
+            var clearing = false;
+            foreach (var node in textNodes)
+            {
+                if (node == startNode)
+                {
+                    clearing = true;
+                    node.Value = prefix + replacement + (startNode == endNode ? suffix : string.Empty);
+                }
+                else if (clearing)
+                {
+                    node.Value = node == endNode ? suffix : string.Empty;
+                }
+
+                if (node == endNode)
+                {
+                    break;
+                }
+            }
         }
 
         private static string GetWritableOutputPath(string outputFolder, string outputFileName)
@@ -263,8 +366,9 @@ namespace QuanLyHoSo.Infrastructure.Documents
             var contactAddress = record.ContactAddress ?? string.Empty;
             var receiveSource = record.ReceiveSource ?? string.Empty;
             var content = record.Content ?? string.Empty;
-            var note = record.Note ?? string.Empty;
-            var additionalNote = record.AdditionalNote ?? string.Empty;
+            var review = documentDetails?.Review?.Trim() ?? string.Empty;
+            var proposal = documentDetails?.Proposal?.Trim() ?? string.Empty;
+            var combinedReviewAndProposal = string.Join(" ", new[] { review, proposal }.Where(value => !string.IsNullOrWhiteSpace(value)));
 
             return kind switch
             {
@@ -277,8 +381,8 @@ namespace QuanLyHoSo.Infrastructure.Documents
                     contactAddress,
                     receiveSource,
                     content,
-                    note,
-                    additionalNote
+                    review,
+                    proposal
                 },
                 TemplateKind.Guidance => new[]
                 {
@@ -290,7 +394,7 @@ namespace QuanLyHoSo.Infrastructure.Documents
                     contactAddress,
                     receiveSource,
                     content,
-                    note
+                    combinedReviewAndProposal
                 },
                 _ => new[]
                 {
@@ -301,8 +405,18 @@ namespace QuanLyHoSo.Infrastructure.Documents
                     contactAddress,
                     receiveSource,
                     content,
-                    note
+                    combinedReviewAndProposal
                 }
+            };
+        }
+
+        private static IReadOnlyDictionary<string, string> BuildNameReplacements(InitialResultDocumentDetails documentDetails)
+        {
+            return new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["Khưu Quốc Hiếu"] = documentDetails?.CommanderApproverName?.Trim() ?? string.Empty,
+                ["Quách Văn Bền"] = documentDetails?.ProposingOfficerName?.Trim() ?? string.Empty,
+                ["Thượng tá Đặng Văn Thinh"] = documentDetails?.LeaderApproverName?.Trim() ?? string.Empty
             };
         }
 

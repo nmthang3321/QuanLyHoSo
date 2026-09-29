@@ -37,12 +37,13 @@ Example client settings use `DataAccessMode: "Client"` and a reachable server UR
 
 Local test: `.\scripts\test-lan-local.ps1`. It builds, backs up settings, starts server/client instances, switches client configuration, and restores settings afterward.
 
-Connected flows include authentication, dashboards, record list/filter/export/details, Admin intake/edit/delete, processing queue/update, Settings catalog/log/users, backup/restore, resubmission, trash, staff tracking, notices/KPI, and internal update packages.
+Connected flows include authentication, dashboards, record list/filter/export/details, Admin intake/edit/delete, processing queue/update, Settings catalog/log/users, backup/restore, resubmission, trash, staff tracking, notices/KPI, and Client-only internal update packages. Client and Server product versions are independent and are not required to match.
 
 Known limitations:
-- Attachment metadata/path travels through LAN, but physical client files are not uploaded to server storage.
 - Server is a tray application tied to a user session, not a Windows Service.
 - Use one server owning the database; do not run multiple synchronized Admin hosts.
+
+Attachments are uploaded with their content and stored on the server under `QuanLyHoSoFiles`. Authenticated clients download them through the LAN API. Complete `.qlhbackup` files contain the database, attachments, and generated documents; legacy `.db` backups contain only SQLite data.
 
 Server UI:
 - Compact status surface shows one usable client URL, machine name, uptime, and connected client count, without database/log internals.

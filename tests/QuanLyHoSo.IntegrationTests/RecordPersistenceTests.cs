@@ -75,6 +75,55 @@ namespace QuanLyHoSo.IntegrationTests
         }
 
         [Fact]
+        [Trait("Category", "Integration")]
+        [Trait("Category", "Regression")]
+        public void CreateRecord_WhenRecordCodeIsEntered_ShouldPreserveNormalizedCode()
+        {
+            using var database = new TestDatabase();
+            var draft = database.NewRecord("manual-code");
+            draft.RecordCode = "  hs-2031-123456  ";
+
+            var savedCode = database.Service.SaveRecordForm(draft);
+
+            Assert.Equal("HS-2031-123456", savedCode);
+            Assert.Equal(savedCode, database.Service.GetRecordForm(savedCode).RecordCode);
+        }
+
+        [Theory]
+        [InlineData("HS-31-123456")]
+        [InlineData("HS-2031-12345")]
+        [InlineData("OTHER-2031-123456")]
+        [Trait("Category", "Integration")]
+        [Trait("Category", "Negative")]
+        public void CreateRecord_WhenRecordCodeFormatIsInvalid_ShouldReject(string recordCode)
+        {
+            using var database = new TestDatabase();
+            var draft = database.NewRecord("invalid-code");
+            draft.RecordCode = recordCode;
+
+            var error = Assert.Throws<InvalidOperationException>(() => database.Service.SaveRecordForm(draft));
+
+            Assert.Contains("HS-<năm>-<6 chữ số>", error.Message);
+        }
+
+        [Fact]
+        [Trait("Category", "Integration")]
+        [Trait("Category", "Negative")]
+        public void CreateRecord_WhenRecordCodeAlreadyExists_ShouldRejectDuplicate()
+        {
+            using var database = new TestDatabase();
+            var first = database.NewRecord("manual-code-first");
+            first.RecordCode = "HS-2031-654321";
+            database.Service.SaveRecordForm(first);
+            var duplicate = database.NewRecord("manual-code-duplicate");
+            duplicate.RecordCode = "HS-2031-654321";
+
+            var error = Assert.Throws<InvalidOperationException>(() => database.Service.SaveRecordForm(duplicate));
+
+            Assert.Contains("đã tồn tại", error.Message);
+        }
+
+        [Fact]
         [Trait("Category", "Critical")]
         [Trait("Category", "Regression")]
         public void Update_WhenRecordCodeConflicts_ShouldRollbackWithoutDamagingEitherRecord()

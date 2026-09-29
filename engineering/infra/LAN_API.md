@@ -10,12 +10,15 @@ Modes: `AdminHost` and `Client`.
 - `QuanLyHoSo.Server` can host the API independently.
 - WPF defaults to `Client`; use explicit `AdminHost` only for single-machine/legacy compatibility.
 - Connection failures surface through `LanServerUnavailableException`.
-- Client sends `X-QuanLyHoSo-Client` with the machine name and `X-QuanLyHoSo-Version` with the three-part product version.
-- `health` returns `ServerVersion`, `RequiredClientVersion`, and `IsClientVersionSupported`; the 30-second heartbeat validates the same contract.
-- Client and Server versions must match exactly. `health` remains available for diagnostics; all other routes return HTTP `426 Upgrade Required` when the version is missing or different.
+- Client sends `X-QuanLyHoSo-Client` with the machine name and `X-QuanLyHoSo-Client-Version` with its actual three-part product version for diagnostics. `X-QuanLyHoSo-Version` remains as a legacy compatibility header.
+- `health` returns the actual `ServerVersion`. The legacy `RequiredClientVersion` and `IsClientVersionSupported` fields remain in the response for compatibility, but no product-version equality is required.
+- The 30-second heartbeat checks only that the server reports a ready health state. Business routes are not rejected because the Client and Server product versions differ.
+- When a pre-change Server still reports an unsupported Client version, the updated Client automatically uses that Server's requested value only in the legacy compatibility header. Its actual version remains available in `X-QuanLyHoSo-Client-Version`, so a Client-only rollout can connect to an older Server without upgrading the Server first.
 - `ConnectedClientCount` counts unique machines active in the last 90 seconds and clears on server stop.
 
-Route groups include authentication; catalogs; dashboard; record list/detail/save/resubmission/trash/restore; processing; staff performance/deadlines/active records; leadership notices/KPI; Settings catalog/log/user/password; backup/restore; and internal update discovery/download. Check `LanDataServer.Dispatch` for the exact current list.
+Route groups include authentication; catalogs; dashboard; record list/detail/save/resubmission/trash/restore; attachment upload metadata and authenticated `attachments/download`; processing; staff performance/deadlines/active records; leadership notices/KPI; Settings catalog/log/user/password; backup/restore; and Client-only internal update discovery/download. Only `QuanLyHoSo-Client-*.zip` packages are eligible for the update routes. Check `LanDataServer.Dispatch` for the exact current list.
+
+New attachment drafts serialize their bytes in `AttachmentDraft.Content`. The server writes the durable copy under `QuanLyHoSoFiles\Attachments` and returns server-owned metadata. Backup creation produces `.qlhbackup` packages containing SQLite plus all managed files; restore still accepts legacy database-only `.db` files.
 
 Run:
 

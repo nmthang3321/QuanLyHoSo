@@ -68,10 +68,10 @@ jobs:
           body: |
             Bộ cài QuanLyHoSo dành cho Windows 64-bit, kèm tài liệu khách hàng và mã SHA-256.
 
-            - Cài Server trước, sau đó cài Client trên các máy trạm.
-            - Server và Client phải sử dụng cùng phiên bản.
+            - Cài Server và Client theo thành phần cần triển khai.
+            - Phiên bản Server và Client được quản lý độc lập; không bắt buộc phải trùng nhau.
             - Bộ cài đã kèm .NET Runtime.
-            - Khi nâng cấp, sao lưu dữ liệu trước và cập nhật Server cùng toàn bộ Client.
+            - Chức năng cập nhật trong ứng dụng chỉ cập nhật Client. Sao lưu dữ liệu trước khi nâng cấp Server.
             - Kiểm tra mã SHA-256 của hai bộ cài và PDF theo file SHA256.txt.
           files: |
             artifacts/installer/QuanLyHoSo-Server-Setup-${{ steps.version.outputs.value }}-win-x64.exe

@@ -16,4 +16,5 @@ Important areas:
 - List/filter/export: `GetFilteredRecords`, `CountFilteredRecords`, `GetExportPreview`, `BuildExportWhere`
 - Processing: queue metrics/list/detail and `UpdateProcessingRecord`
 - Areas: `GetAreaNames`, `EnsureStandardOrganizationAreas`, `AddOptionalAreaFilter`
-- Backup/restore: `BackupDatabase`, `RestoreDatabaseFromFile`
+- Managed files: attachment content persistence/download, legacy-path migration, and generated-document storage below `QuanLyHoSoFiles`
+- Backup/restore: `BackupDatabase`, full-package creation/download/restore, legacy `.db` restore, validation, automatic scheduling, and retention

@@ -53,6 +53,8 @@ namespace QuanLyHoSo.ApplicationServices.Abstractions
         RecordFormDraft GetLatestRecordForm();
         RecordFormDraft GetRecordForm(string recordCode);
         string SaveRecordForm(RecordFormDraft record, string originalRecordCode = null);
+        string GetAttachmentFilePath(string recordCode, string fileName);
+        void DownloadAttachment(string recordCode, string fileName, string destinationPath);
         bool DeleteRecord(string recordCode, string deletionBatchId = null);
         IReadOnlyList<DeletedRecord> GetDeletedRecords();
         bool PermanentlyDeleteRecord(string recordCode, string deletionBatchId);
