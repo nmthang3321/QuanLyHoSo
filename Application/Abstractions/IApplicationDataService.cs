@@ -31,6 +31,7 @@ namespace QuanLyHoSo.ApplicationServices.Abstractions
         void UpdateCatalogItemOrders(IReadOnlyList<CatalogValueSetting> items);
         IReadOnlyList<string> GetProcessorNames(bool includeAll = false);
         IReadOnlyList<StaffPerformanceRow> GetStaffPerformanceRows(DateTime? fromDate = null, DateTime? toDate = null);
+        IReadOnlyList<StaffPerformanceBarRow> GetTopOfficers(DateTime? fromDate = null, DateTime? toDate = null);
         IReadOnlyList<StatusStat> GetStaffDeadlineStats(DateTime? fromDate = null, DateTime? toDate = null);
         IReadOnlyList<StaffWorkRecord> GetStaffActiveRecords(string processorName, DateTime? fromDate = null, DateTime? toDate = null, int take = 4);
         (string Message, string ReceivedText) GetLatestLeadershipNotice(string officerName);

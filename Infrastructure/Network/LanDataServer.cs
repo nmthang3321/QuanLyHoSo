@@ -343,6 +343,9 @@ namespace QuanLyHoSo.Infrastructure.Network
                     case "staff/performance":
                         var staffPerformance = ReadData<DateRangeRequest>(body);
                         return _dataService.GetStaffPerformanceRows(staffPerformance.FromDate, staffPerformance.ToDate);
+                    case "staff/top-officers":
+                        var topOfficersRequest = ReadData<DateRangeRequest>(body);
+                        return _dataService.GetTopOfficers(topOfficersRequest.FromDate, topOfficersRequest.ToDate);
                     case "staff/deadlines":
                         var staffDeadlines = ReadData<DateRangeRequest>(body);
                         return _dataService.GetStaffDeadlineStats(staffDeadlines.FromDate, staffDeadlines.ToDate);

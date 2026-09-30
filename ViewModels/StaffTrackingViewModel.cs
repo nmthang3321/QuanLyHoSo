@@ -28,7 +28,6 @@ namespace QuanLyHoSo.ViewModels
         private const string NeedsAttentionMetricFilter = "NeedsAttention";
         private const int StaffPageSize = 5;
         private const int OverloadedProcessingThreshold = 10;
-        private const int PerformanceChartHeight = 120;
 
         private readonly Action<int> _notificationUnreadCountChanged;
         private readonly List<StaffPerformanceRow> _allStaffRows = new();
@@ -73,7 +72,7 @@ namespace QuanLyHoSo.ViewModels
             Metrics = new ObservableCollection<StaffTrackingMetric>();
 
             StaffRows = new ObservableCollection<StaffPerformanceRow>();
-            BarStats = new ObservableCollection<StaffBarStat>();
+            TopOfficers = new ObservableCollection<StaffPerformanceBarRow>();
             DateFilterOptions = new ObservableCollection<string>
             {
                 ThisWeekFilter,
@@ -113,7 +112,7 @@ namespace QuanLyHoSo.ViewModels
         public ObservableCollection<StaffPerformanceRow> StaffRows { get; }
         public ObservableCollection<StatusStat> DeadlineStats { get; }
         public ObservableCollection<StaffWorkRecord> ActiveRecords { get; }
-        public ObservableCollection<StaffBarStat> BarStats { get; }
+        public ObservableCollection<StaffPerformanceBarRow> TopOfficers { get; }
         public ObservableCollection<StaffNotification> Notifications { get; }
         public ObservableCollection<string> DateFilterOptions { get; }
         public ObservableCollection<string> Officers { get; }
@@ -332,10 +331,26 @@ namespace QuanLyHoSo.ViewModels
         {
             var staffRows = _dataService.GetStaffPerformanceRows(FromDate, ToDate);
             var deadlineStats = _dataService.GetStaffDeadlineStats(FromDate, ToDate);
-            ApplyStaffData(staffRows, deadlineStats);
+            ApplyStaffData(staffRows, deadlineStats, SafeGetTopOfficers(FromDate, ToDate));
         }
 
-        private void ApplyStaffData(IReadOnlyList<StaffPerformanceRow> staffRows, IReadOnlyList<StatusStat> deadlineStats)
+        private IReadOnlyList<StaffPerformanceBarRow> SafeGetTopOfficers(DateTime? fromDate, DateTime? toDate)
+        {
+            try
+            {
+                return _dataService.GetTopOfficers(fromDate, toDate);
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Error("StaffTracking", "GetTopOfficers", ex, "Could not load top officers.");
+                return Array.Empty<StaffPerformanceBarRow>();
+            }
+        }
+
+        private void ApplyStaffData(
+            IReadOnlyList<StaffPerformanceRow> staffRows,
+            IReadOnlyList<StatusStat> deadlineStats,
+            IReadOnlyList<StaffPerformanceBarRow> topOfficers)
         {
             if (AuthContext.IsOfficer)
             {
@@ -355,7 +370,7 @@ namespace QuanLyHoSo.ViewModels
             _allStaffRows.Clear();
             _allStaffRows.AddRange(staffRows);
 
-            RefreshBarStats(_allStaffRows);
+            ReplaceTopOfficers(topOfficers);
             RefreshMetricCards(_allStaffRows);
             RefreshDeadlineStats(deadlineStats);
             CurrentStaffPage = 1;
@@ -382,17 +397,18 @@ namespace QuanLyHoSo.ViewModels
             {
                 var staffTask = Task.Run(() => _dataService.GetStaffPerformanceRows(fromDate, toDate));
                 var deadlineTask = Task.Run(() => _dataService.GetStaffDeadlineStats(fromDate, toDate));
+                var topOfficersTask = Task.Run(() => SafeGetTopOfficers(fromDate, toDate));
                 var notificationsTask = canReadNotifications
                     ? Task.Run(() => _dataService.GetLeadershipNotices(officerName, 0, int.MaxValue, adminOnly, includeAll))
                     : Task.FromResult<StaffNotificationPage>(null);
-                await Task.WhenAll(staffTask, deadlineTask, notificationsTask);
+                await Task.WhenAll(staffTask, deadlineTask, topOfficersTask, notificationsTask);
 
                 if (IsDisposed)
                 {
                     return;
                 }
 
-                ApplyStaffData(staffTask.Result, deadlineTask.Result);
+                ApplyStaffData(staffTask.Result, deadlineTask.Result, topOfficersTask.Result);
                 ApplyNotifications(notificationsTask.Result);
             }
             catch (Exception ex)
@@ -482,26 +498,13 @@ namespace QuanLyHoSo.ViewModels
             RaiseStaffPageCommandStates();
         }
 
-        private void RefreshBarStats(IEnumerable<StaffPerformanceRow> staffRows)
+        private void ReplaceTopOfficers(IReadOnlyList<StaffPerformanceBarRow> topOfficers)
         {
-            BarStats.Clear();
-            foreach (var row in staffRows)
+            TopOfficers.Clear();
+            foreach (var bar in topOfficers)
             {
-                var onTimePercent = int.Parse(row.OnTimeRateText.TrimEnd('%'), CultureInfo.InvariantCulture);
-                BarStats.Add(new StaffBarStat
-                {
-                    StaffName = row.Name,
-                    OnTimePercent = onTimePercent,
-                    KpiPercent = row.KpiPercent,
-                    OnTimeHeight = ScalePerformanceBar(onTimePercent),
-                    KpiHeight = ScalePerformanceBar(row.KpiPercent)
-                });
+                TopOfficers.Add(bar);
             }
-        }
-
-        private static int ScalePerformanceBar(int percentage)
-        {
-            return (int)Math.Round(Math.Max(0, Math.Min(100, percentage)) * PerformanceChartHeight / 100d);
         }
 
         private void RefreshMetricCards(IReadOnlyCollection<StaffPerformanceRow> staffRows)

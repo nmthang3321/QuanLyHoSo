@@ -147,7 +147,7 @@ namespace QuanLyHoSo.Views.Records
         {
             if (sender is FrameworkElement element)
             {
-                AnimateScaleY(element, 560, 100);
+                AnimateScaleX(element, 560, 100);
             }
         }
 
@@ -189,7 +189,7 @@ namespace QuanLyHoSo.Views.Records
                 });
         }
 
-        private static void AnimateScaleY(FrameworkElement element, int durationMilliseconds, int delayMilliseconds)
+        private static void AnimateScaleX(FrameworkElement element, int durationMilliseconds, int delayMilliseconds)
         {
             var transform = element.RenderTransform as ScaleTransform;
             if (transform == null || transform.IsFrozen)
@@ -198,10 +198,10 @@ namespace QuanLyHoSo.Views.Records
                 element.RenderTransform = transform;
             }
 
-            transform.BeginAnimation(ScaleTransform.ScaleYProperty, null);
-            transform.ScaleY = 0;
+            transform.BeginAnimation(ScaleTransform.ScaleXProperty, null);
+            transform.ScaleX = 0;
             transform.BeginAnimation(
-                ScaleTransform.ScaleYProperty,
+                ScaleTransform.ScaleXProperty,
                 new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(durationMilliseconds))
                 {
                     BeginTime = TimeSpan.FromMilliseconds(delayMilliseconds),

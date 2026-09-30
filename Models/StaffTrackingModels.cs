@@ -27,6 +27,8 @@ namespace QuanLyHoSo.Models
         public string AverageProcessingTimeText { get; set; }
         public string OnTimeRateText { get; set; }
         public string OnTimeRateColor { get; set; }
+        public int OnTimeCompletedCount { get; set; }
+        public int DeadlineTrackedCount { get; set; }
         public int KpiPercent { get; set; }
         public string KpiStatus { get; set; }
         public string KpiStatusBackground { get; set; }
@@ -61,12 +63,17 @@ namespace QuanLyHoSo.Models
         public int UnreadCount { get; set; }
     }
 
-    public sealed class StaffBarStat
+    public sealed class StaffPerformanceBarRow
     {
         public string StaffName { get; set; }
+        public int CompositeScore { get; set; }
         public int OnTimePercent { get; set; }
-        public int KpiPercent { get; set; }
-        public int OnTimeHeight { get; set; }
-        public int KpiHeight { get; set; }
+        public int OnTimeCompletedCount { get; set; }
+        public int DeadlineTrackedCount { get; set; }
+        public int CompletedCount { get; set; }
+        public int QuantityPercent { get; set; }
+        public int BarWidth { get; set; }
+        public string StatusText { get; set; }
+        public bool ShowDetail { get; set; }
     }
 }

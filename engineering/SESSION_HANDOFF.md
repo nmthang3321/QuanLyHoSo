@@ -1,6 +1,10 @@
 # Session handoff - QuanLyHoSo
 
-Last updated: 2026-09-29
+Last updated: 2026-09-30
+
+## Current application changes - 2026-09-30
+
+- The staff-tracking performance chart was redesigned for large officer counts (36+) and now ranks officers with an objective composite score instead of the raw on-time rate (which rewarded the empty-sample 100% rule): `composite = 60% on-time rate + 40% completed volume`, where completed volume is CompletedCount relative to the highest CompletedCount in the period. Officers with no records at all in the period are excluded. The card "TOP 5 CÁN BỘ XUẤT SẮC" is visible to every role as a public commendation board — officers load it through the new aggregate LAN route `staff/top-officers` (`AppDataService.GetTopOfficers`, computed server-side without the officer self-scope; the detail table and info panel stay scoped to their own data, and the client call is try/caught for older-server compatibility). The card is styled exactly like the Dashboard "HỒ SƠ THEO ĐỊA BÀN - TOP 5" card (name | single horizontal bar | composite score, bar ∝ score, max 270px) with a `MetricInfoButton` (i) icon next to the title explaining the formula, and a bar tooltip showing the full breakdown (on-time x% with a/b sample counts, completed volume y%, composite score, evaluation). `StaffPerformanceRow` gained `OnTimeCompletedCount`/`DeadlineTrackedCount` from the service. The full per-officer statistics remain in the paginated table above. `StaffBarStat` was replaced by a slim `StaffPerformanceBarRow`; `AppDataService.EvaluateTopOfficers` (public static) is covered by six unit tests (unit suite 60/60, integration 59/59). Bars animate horizontally (`AnimateScaleX`).
 
 ## Current application changes - 2026-09-29
 

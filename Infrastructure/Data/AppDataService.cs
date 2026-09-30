@@ -22,6 +22,8 @@ namespace QuanLyHoSo.Infrastructure.Data
     {
         private const string RecordCodePrefix = "HS";
         private const int RecordCodeSequenceWidth = 6;
+        private const int PerformanceBarMaxWidth = 270;
+        private const int TopOfficerCount = 5;
         private const int ProcessStepCount = 8;
         private const string ProtectedCalculationCatalogType = "Priority";
         private const string BackupPackageExtension = ".qlhbackup";
@@ -924,13 +926,112 @@ ORDER BY Name;";
                     .ToList();
             }
 
-            var result = new List<StaffPerformanceRow>();
             if (processorNames.Count == 0)
             {
-                return result;
+                return Array.Empty<StaffPerformanceRow>();
             }
 
             using var connection = OpenConnection();
+            return CollectStaffPerformanceRows(connection, processorNames, fromDate, toDate)
+                .OrderBy(row => row.Name, StringComparer.OrdinalIgnoreCase).ToList();
+        }
+
+        public IReadOnlyList<StaffPerformanceBarRow> GetTopOfficers(DateTime? fromDate = null, DateTime? toDate = null)
+        {
+            if (AppPathSettings.Current.IsClientMode)
+            {
+                return _lanClient.Call<IReadOnlyList<StaffPerformanceBarRow>>("staff/top-officers", new DateRangeRequest { FromDate = fromDate, ToDate = toDate });
+            }
+
+            var processorNames = GetProcessorNames(includeAll: false)
+                .Where(name => !string.IsNullOrWhiteSpace(name))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            if (processorNames.Count == 0)
+            {
+                return Array.Empty<StaffPerformanceBarRow>();
+            }
+
+            using var connection = OpenConnection();
+            return EvaluateTopOfficers(
+                CollectStaffPerformanceRows(connection, processorNames, fromDate, toDate),
+                TopOfficerCount,
+                showAllDetails: !AuthContext.IsOfficer,
+                viewerName: AuthContext.CurrentDisplayName);
+        }
+
+        public static IReadOnlyList<StaffPerformanceBarRow> EvaluateTopOfficers(
+            IEnumerable<StaffPerformanceRow> staffRows, int take, bool showAllDetails = true, string viewerName = null)
+        {
+            var source = (staffRows ?? Enumerable.Empty<StaffPerformanceRow>())
+                .Where(row => row.AssignedCount > 0 || row.CompletedCount > 0 || row.DeadlineTrackedCount > 0)
+                .ToList();
+            var maxCompleted = source.Count == 0 ? 0 : source.Max(row => Math.Max(0, row.CompletedCount));
+
+            var bars = source
+                .Select(row => EvaluateOfficerScore(row, maxCompleted))
+                .OrderByDescending(row => row.CompositeScore)
+                .ThenByDescending(row => row.OnTimePercent)
+                .ThenByDescending(row => row.CompletedCount)
+                .ThenBy(row => row.StaffName, StringComparer.CurrentCulture)
+                .Take(Math.Max(0, take))
+                .ToList();
+            ApplyDetailVisibility(bars, showAllDetails, viewerName);
+            return bars;
+        }
+
+        private static void ApplyDetailVisibility(IReadOnlyList<StaffPerformanceBarRow> bars, bool showAllDetails, string viewerName)
+        {
+            foreach (var bar in bars)
+            {
+                bar.ShowDetail = showAllDetails
+                    || string.Equals(
+                        (bar.StaffName ?? string.Empty).Trim(),
+                        (viewerName ?? string.Empty).Trim(),
+                        StringComparison.CurrentCultureIgnoreCase);
+            }
+        }
+
+        public static string GetPerformanceStatus(int percent)
+        {
+            return percent >= 90 ? "Tốt" : percent >= 80 ? "Khá" : "Cần cải thiện";
+        }
+
+        private static StaffPerformanceBarRow EvaluateOfficerScore(StaffPerformanceRow row, int maxCompleted)
+        {
+            var onTimePercent = ParseStaffOnTimePercent(row);
+            var quantityPercent = maxCompleted > 0
+                ? (int)Math.Round(Math.Max(0, row.CompletedCount) * 100d / maxCompleted, MidpointRounding.AwayFromZero)
+                : 0;
+            var compositeScore = (int)Math.Round(
+                onTimePercent * 0.6d + quantityPercent * 0.4d, MidpointRounding.AwayFromZero);
+
+            return new StaffPerformanceBarRow
+            {
+                StaffName = row.Name,
+                CompositeScore = compositeScore,
+                OnTimePercent = onTimePercent,
+                OnTimeCompletedCount = Math.Max(0, row.OnTimeCompletedCount),
+                DeadlineTrackedCount = Math.Max(0, row.DeadlineTrackedCount),
+                CompletedCount = Math.Max(0, row.CompletedCount),
+                QuantityPercent = quantityPercent,
+                BarWidth = Math.Max(8, (int)Math.Round(compositeScore * PerformanceBarMaxWidth / 100d)),
+                StatusText = GetPerformanceStatus(compositeScore)
+            };
+        }
+
+        private static int ParseStaffOnTimePercent(StaffPerformanceRow row)
+        {
+            var text = row.OnTimeRateText?.Trim().TrimEnd('%');
+            return int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var value)
+                ? Math.Max(0, Math.Min(100, value))
+                : 0;
+        }
+
+        private List<StaffPerformanceRow> CollectStaffPerformanceRows(
+            SqliteConnection connection, List<string> processorNames, DateTime? fromDate, DateTime? toDate)
+        {
+            var result = new List<StaffPerformanceRow>();
             var today = DateTime.Today.ToString("O", CultureInfo.InvariantCulture);
             var dueSoon = DateTime.Today.AddDays(7).Date.AddDays(1).AddTicks(-1).ToString("O", CultureInfo.InvariantCulture);
             var from = fromDate?.Date.ToString("O", CultureInfo.InvariantCulture);
@@ -990,6 +1091,8 @@ WHERE OriginalRecordCode = '' AND TRIM(ProcessorName) = $processorName
                     AverageProcessingTimeText = averageProcessingDays > 0d ? $"{averageProcessingDays:0.0} ngày" : "0 ngày",
                     OnTimeRateText = $"{onTimeRate}%",
                     OnTimeRateColor = onTimeRate >= 90 ? "#0FA958" : onTimeRate >= 84 ? "#1784E8" : "#F97316",
+                    OnTimeCompletedCount = onTimeCompletedCount,
+                    DeadlineTrackedCount = deadlineTrackedCount,
                     KpiPercent = Math.Clamp(onTimeRate, 0, 100),
                     KpiStatus = onTimeRate >= 90 ? "Tốt" : onTimeRate >= 80 ? "Khá" : "Cần cải thiện",
                     KpiStatusBackground = onTimeRate >= 90 ? "#DCFCE7" : onTimeRate >= 80 ? "#E7F0FF" : "#FFF0E6",
@@ -997,7 +1100,7 @@ WHERE OriginalRecordCode = '' AND TRIM(ProcessorName) = $processorName
                 });
             }
 
-            return result.OrderBy(row => row.Name, StringComparer.OrdinalIgnoreCase).ToList();
+            return result;
         }
 
         public IReadOnlyList<StatusStat> GetStaffDeadlineStats(DateTime? fromDate = null, DateTime? toDate = null)

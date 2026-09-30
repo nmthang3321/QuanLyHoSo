@@ -461,144 +461,104 @@
                                           VerticalAlignment="Center" />
                                 </Border>
                                 <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
-                                    <TextBlock Text="HIỆU SUẤT XỬ LÝ THEO CÁN BỘ"
-                                               Style="{StaticResource SectionTitleText}"
-                                               Foreground="{StaticResource PrimaryBrush}" />
-                                    <TextBlock Text="So sánh tỷ lệ đúng hạn và KPI của từng cán bộ"
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="TOP 5 CÁN BỘ XUẤT SẮC"
+                                                   Style="{StaticResource SectionTitleText}"
+                                                   Foreground="{StaticResource PrimaryBrush}"
+                                                   VerticalAlignment="Center" />
+                                        <Button Style="{StaticResource MetricInfoButton}"
+                                                Width="18"
+                                                Height="18"
+                                                Margin="6,0,0,0"
+                                                AutomationProperties.Name="Giải thích cách tính điểm đánh giá cán bộ">
+                                            <Button.ToolTip>
+                                                <ToolTip Placement="Bottom">
+                                                    <TextBlock Width="340" TextWrapping="Wrap" Text="Điểm đánh giá = 60% tỷ lệ đúng hạn + 40% khối lượng hoàn thành. Tỷ lệ đúng hạn = số hồ sơ đã giải quyết đúng hạn / tổng số hồ sơ có ngày dự kiến trả kết quả (gồm cả hồ sơ chưa giải quyết), làm tròn đến phần trăm nguyên; nếu chưa có hồ sơ theo dõi hạn thì tính 100%. Khối lượng hoàn thành = số hồ sơ hoàn thành của cán bộ / số hồ sơ hoàn thành cao nhất trong kỳ × 100%. Cán bộ không có hồ sơ nào trong kỳ không được xếp hạng. Thang đánh giá: từ 90 điểm là Tốt; 80-89 là Khá; dưới 80 là Cần cải thiện." />
+                                                </ToolTip>
+                                            </Button.ToolTip>
+                                        </Button>
+                                    </StackPanel>
+                                    <TextBlock Text="Điểm = 60% đúng hạn + 40% khối lượng"
                                                Style="{StaticResource MutedText}"
                                                FontSize="11"
                                                Margin="0,2,0,0" />
                                 </StackPanel>
                             </Grid>
-                            <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,4,8">
-                                <Ellipse Width="8" Height="8" Fill="#0B5CFF" VerticalAlignment="Center" />
-                                <TextBlock Text="Đúng hạn" FontSize="12" Margin="6,0,16,0" />
-                                <Ellipse Width="8" Height="8" Fill="#35C47B" VerticalAlignment="Center" />
-                                <TextBlock Text="KPI" FontSize="12" Margin="6,0,0,0" />
-                            </StackPanel>
-                            <Border Grid.Row="2"
+                            <Border Grid.Row="1"
                                     Background="#FBFCFF"
                                     BorderBrush="#ECF1F8"
                                     BorderThickness="1"
                                     CornerRadius="6"
-                                    Padding="8,6,8,4">
-                            <Grid>
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="*" />
-                                    <RowDefinition Height="24" />
-                                </Grid.RowDefinitions>
-                                <Grid Grid.Row="0" Margin="0,8,0,2" VerticalAlignment="Bottom">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="30" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
-
-                                    <Canvas Width="28" Height="120" HorizontalAlignment="Left">
-                                        <TextBlock Text="100" FontSize="9" Foreground="{StaticResource MutedTextBrush}" Canvas.Top="-7" />
-                                        <TextBlock Text="75" FontSize="9" Foreground="{StaticResource MutedTextBrush}" Canvas.Top="23" Canvas.Left="6" />
-                                        <TextBlock Text="50" FontSize="9" Foreground="{StaticResource MutedTextBrush}" Canvas.Top="53" Canvas.Left="6" />
-                                        <TextBlock Text="25" FontSize="9" Foreground="{StaticResource MutedTextBrush}" Canvas.Top="83" Canvas.Left="6" />
-                                        <TextBlock Text="0" FontSize="9" Foreground="{StaticResource MutedTextBrush}" Canvas.Top="107" Canvas.Left="12" />
-                                    </Canvas>
-
-                                    <Grid Grid.Column="1" Height="120" Margin="4,0,0,0" VerticalAlignment="Bottom">
-                                        <Grid.RowDefinitions>
-                                            <RowDefinition Height="*" />
-                                            <RowDefinition Height="*" />
-                                            <RowDefinition Height="*" />
-                                            <RowDefinition Height="*" />
-                                        </Grid.RowDefinitions>
-                                        <Border Grid.Row="0" BorderBrush="#DCE5F1" BorderThickness="0,1,0,0" />
-                                        <Border Grid.Row="1" BorderBrush="#DCE5F1" BorderThickness="0,1,0,0" />
-                                        <Border Grid.Row="2" BorderBrush="#DCE5F1" BorderThickness="0,1,0,0" />
-                                        <Border Grid.Row="3" BorderBrush="#DCE5F1" BorderThickness="0,1,0,1" />
-
-                                        <ItemsControl Grid.RowSpan="4" ItemsSource="{Binding BarStats}" VerticalAlignment="Bottom">
-                                            <ItemsControl.ItemsPanel>
-                                                <ItemsPanelTemplate>
-                                                    <UniformGrid Rows="1" />
-                                                </ItemsPanelTemplate>
-                                            </ItemsControl.ItemsPanel>
-                                            <ItemsControl.ItemTemplate>
-                                                <DataTemplate>
-                                                    <StackPanel VerticalAlignment="Bottom" HorizontalAlignment="Center">
-                                                        <Grid Height="120" Width="44">
-                                                             <Border Width="16"
-                                                                     Height="{Binding OnTimeHeight}"
-                                                                     Background="#0B5CFF"
-                                                                     CornerRadius="4,4,0,0"
-                                                                     HorizontalAlignment="Left"
-                                                                     VerticalAlignment="Bottom"
-                                                                     RenderTransformOrigin="0.5,1"
-                                                                     Loaded="PerformanceBar_Loaded"
-                                                                     ToolTipService.InitialShowDelay="80"
-                                                                     ToolTipService.ShowDuration="10000">
-                                                                 <Border.RenderTransform>
-                                                                     <ScaleTransform ScaleY="1" />
-                                                                 </Border.RenderTransform>
-                                                                 <Border.ToolTip>
-                                                                     <ToolTip Placement="Mouse" HorizontalOffset="10" VerticalOffset="8">
-                                                                         <StackPanel>
-                                                                             <TextBlock Text="{Binding StaffName}" FontWeight="SemiBold" />
-                                                                             <TextBlock Margin="0,3,0,0">
-                                                                                 <Run Text="Đúng hạn: " />
-                                                                                 <Run Text="{Binding OnTimePercent, Mode=OneWay}" FontWeight="Bold" />
-                                                                                 <Run Text="%" />
-                                                                             </TextBlock>
-                                                                         </StackPanel>
-                                                                     </ToolTip>
-                                                                 </Border.ToolTip>
-                                                             </Border>
-                                                             <Border Width="16"
-                                                                     Height="{Binding KpiHeight}"
-                                                                     Background="#35C47B"
-                                                                     CornerRadius="4,4,0,0"
-                                                                     HorizontalAlignment="Right"
-                                                                     VerticalAlignment="Bottom"
-                                                                     RenderTransformOrigin="0.5,1"
-                                                                     Loaded="PerformanceBar_Loaded"
-                                                                     ToolTipService.InitialShowDelay="80"
-                                                                     ToolTipService.ShowDuration="10000">
-                                                                 <Border.RenderTransform>
-                                                                     <ScaleTransform ScaleY="1" />
-                                                                 </Border.RenderTransform>
-                                                                 <Border.ToolTip>
-                                                                     <ToolTip Placement="Mouse" HorizontalOffset="10" VerticalOffset="8">
-                                                                         <StackPanel>
-                                                                             <TextBlock Text="{Binding StaffName}" FontWeight="SemiBold" />
-                                                                             <TextBlock Margin="0,3,0,0">
-                                                                                 <Run Text="KPI: " />
-                                                                                 <Run Text="{Binding KpiPercent, Mode=OneWay}" FontWeight="Bold" />
-                                                                                 <Run Text="%" />
-                                                                             </TextBlock>
-                                                                         </StackPanel>
-                                                                     </ToolTip>
-                                                                 </Border.ToolTip>
-                                                             </Border>
-                                                        </Grid>
-                                                    </StackPanel>
-                                                </DataTemplate>
-                                            </ItemsControl.ItemTemplate>
-                                        </ItemsControl>
-                                    </Grid>
-                                </Grid>
-                                <ItemsControl Grid.Row="1" Margin="34,0,0,0" ItemsSource="{Binding BarStats}">
-                                    <ItemsControl.ItemsPanel>
-                                        <ItemsPanelTemplate>
-                                            <UniformGrid Rows="1" />
-                                        </ItemsPanelTemplate>
-                                    </ItemsControl.ItemsPanel>
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate>
-                                            <TextBlock Text="{Binding StaffName}"
-                                                       FontSize="11"
-                                                       TextAlignment="Center"
-                                                       TextTrimming="CharacterEllipsis"
-                                                       ToolTip="{Binding StaffName}" />
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
-                            </Grid>
+                                    Padding="12,10">
+                                <ScrollViewer MaxHeight="270"
+                                              VerticalScrollBarVisibility="Auto"
+                                              HorizontalScrollBarVisibility="Disabled">
+                                    <ItemsControl ItemsSource="{Binding TopOfficers}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Grid Margin="0,0,0,14">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="160" />
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="45" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock Text="{Binding StaffName}"
+                                                               VerticalAlignment="Center"
+                                                               TextTrimming="CharacterEllipsis"
+                                                               ToolTip="{Binding StaffName}" />
+                                                    <Grid Grid.Column="1" Height="18" VerticalAlignment="Center">
+                                                        <Border Background="#ECF1F8" CornerRadius="4" />
+                                                        <Border Width="{Binding BarWidth}"
+                                                                Background="{StaticResource PrimaryBrush}"
+                                                                CornerRadius="4"
+                                                                HorizontalAlignment="Left"
+                                                                Loaded="PerformanceBar_Loaded"
+                                                                RenderTransformOrigin="0,0.5">
+                                                            <Border.RenderTransform>
+                                                                <ScaleTransform ScaleX="1" ScaleY="1" />
+                                                            </Border.RenderTransform>
+                                                            <Border.ToolTip>
+                                                                <StackPanel>
+                                                                    <TextBlock Text="{Binding StaffName}" FontWeight="SemiBold" />
+                                                                    <TextBlock>
+                                                                        <Run Text="Điểm đánh giá: " />
+                                                                        <Run Text="{Binding CompositeScore, Mode=OneWay}" FontWeight="Bold" />
+                                                                        <Run Text=" — " />
+                                                                        <Run Text="{Binding StatusText, Mode=OneWay}" FontWeight="Bold" />
+                                                                    </TextBlock>
+                                                                    <StackPanel Visibility="{Binding ShowDetail, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                                        <TextBlock Margin="0,3,0,0">
+                                                                            <Run Text="Đúng hạn: " />
+                                                                            <Run Text="{Binding OnTimePercent, Mode=OneWay}" FontWeight="Bold" />
+                                                                            <Run Text="%" />
+                                                                            <Run Text=" (" />
+                                                                            <Run Text="{Binding OnTimeCompletedCount, Mode=OneWay}" FontWeight="Bold" />
+                                                                            <Run Text="/" />
+                                                                            <Run Text="{Binding DeadlineTrackedCount, Mode=OneWay}" FontWeight="Bold" />
+                                                                            <Run Text=" hồ sơ có ngày hẹn)" />
+                                                                        </TextBlock>
+                                                                        <TextBlock>
+                                                                            <Run Text="Hoàn thành: " />
+                                                                            <Run Text="{Binding CompletedCount, Mode=OneWay}" FontWeight="Bold" />
+                                                                            <Run Text=" hồ sơ — khối lượng " />
+                                                                            <Run Text="{Binding QuantityPercent, Mode=OneWay}" FontWeight="Bold" />
+                                                                            <Run Text="%" />
+                                                                        </TextBlock>
+                                                                    </StackPanel>
+                                                                </StackPanel>
+                                                            </Border.ToolTip>
+                                                        </Border>
+                                                    </Grid>
+                                                    <TextBlock Grid.Column="2"
+                                                               Text="{Binding CompositeScore}"
+                                                               FontWeight="SemiBold"
+                                                               HorizontalAlignment="Right"
+                                                               ToolTip="Điểm đánh giá tổng hợp: 60% tỷ lệ đúng hạn + 40% khối lượng hoàn thành" />
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </ScrollViewer>
                             </Border>
                         </Grid>
                     </Border>
