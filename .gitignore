@@ -10,6 +10,8 @@ artifacts/
 /output/
 /tmp/
 /.venv/
+__pycache__/
+*.py[cod]
 
 # Visual Studio user files
 .vs/
