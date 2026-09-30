@@ -6,7 +6,7 @@
 | Authentication | Very high | Unit + integration | Valid, wrong password, unknown/empty user, Unicode password | Automated / P0 |
 | Authorization | Very high | Unit + integration | Role matrix, assigned-record access, data-layer create denial | Automated / P0 |
 | Resubmitted resolved records | Very high | Integration + ViewModel | Intake/reference/reopen/attachments, no extra resolution/work, invalid links, sender normalization/access/edit identity, copied legacy migration, authenticated LAN round trip, form reference refresh, popup original selection/reason/continuation/cancel, detail isolates independent intake groups | Automated; full dialog click-through remains manual / P0 |
-| Record persistence | Very high | Unit + integration | Create/read/update/reopen, editable code format/normalization/duplicate rollback, attachments, Unicode | Automated / P0 |
+| Record persistence | Very high | Unit + integration | Create/read/update/reopen, editable code format/normalization/duplicate rollback, intake default severity, optional phone/incident address, attachments, Unicode | Automated / P0 |
 | Trash / restore | Very high | Integration | Soft delete, matching batch restore, stale undo, permanent delete | Automated / P0 |
 | Backup / restore | Very high | Integration | Legacy DB restore, full `.qlhbackup` database/files restore, safety backup, corrupt input, invalid destination, automatic 7-day interval and 10-file retention | Automated / P0 |
 | Password change | High | ViewModel unit | Required fields, min length, mismatch, reuse, wrong current, success, cancel | Automated / P1 |

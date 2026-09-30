@@ -19,6 +19,8 @@ from xml.etree import ElementTree as ET
 
 FALLBACK_AREA = "Đơn vị khác trong tỉnh"
 RECEIVER_NAME = "Lê Võ Mỹ Ý"
+DEFAULT_PROCESSOR_NAME = "Lê Võ Mỹ Ý"
+DEFAULT_SEVERITY_LEVEL = "Ít nghiêm trọng"
 CANON_CASE = ["Khiếu nại", "Kiến nghị", "Phản ánh", "Tố cáo", "Tố giác"]
 CASE_FIX = {
     "phán ánh": "Phản ánh", "phản ảnh": "Phản ánh", "phan anh": "Phản ánh",
@@ -76,6 +78,64 @@ def is_invalid_source_row(col):
     return col["H"] in ("0", "1") and not any(
         col[ch] for ch in "BCDEFGIJKLMNOPQR"
     )
+
+
+def is_importable_source_row(col):
+    return any(col[ch] for ch in "BCDFGHJK") and not is_invalid_source_row(col)
+
+
+def _parse_source_sequence(value):
+    value = (value or "").strip()
+    if not re.fullmatch(r"\d+(?:\.0+)?", value):
+        return None
+    number = int(float(value))
+    return number if number > 0 else None
+
+
+def build_source_record_numbers(data):
+    """Map each imported row to Excel STT, with deterministic handling for broken STT cells."""
+    valid_indices = []
+    parsed = {}
+    for i in range(len(data["A"])):
+        col = {ch: (data[ch][i] if i < len(data[ch]) else "").strip()
+               for ch in "ABCDEFGHIJKLMNOPQR"}
+        if not is_importable_source_row(col):
+            continue
+        valid_indices.append(i)
+        number = _parse_source_sequence(col["A"])
+        if number is not None:
+            parsed[i] = number
+
+    duplicates = [number for number, count in Counter(parsed.values()).items() if count > 1]
+    if duplicates:
+        raise ValueError("STT Excel bi trung: " + ", ".join(map(str, sorted(duplicates))))
+
+    result = dict(parsed)
+    used = set(parsed.values())
+    for position, i in enumerate(valid_indices):
+        if i in result or position == 0 or position == len(valid_indices) - 1:
+            continue
+        previous_number = parsed.get(valid_indices[position - 1])
+        next_number = parsed.get(valid_indices[position + 1])
+        if previous_number is not None and next_number == previous_number + 2:
+            inferred = previous_number + 1
+            if inferred not in used:
+                result[i] = inferred
+                used.add(inferred)
+
+    next_fallback = max(used, default=0) + 1
+    for i in valid_indices:
+        if i in result:
+            continue
+        while next_fallback in used:
+            next_fallback += 1
+        result[i] = next_fallback
+        used.add(next_fallback)
+        next_fallback += 1
+
+    if any(number > 999999 for number in result.values()):
+        raise ValueError("STT Excel vuot qua gioi han 6 chu so cua ma ho so")
+    return result
 
 
 def norm_case_type(raw):
@@ -341,15 +401,14 @@ def build_content(content, sender):
 def build_rows(data, area_names, processor, receiver=RECEIVER_NAME):
     area_lookup = [(name.casefold(), name) for name in area_names if len(name) >= 3]
     n = len(data["A"])
+    source_record_numbers = build_source_record_numbers(data)
     now = datetime.now().strftime(ISO)
     rows, histories, new_case_types = [], [], set()
     area_stat = Counter()
 
     for i in range(n):
         col = {ch: (data[ch][i] if i < len(data[ch]) else "").strip() for ch in "ABCDEFGHIJKLMNOPQR"}
-        if not any(col[ch] for ch in "BCDFGHJK"):
-            continue
-        if is_invalid_source_row(col):
+        if not is_importable_source_row(col):
             continue
 
         content = col["H"]
@@ -408,12 +467,19 @@ def build_rows(data, area_names, processor, receiver=RECEIVER_NAME):
         handed = iso_date(col["I"])
         note = "; ".join(p for p in [col["L"]] + note_parts if p)
         additional = " | ".join(extra_parts)
-        # Giu lien ket on dinh voi STT/dong Excel, ke ca khi bo dong rac.
-        record_code = "HS-2026-{:06d}".format(i + 1)
+        source_number = source_record_numbers[i]
+        if _parse_source_sequence(col["A"]) is None:
+            source_value = col["A"] or "(trống)"
+            exception_note = (
+                f"Dòng Excel: {i + 2}; STT Excel: {source_value}; "
+                f"mã hồ sơ sử dụng: {source_number}"
+            )
+            additional = " | ".join(part for part in (additional, exception_note) if part)
+        record_code = "HS-2026-{:06d}".format(source_number)
 
         rows.append((
             record_code, received, col["D"], receiver, sender_name, phone, contact,
-            area, "", content_full, case_type, "", "", "", "", "", "", "",
+            area, "", content_full, case_type, "", "", "", "", "", DEFAULT_SEVERITY_LEVEL, "",
             status, processor, note, additional, now, now,
         ))
 
@@ -435,7 +501,7 @@ def parse_args():
     parser.add_argument("--update-existing", action="store_true",
                         help="Cap nhat cac ma HS-2026 da ton tai thay vi bo qua")
     parser.add_argument("--receiver", default=RECEIVER_NAME)
-    parser.add_argument("--processor", default="admin")
+    parser.add_argument("--processor", default=DEFAULT_PROCESSOR_NAME)
     parser.add_argument("--prune-invalid-source-rows", action="store_true",
                         help="Xoa cac ho so da tao tu dong Excel chi co noi dung 0/1")
     return parser.parse_args()
@@ -505,12 +571,12 @@ def main():
         update_sql = """UPDATE Records SET
             ReceivedDate=?, ReceiveSource=?, ReceiverName=?, SenderName=?, SenderPhone=?,
             ContactAddress=?, AreaName=?, IncidentAddress=?, Content=?, CaseType=?,
-            Note=?, AdditionalNote=?, UpdatedAt=?
+            SeverityLevel=?, ProcessorName=?, Note=?, AdditionalNote=?, UpdatedAt=?
             WHERE RecordCode=?"""
         cur.executemany(update_sql, [
             (
                 row[1], row[2], row[3], row[4], row[5], row[6], row[7], row[8],
-                row[9], row[10], row[20], row[21], row[23], row[0],
+                row[9], row[10], row[16], row[19], row[20], row[21], row[23], row[0],
             )
             for row in update_rows
         ])

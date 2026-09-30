@@ -116,6 +116,33 @@ namespace QuanLyHoSo.UnitTests
             Assert.True(vm.SaveCommand.CanExecute(null));
         }
 
+        [Fact]
+        [Trait("Category", "Unit")]
+        [Trait("Category", "Regression")]
+        public void NewForm_ShouldDefaultSeverityAndAllowMissingPhoneAndIncidentAddress()
+        {
+            using var authScope = QuanLyHoSo.Infrastructure.Security.AuthContext.BeginRequestScope(new AppUser
+                { Id = 1, UserName = "test-admin", DisplayName = "Test Admin", Role = UserRoles.Admin, IsActive = true });
+            var service = NewService();
+            service.Setup(x => x.GetCatalogValues("Priority", It.IsAny<bool>()))
+                .Returns(new[] { "Ít nghiêm trọng", "Nghiêm trọng" });
+            service.Setup(x => x.GetSenderRecords(It.IsAny<RecordFormDraft>())).Returns(new[]
+                { new SenderRecordHistory { RecordCode = "original", Status = "Đã giải quyết", IsSameCase = true } });
+
+            using var vm = NewFilledForm(service);
+            Assert.Equal("Ít nghiêm trọng", vm.SeverityLevel);
+
+            vm.SenderPhone = string.Empty;
+            vm.IncidentAddress = string.Empty;
+            vm.SaveCommand.Execute(null);
+
+            Assert.True(vm.IsSenderHistoryOpen);
+            service.Verify(x => x.GetSenderRecords(It.Is<RecordFormDraft>(draft =>
+                draft.SenderPhone == string.Empty
+                && draft.IncidentAddress == string.Empty
+                && draft.SeverityLevel == "Ít nghiêm trọng")), Times.Once);
+        }
+
         private static Mock<IApplicationDataService> NewService()
         {
             var service = new Mock<IApplicationDataService>();

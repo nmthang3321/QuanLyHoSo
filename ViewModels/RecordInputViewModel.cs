@@ -21,6 +21,7 @@ namespace QuanLyHoSo.ViewModels
 {
     public sealed class RecordInputViewModel : ViewModelBase
     {
+        private const string DefaultSeverityLevel = "Ít nghiêm trọng";
         private readonly IApplicationDataService _dataService;
         private readonly Action _goBack;
         private string _editingRecordCode;
@@ -307,7 +308,7 @@ namespace QuanLyHoSo.ViewModels
             RelatedPerson = string.Empty;
             ExpectedHandlingMethod = null;
             SenderExpectedHandlingMethod = null;
-            SeverityLevel = null;
+            SeverityLevel = DefaultSeverityLevel;
             ExpectedResultDate = string.Empty;
             SelectedExpectedResultDate = null;
             Note = string.Empty;
@@ -592,7 +593,8 @@ namespace QuanLyHoSo.ViewModels
                 || !string.IsNullOrWhiteSpace(RelatedPerson)
                 || !string.IsNullOrWhiteSpace(ExpectedHandlingMethod)
                 || !string.IsNullOrWhiteSpace(SenderExpectedHandlingMethod)
-                || !string.IsNullOrWhiteSpace(SeverityLevel)
+                || (!string.IsNullOrWhiteSpace(SeverityLevel)
+                    && !string.Equals(SeverityLevel, DefaultSeverityLevel, StringComparison.Ordinal))
                 || !string.IsNullOrWhiteSpace(ExpectedResultDate)
                 || !string.IsNullOrWhiteSpace(Note)
                 || !string.IsNullOrWhiteSpace(AdditionalNote)
@@ -715,10 +717,8 @@ namespace QuanLyHoSo.ViewModels
                 (Name: "Nguồn tiếp nhận", IsMissing: string.IsNullOrWhiteSpace(ReceiveSource)),
                 (Name: "Người tiếp nhận", IsMissing: string.IsNullOrWhiteSpace(ReceiverName)),
                 (Name: "Người gửi đơn / Người tố giác", IsMissing: string.IsNullOrWhiteSpace(SenderName)),
-                (Name: "Số điện thoại", IsMissing: string.IsNullOrWhiteSpace(SenderPhone)),
                 (Name: "Địa chỉ liên hệ", IsMissing: string.IsNullOrWhiteSpace(ContactAddress)),
                 (Name: "Địa bàn (xã/phường/đặc khu)", IsMissing: string.IsNullOrWhiteSpace(AreaName)),
-                (Name: "Địa chỉ xảy ra vụ việc", IsMissing: string.IsNullOrWhiteSpace(IncidentAddress)),
                 (Name: "Nội dung đơn / Nội dung vụ việc", IsMissing: string.IsNullOrWhiteSpace(Content)),
                 (Name: "Loại vụ việc", IsMissing: string.IsNullOrWhiteSpace(CaseType)),
                 (Name: "Nhóm nội dung", IsMissing: string.IsNullOrWhiteSpace(ContentGroup)),
@@ -900,7 +900,7 @@ namespace QuanLyHoSo.ViewModels
                     RefreshCatalogValues(Priorities, catalogType, SeverityLevel, value => SeverityLevel = value, nameof(SeverityLevel));
                     if (!string.IsNullOrWhiteSpace(SeverityLevel) && !Priorities.Contains(SeverityLevel))
                     {
-                        SeverityLevel = null;
+                        SeverityLevel = Priorities.Contains(DefaultSeverityLevel) ? DefaultSeverityLevel : null;
                         OnPropertyChanged(nameof(SeverityLevel));
                     }
                     break;

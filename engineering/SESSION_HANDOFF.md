@@ -24,7 +24,7 @@ Last updated: 2026-09-30
 
 - The record list gained six optional columns ("Cột hiển thị"): `Chỉ huy duyệt`, `Lãnh đạo duyệt`, `Phiếu chuyển đơn số`, `Ngày chuyển đơn` (persisted on `Records` when step-5 documents are generated — new `EnsureInitialResultDocumentSchema` migration), `Đơn vị chuyển đến` (`AreaName` for step-6+ records), and `Kết quả của đơn vị` (step-8 history content of resolved records). The six columns are hidden by default, are also exported when visible, and are covered by the `FilteredRecords_ShouldExposeDocumentAndTransferColumns` integration test. Client/server remain compatible across versions because the list model change is additive JSON.
 - The `Chuyển cơ quan khác` processing-history milestone now records the destination agency (`Chuyển đến: <agency>.`); re-transfers update the existing milestone, and older milestones fall back to the record's current destination agency at read time. Covered by the eight-step-workflow integration test.
-- The record-list table fills the remaining window height and scrolls vertically inside its card, so the DataGrid horizontal scrollbar stays visible at the bottom of the table area instead of the bottom of the page. The page-level scroll viewer, the `TableHeight` binding, and the wheel-forwarding handler were removed; wheel over the table still closes the area filter popup.
+- The record-list table adjusts its maximum height to the number of rows currently loaded (`38 + row count × 34`). Short result sets contract vertically; longer sets remain constrained by the available page height and scroll internally. Wheel over the table still closes the area filter popup.
 - The processing-detail page keeps `Quay lại`, `Hủy xử lý`, and `Cập nhật` in a fixed bottom action bar that stays visible while scrolling; the old header back button and the in-card button pair were removed. `Hủy xử lý`/`Cập nhật` remain gated by `CanUpdateProcessing`.
 - Record code is editable at intake and accepts externally supplied values only in the form `HS-<year>-<6 digits>`; duplicate codes are rejected. Automatic next-code generation remains the default convenience value.
 - A fresh production database no longer seeds processor names. Sample-data mode still contains named processors for demonstrations.
@@ -87,6 +87,15 @@ Documentation routing:
 - Its canonical values drive the processing-queue high-priority card/filter, so the data service rejects add, update, delete, and reorder requests for this catalog, including requests from older LAN clients.
 - The six other system catalog groups remain editable by Admin.
 
+## Record intake defaults and 2026 data update - 2026-09-30
+
+- New intake forms default `Mức độ vụ việc` to `Ít nghiêm trọng`; phone number and incident address are optional in both the UI and validation.
+- `tools/import_nam2026.py` applies the same severity default and defaults both receiver and processor to `Lê Võ Mỹ Ý`, including update-existing runs.
+- Imported record codes use column A (`STT`) from the workbook instead of the physical worksheet row. A single broken `#REF!` between 4400 and 4402 is deterministically inferred as 4401; the one unnumbered extra record uses the next available number, 4459, and both exceptions are recorded in `AdditionalNote` for manual review.
+- The local production database was backed up, then all 4,429 `HS-2026-*` records were updated to severity `Ít nghiêm trọng` and processor `Lê Võ Mỹ Ý`; the same processor was applied to their 779 processing-history rows. Post-update SQLite integrity and row-count verification passed.
+- The local production database received a second safety backup before 350 record codes were remapped to the Excel `STT`. All 4,429 final codes match the computed source mapping, the two exceptional rows are annotated, no temporary migration codes remain, and SQLite integrity passed.
+- Verification passed: 62 unit tests, 59 integration tests, and 8 smoke tests.
+
 ## Automatic backup and Settings layout - 2026-09-16
 
 - The server checks automatic backup on startup and once per hour while running. It creates a new complete package when the latest automatic backup is at least seven days old.
@@ -111,7 +120,7 @@ See `engineering/features/BACKUP_RESTORE.md` and `engineering/pages/SETTINGS_HOM
 - The workflow has eight Vietnamese guidance icons in business order. `Chuyển cơ quan khác` is step 6, `Chờ kết quả` is step 7, and `Lưu hồ sơ` is step 8; no leadership-approval icon is displayed.
 - Destination agency is required when forwarding to another agency.
 - The record-input action bar is fixed below the scrollable content and is disabled while the comparison overlay is open.
-- Every field in General Information is required, including phone number, contact address, incident address, and record code. Record code is editable but must match `HS-<year>-<6 digits>` and be unique; whitespace-only values are rejected.
+- Phone number and incident address are optional. The other General Information fields remain required, including contact address and record code. New records default severity to `Ít nghiêm trọng`; record code is editable but must match `HS-<year>-<6 digits>` and be unique, and whitespace-only required values are rejected.
 - Leaders can open processing details in read-only mode but cannot save, delete, or otherwise update processing.
 - All roles land on Dashboard after sign-in, including after mandatory password changes.
 - Processing details now fall back to the record-form attachment list when the processing payload contains no attachments, preventing persisted files from being shown as missing. A ViewModel regression test covers this case.

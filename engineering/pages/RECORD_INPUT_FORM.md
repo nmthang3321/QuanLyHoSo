@@ -8,5 +8,7 @@ Service methods: `GetNextRecordCode`, current `GetSenderRecords` matching, legac
 - WPF defaults to Client; Admin intake/edit/delete operations go through LAN APIs.
 - Officers do not see Intake and operate only within processing authorization.
 - The suggested record code is editable. Accept only unique values matching `HS-<year>-<6 digits>` at both the ViewModel and service boundary.
+- New records default `Mức độ vụ việc` to `Ít nghiêm trọng`. `Số điện thoại` and `Địa chỉ xảy ra vụ việc` are optional; the remaining required-field rules are unchanged.
+- The 2026 Excel importer derives `HS-2026-xxxxxx` from the source `STT` column so record codes remain traceable during manual comparison.
 - While typing, the record code is checked for duplicates after a 400 ms debounce (`RefreshRecordCodeDuplicateCheck` via `GetRecordForm`): a duplicate shows a red inline warning and disables the Save button; the save flow re-checks and blocks with a warning MessageBox. Editing a record never flags its own code, and the server-side unique constraint remains the final backstop.
 - See area and attachment feature docs. Manual save/update keeps `AreaName = $areaName` unchanged.

@@ -433,7 +433,7 @@
                     </Border>
         </StackPanel>
 
-        <Border Grid.Row="1" Style="{StaticResource CardBorder}">
+        <Border Grid.Row="1" Style="{StaticResource CardBorder}" VerticalAlignment="Top">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
@@ -502,6 +502,8 @@
 
                     <DataGrid Grid.Row="1"
                               ItemsSource="{Binding Records}"
+                              MaxHeight="{Binding TableHeight}"
+                              VerticalAlignment="Top"
                               CanUserResizeColumns="True"
                               HorizontalScrollBarVisibility="Auto"
                               VerticalScrollBarVisibility="Auto"

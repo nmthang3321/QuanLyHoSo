@@ -621,6 +621,8 @@ namespace QuanLyHoSo.ViewModels
             private set => SetProperty(ref _totalRecordsText, value);
         }
 
+        public int TableHeight => 38 + Records.Count * 34;
+
         public RecordFormDraft SelectedRecordDetail
         {
             get => _selectedRecordDetail;
@@ -788,6 +790,7 @@ namespace QuanLyHoSo.ViewModels
                 Records.Add(row);
             }
 
+            OnPropertyChanged(nameof(TableHeight));
             NotifySelectionChanged();
             RaisePageCommandStates();
         }
