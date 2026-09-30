@@ -89,9 +89,9 @@ namespace QuanLyHoSo.ViewModels
             LeadershipScopes = new ObservableCollection<string>();
 
             var today = DateTime.Today;
-            FromDate = new DateTime(today.Year, 1, 1);
-            ToDate = new DateTime(today.Year, 12, 31);
-            _selectedDateFilter = ThisYearFilter;
+            FromDate = new DateTime(today.Year, today.Month, 1);
+            ToDate = FromDate.Value.AddMonths(1).AddDays(-1);
+            _selectedDateFilter = ThisMonthFilter;
             SelectedLeadershipScope = AllStaffLeadershipScope;
 
             ApplyFilterCommand = new RelayCommand(RefreshStaffData);

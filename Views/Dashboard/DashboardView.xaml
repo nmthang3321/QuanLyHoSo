@@ -28,6 +28,7 @@
                             <ContextMenu ItemsSource="{Binding PlacementTarget.DataContext.DateFilterOptions, RelativeSource={RelativeSource Self}}"
                                          MinWidth="{Binding PlacementTarget.ActualWidth, RelativeSource={RelativeSource Self}}"
                                          Placement="Bottom"
+                                         Closed="DateFilterContextMenu_Closed"
                                          ItemContainerStyle="{StaticResource DateFilterMenuItem}" />
                         </Button.ContextMenu>
                         <Grid>
@@ -59,7 +60,6 @@
                     </Button>
 
                     <Popup x:Name="CustomDateRangePopup"
-                           IsOpen="{Binding IsCustomCalendarOpen, Mode=TwoWay}"
                            PlacementTarget="{Binding ElementName=DateFilterHost}"
                            Placement="Bottom"
                            StaysOpen="False"

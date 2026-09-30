@@ -300,6 +300,9 @@ namespace QuanLyHoSo.Infrastructure.Network
                     case "attachments/download":
                         var attachment = ReadData<AttachmentDownloadRequest>(body);
                         return _dataService.GetAttachmentFilePath(attachment.RecordCode, attachment.FileName);
+                    case "attachments/update":
+                        var attachmentUpdate = ReadData<AttachmentUpdateRequest>(body);
+                        return _dataService.UpdateAttachmentContent(attachmentUpdate.RecordCode, attachmentUpdate.FileName, attachmentUpdate.Content);
                     case "records/next-code":
                         return _dataService.GetNextRecordCode();
                     case "records/similar":

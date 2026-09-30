@@ -50,7 +50,12 @@ namespace QuanLyHoSo.Models
         public string ResolutionSummary { get; set; }
         public string ResubmissionReason { get; set; }
         public bool IsSameCase { get; set; }
-        public bool CanLinkAsResubmission => IsSameCase && string.IsNullOrEmpty(OriginalRecordCode);
+        // True only when the identity rules matched (name + phone, or name + address
+        // when both phones are empty). Name-only fallback rows are warnings, never
+        // confirmed senders.
+        public bool IsConfirmedSender { get; set; } = true;
+        public bool CanLinkAsResubmission => IsSameCase && IsConfirmedSender && string.IsNullOrEmpty(OriginalRecordCode);
+        public string SenderMatchDisplay => IsConfirmedSender ? "Đã xác thực" : "Trùng tên, chưa xác thực";
         public string Relationship => string.IsNullOrEmpty(OriginalRecordCode) ? "Hồ sơ gốc" : "Gửi lại " + OriginalRecordCode;
         public string StatusDisplay => RecordStatusDisplay.GetDisplay(Status);
         public bool IsResubmission => !string.IsNullOrEmpty(OriginalRecordCode);

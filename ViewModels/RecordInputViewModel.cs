@@ -53,6 +53,7 @@ namespace QuanLyHoSo.ViewModels
         public bool CanSaveResubmission => IsSenderHistoryOpen && SelectedSenderRecord?.CanLinkAsResubmission == true;
         public string ResubmissionAvailability => SelectedSenderRecord == null ? "Chọn hồ sơ để liên kết gửi lại."
             : !string.IsNullOrEmpty(SelectedSenderRecord.OriginalRecordCode) ? "Đây là hồ sơ gửi lại. Hãy chọn hồ sơ gốc."
+            : !SelectedSenderRecord.IsConfirmedSender ? "Trùng tên người gửi nhưng chưa xác thực (thiếu hoặc khác số điện thoại/địa chỉ). Hãy nhập đúng số điện thoại của hồ sơ trước rồi lưu lại để xác thực."
             : !SelectedSenderRecord.IsSameCase ? "Hồ sơ được chọn khác địa bàn hoặc loại vụ việc. Hãy đối chiếu lại thông tin đang nhập."
             : SelectedSenderRecord.Status != "Đã giải quyết" ? "Hồ sơ gốc chưa giải quyết; có thể lưu gửi lại và tiếp tục xử lý trên hồ sơ gốc."
             : "Có thể lưu gửi lại hồ sơ này. Vui lòng ghi lý do xác nhận.";

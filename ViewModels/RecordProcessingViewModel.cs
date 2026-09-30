@@ -30,7 +30,9 @@ namespace QuanLyHoSo.ViewModels
         private readonly Action _goBackToPreviousPage;
         private readonly RelayCommand _nextPageCommand;
         private readonly RelayCommand _previousPageCommand;
+        private readonly RelayCommand _saveAttachmentChangesCommand;
         private readonly DispatcherTimer _searchDebounceTimer;
+        private readonly Dictionary<string, string> _editableAttachmentPaths = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         private int _currentPage = 1;
         private int _pageSize = DefaultPageSize;
         private string _pageSizeText = DefaultPageSize.ToString(CultureInfo.InvariantCulture);
@@ -123,6 +125,8 @@ namespace QuanLyHoSo.ViewModels
             RemoveAttachmentCommand = new RelayCommand(RemoveAttachment);
             OpenAttachmentCommand = new RelayCommand(OpenAttachment);
             DownloadAttachmentCommand = new RelayCommand(DownloadAttachment);
+            _saveAttachmentChangesCommand = new RelayCommand(async parameter => await SaveAttachmentChangesAsync(parameter), CanSaveAttachmentChanges);
+            SaveAttachmentChangesCommand = _saveAttachmentChangesCommand;
 
             _selectedStatus = StatusFilters[0];
             _selectedArea = AreaFilters.Count > 0 ? AreaFilters[0].FilterValue : "Tất cả";
@@ -169,6 +173,7 @@ namespace QuanLyHoSo.ViewModels
         public ICommand RemoveAttachmentCommand { get; }
         public ICommand OpenAttachmentCommand { get; }
         public ICommand DownloadAttachmentCommand { get; }
+        public ICommand SaveAttachmentChangesCommand { get; }
         public string TransferAreaSearchText
         {
             get => _transferAreaSearchText;
@@ -226,6 +231,7 @@ namespace QuanLyHoSo.ViewModels
                     (SaveProcessingCommand as RelayCommand)?.RaiseCanExecuteChanged();
                     (ConfirmDocumentDetailsCommand as RelayCommand)?.RaiseCanExecuteChanged();
                     (CancelDocumentDetailsCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                    _saveAttachmentChangesCommand?.RaiseCanExecuteChanged();
                 }
             }
         }
@@ -376,6 +382,7 @@ namespace QuanLyHoSo.ViewModels
                     OnPropertyChanged(nameof(IsProcessingDetailOpen));
                     OnPropertyChanged(nameof(CanUpdateProcessing));
                     (SaveProcessingCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                    _saveAttachmentChangesCommand?.RaiseCanExecuteChanged();
                 }
             }
         }
@@ -684,6 +691,8 @@ namespace QuanLyHoSo.ViewModels
             ProcessSteps.Clear();
             History.Clear();
             Attachments.Clear();
+            _editableAttachmentPaths.Clear();
+            _saveAttachmentChangesCommand?.RaiseCanExecuteChanged();
             OnPropertyChanged(nameof(HasAttachments));
         }
 
@@ -915,9 +924,34 @@ namespace QuanLyHoSo.ViewModels
 
             try
             {
-                var localPath = attachment.Content != null && File.Exists(attachment.FilePath)
-                    ? attachment.FilePath
-                    : _dataService.GetAttachmentFilePath(SelectedProcessingDetail?.RecordCode, attachment.FileName);
+                string localPath;
+                if (attachment.Content != null && File.Exists(attachment.FilePath))
+                {
+                    localPath = attachment.FilePath;
+                }
+                else if (CanUpdateProcessing)
+                {
+                    var editKey = GetAttachmentEditKey(attachment.FileName);
+                    if (!_editableAttachmentPaths.TryGetValue(editKey, out localPath) || !File.Exists(localPath))
+                    {
+                        var editFolder = Path.Combine(
+                            Path.GetTempPath(),
+                            "QuanLyHoSo",
+                            "AttachmentEdits",
+                            Process.GetCurrentProcess().Id.ToString(CultureInfo.InvariantCulture),
+                            SanitizePathSegment(SelectedProcessingDetail?.RecordCode, "record"));
+                        Directory.CreateDirectory(editFolder);
+                        localPath = Path.Combine(editFolder, Path.GetFileName(attachment.FileName));
+                        _dataService.DownloadAttachment(SelectedProcessingDetail?.RecordCode, attachment.FileName, localPath);
+                        _editableAttachmentPaths[editKey] = localPath;
+                        _saveAttachmentChangesCommand.RaiseCanExecuteChanged();
+                    }
+                }
+                else
+                {
+                    localPath = _dataService.GetAttachmentFilePath(SelectedProcessingDetail?.RecordCode, attachment.FileName);
+                }
+
                 Process.Start(new ProcessStartInfo
                 {
                     FileName = localPath,
@@ -928,6 +962,86 @@ namespace QuanLyHoSo.ViewModels
             {
                 MessageBox.Show($"Không thể mở tài liệu.\n{ex.Message}", "Tải tài liệu", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
+        }
+
+        private bool CanSaveAttachmentChanges(object parameter)
+        {
+            if (!CanUpdateProcessing || IsProcessingUpdateBusy || parameter is not AttachmentDraft attachment || attachment.Content != null)
+            {
+                return false;
+            }
+
+            return _editableAttachmentPaths.TryGetValue(GetAttachmentEditKey(attachment.FileName), out var localPath)
+                && File.Exists(localPath);
+        }
+
+        private async Task SaveAttachmentChangesAsync(object parameter)
+        {
+            if (parameter is not AttachmentDraft attachment || !CanSaveAttachmentChanges(attachment))
+            {
+                MessageBox.Show("Hãy mở tài liệu trước, chỉnh sửa và bấm Save trong Word/Excel rồi chọn Lưu thay đổi.", "Lưu tài liệu", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var recordCode = SelectedProcessingDetail?.RecordCode;
+            var editKey = GetAttachmentEditKey(attachment.FileName);
+            var localPath = _editableAttachmentPaths[editKey];
+            try
+            {
+                var fileInfo = new FileInfo(localPath);
+                if (fileInfo.Length > 10 * 1024 * 1024)
+                {
+                    MessageBox.Show("Tài liệu vượt quá dung lượng tối đa 10 MB.", "Lưu tài liệu", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                IsProcessingUpdateBusy = true;
+                var content = await Task.Run(() => File.ReadAllBytes(localPath));
+                var updatedAttachment = await Task.Run(() => _dataService.UpdateAttachmentContent(recordCode, attachment.FileName, content));
+                var index = Attachments.IndexOf(attachment);
+                if (index >= 0)
+                {
+                    Attachments[index] = updatedAttachment;
+                    _editableAttachmentPaths[GetAttachmentEditKey(updatedAttachment.FileName)] = localPath;
+                }
+
+                if (SelectedProcessingDetail?.Attachments != null)
+                {
+                    SelectedProcessingDetail.Attachments = Attachments.ToList();
+                }
+
+                AppLogger.Info("Attachments", "UpdateContent", "Attachment content updated.", recordCode);
+                MessageBox.Show("Đã lưu bản chỉnh sửa lên hệ thống.", "Lưu tài liệu", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (IOException ex)
+            {
+                MessageBox.Show($"Không thể đọc tài liệu. Hãy bấm Save và đóng tài liệu trong ứng dụng đang mở rồi thử lại.\n\nChi tiết: {ex.Message}", "Lưu tài liệu", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Error("Attachments", "UpdateContent", ex, "Failed to update attachment content.", recordCode);
+                MessageBox.Show($"Không thể lưu bản chỉnh sửa lên hệ thống.\n\nChi tiết: {ex.Message}", "Lưu tài liệu", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            finally
+            {
+                IsProcessingUpdateBusy = false;
+                _saveAttachmentChangesCommand.RaiseCanExecuteChanged();
+            }
+        }
+
+        private string GetAttachmentEditKey(string fileName)
+        {
+            return $"{SelectedProcessingDetail?.RecordCode}|{Path.GetFileName(fileName ?? string.Empty)}";
+        }
+
+        private static string SanitizePathSegment(string value, string fallback)
+        {
+            var invalidCharacters = Path.GetInvalidFileNameChars();
+            var sanitized = new string((value ?? string.Empty)
+                .Trim()
+                .Select(character => invalidCharacters.Contains(character) ? '_' : character)
+                .ToArray());
+            return string.IsNullOrWhiteSpace(sanitized) ? fallback : sanitized;
         }
 
         private void DownloadAttachment(object parameter)

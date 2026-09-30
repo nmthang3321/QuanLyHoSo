@@ -15,9 +15,11 @@ namespace QuanLyHoSo.Views.Dashboard
 {
     public partial class DashboardView : UserControl
     {
+        private const string CustomDateFilter = "Khác";
         private DateTime? _customRangeStartDate;
         private DateTime? _customRangeEndDate;
         private bool _isCustomRangeComplete;
+        private bool _openCustomDatePopupAfterMenuCloses;
         private DashboardViewModel _viewModel;
         private bool _isAnimationQueued;
         private DateTime _lastAnimationStartedAt = DateTime.MinValue;
@@ -37,6 +39,8 @@ namespace QuanLyHoSo.Views.Dashboard
 
         private void DashboardView_Unloaded(object sender, RoutedEventArgs e)
         {
+            _openCustomDatePopupAfterMenuCloses = false;
+            CustomDateRangePopup.IsOpen = false;
             if (_viewModel != null)
             {
                 _viewModel.PropertyChanged -= DashboardViewModel_PropertyChanged;
@@ -98,6 +102,8 @@ namespace QuanLyHoSo.Views.Dashboard
 
         private void DateFilterButton_Click(object sender, RoutedEventArgs e)
         {
+            _openCustomDatePopupAfterMenuCloses = false;
+            CustomDateRangePopup.IsOpen = false;
             DateFilterHost.ContextMenu.PlacementTarget = DateFilterHost;
             DateFilterHost.ContextMenu.Placement = PlacementMode.Bottom;
             DateFilterHost.ContextMenu.HorizontalOffset = 0;
@@ -113,10 +119,44 @@ namespace QuanLyHoSo.Views.Dashboard
             }
 
             var selectedFilter = menuItem.Header?.ToString();
-            if (!string.IsNullOrWhiteSpace(selectedFilter))
+            if (string.IsNullOrWhiteSpace(selectedFilter))
+            {
+                return;
+            }
+
+            if (!string.Equals(selectedFilter, CustomDateFilter, StringComparison.Ordinal))
             {
                 viewModel.SelectedDateFilter = selectedFilter;
+                return;
             }
+
+            // The calendar popup belongs to this view instance. Do not bind its
+            // IsOpen state to the shared view model: WPF can keep more than one
+            // materialized DashboardView, which would open both popup windows.
+            _openCustomDatePopupAfterMenuCloses = true;
+            viewModel.SelectedDateFilter = CustomDateFilter;
+            DateFilterHost.ContextMenu.IsOpen = false;
+        }
+
+        private void DateFilterContextMenu_Closed(object sender, RoutedEventArgs e)
+        {
+            if (!_openCustomDatePopupAfterMenuCloses)
+            {
+                return;
+            }
+
+            _openCustomDatePopupAfterMenuCloses = false;
+            Dispatcher.BeginInvoke(
+                new Action(() =>
+                {
+                    if (!IsLoaded)
+                    {
+                        return;
+                    }
+
+                    CustomDateRangePopup.IsOpen = true;
+                }),
+                DispatcherPriority.ContextIdle);
         }
 
         private void ScrollViewer_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
@@ -250,6 +290,7 @@ namespace QuanLyHoSo.Views.Dashboard
                 viewModel.ApplyFilterCommand.Execute(null);
             }
 
+            CustomDateRangePopup.IsOpen = false;
             viewModel.IsCustomCalendarOpen = false;
         }
 

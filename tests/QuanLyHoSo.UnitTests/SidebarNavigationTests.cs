@@ -37,6 +37,38 @@ namespace QuanLyHoSo.UnitTests
             service.Verify(x => x.CountCatalogItemsByType(), Times.Once);
         }
 
+        [Fact]
+        [Trait("Category", "Unit")]
+        [Trait("Category", "Regression")]
+        public void RecordListSidebarNavigation_ShouldResetFiltersAndOpenDetail()
+        {
+            var service = CreateService();
+            using var shell = new ShellViewModel(service.Object);
+            CompleteSignIn(shell);
+            var recordListItem = shell.NavigationItems.Single(item => item.Key == "RecordList");
+            recordListItem.Command.Execute(null);
+            var records = Assert.IsType<RecordListViewModel>(shell.CurrentViewModel);
+            records.FromDate = new DateTime(2020, 1, 1);
+            records.ToDate = new DateTime(2020, 12, 31);
+            records.SelectedStatus = "Đã giải quyết";
+            records.SearchText = "không giữ lại";
+            records.IsFilterPanelOpen = true;
+            typeof(RecordListViewModel)
+                .GetMethod("ViewRecord", BindingFlags.Instance | BindingFlags.NonPublic)
+                ?.Invoke(records, new object[] { "HS-2026-000001" });
+
+            shell.NavigationItems.Single(item => item.Key == "Dashboard").Command.Execute(null);
+            recordListItem.Command.Execute(null);
+
+            var expectedFrom = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+            Assert.Equal(expectedFrom, records.FromDate);
+            Assert.Equal(expectedFrom.AddMonths(1).AddDays(-1), records.ToDate);
+            Assert.Equal("Tất cả", records.SelectedStatus);
+            Assert.Equal(string.Empty, records.SearchText);
+            Assert.False(records.IsFilterPanelOpen);
+            Assert.Null(records.SelectedRecordDetail);
+        }
+
         private static Mock<IApplicationDataService> CreateService()
         {
             var service = new Mock<IApplicationDataService>();
@@ -53,6 +85,17 @@ namespace QuanLyHoSo.UnitTests
                 .Returns(Array.Empty<TrendStat>());
             service.Setup(x => x.GetRecentRecords(It.IsAny<int>(), It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<int>()))
                 .Returns(Array.Empty<RecentRecord>());
+            service.Setup(x => x.GetCatalogValues(It.IsAny<string>(), It.IsAny<bool>()))
+                .Returns(new[] { "Tất cả" });
+            service.Setup(x => x.GetAreaNames(It.IsAny<bool>()))
+                .Returns(new[] { "Tất cả" });
+            service.Setup(x => x.GetProcessorNames(It.IsAny<bool>()))
+                .Returns(new[] { "Tất cả" });
+            service.Setup(x => x.GetFilteredRecords(
+                    It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
+                    It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<int>(), It.IsAny<int>()))
+                .Returns(Array.Empty<RecentRecord>());
+            service.Setup(x => x.GetRecordForm(It.IsAny<string>())).Returns(new RecordFormDraft { RecordCode = "HS-2026-000001" });
             return service;
         }
 

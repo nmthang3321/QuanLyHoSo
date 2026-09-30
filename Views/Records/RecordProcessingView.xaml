@@ -913,6 +913,7 @@
                                                                 <ColumnDefinition Width="Auto" />
                                                                 <ColumnDefinition Width="Auto" />
                                                                 <ColumnDefinition Width="Auto" />
+                                                                <ColumnDefinition Width="Auto" />
                                                             </Grid.ColumnDefinitions>
                                                             <StackPanel VerticalAlignment="Center">
                                                                 <TextBlock Text="{Binding FileName}" TextTrimming="CharacterEllipsis" />
@@ -921,10 +922,19 @@
                                                             <Button Grid.Column="1" Style="{StaticResource AttachmentIconButton}" Margin="4,0,3,0" Command="{Binding DataContext.OpenAttachmentCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" ToolTip="Mở tài liệu">
                                                                 <TextBlock Text="&#xE8E5;" FontFamily="Segoe MDL2 Assets" Foreground="{StaticResource PrimaryBrush}" />
                                                             </Button>
-                                                            <Button Grid.Column="2" Style="{StaticResource AttachmentIconButton}" Margin="0,0,3,0" Command="{Binding DataContext.DownloadAttachmentCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" ToolTip="Tải về">
+                                                            <Button Grid.Column="2"
+                                                                    Style="{StaticResource AttachmentIconButton}"
+                                                                    Margin="0,0,3,0"
+                                                                    Command="{Binding DataContext.SaveAttachmentChangesCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                                    CommandParameter="{Binding}"
+                                                                    ToolTip="Lưu bản đã chỉnh sửa lên hệ thống"
+                                                                    Visibility="{Binding DataContext.CanUpdateProcessing, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                                <TextBlock Text="&#xE74E;" FontFamily="Segoe MDL2 Assets" Foreground="#0B5CFF" />
+                                                            </Button>
+                                                            <Button Grid.Column="3" Style="{StaticResource AttachmentIconButton}" Margin="0,0,3,0" Command="{Binding DataContext.DownloadAttachmentCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" ToolTip="Tải về">
                                                                 <TextBlock Text="&#xE896;" FontFamily="Segoe MDL2 Assets" Foreground="#159A72" />
                                                             </Button>
-                                                            <Button Grid.Column="3" Style="{StaticResource AttachmentIconButton}" Command="{Binding DataContext.RemoveAttachmentCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" ToolTip="Xóa tài liệu">
+                                                            <Button Grid.Column="4" Style="{StaticResource AttachmentIconButton}" Command="{Binding DataContext.RemoveAttachmentCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" ToolTip="Xóa tài liệu">
                                                                 <TextBlock Text="&#xE74D;" FontFamily="Segoe MDL2 Assets" Foreground="#E11414" />
                                                             </Button>
                                                         </Grid>

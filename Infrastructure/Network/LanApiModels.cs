@@ -140,10 +140,15 @@ namespace QuanLyHoSo.Infrastructure.Network
         public string RecordCode { get; set; }
     }
 
-    public sealed class AttachmentDownloadRequest
+    public class AttachmentDownloadRequest
     {
         public string RecordCode { get; set; }
         public string FileName { get; set; }
+    }
+
+    public sealed class AttachmentUpdateRequest : AttachmentDownloadRequest
+    {
+        public byte[] Content { get; set; }
     }
 
     public sealed class SaveRecordFormRequest

@@ -113,6 +113,60 @@ namespace QuanLyHoSo.IntegrationTests
 
         [Fact]
         [Trait("Category", "Critical")]
+        [Trait("Category", "Attachments")]
+        public void UpdateAttachmentContent_ShouldReplaceServerFileAndUpdateMetadata()
+        {
+            using var database = new TestDatabase();
+            var originalContent = new byte[] { 1, 2, 3 };
+            var updatedContent = Enumerable.Range(0, 4096).Select(value => (byte)(value % 251)).ToArray();
+            var draft = database.NewRecord("edit-attachment");
+            draft.Attachments = new[]
+            {
+                new AttachmentDraft
+                {
+                    FileName = "bien-ban.docx",
+                    FileSize = "1 KB",
+                    Content = originalContent
+                }
+            };
+            var code = database.Service.SaveRecordForm(draft);
+
+            var updated = database.Service.UpdateAttachmentContent(code, "bien-ban.docx", updatedContent);
+            var persisted = Assert.Single(database.Service.GetRecordForm(code).Attachments);
+
+            Assert.Equal("4 KB", updated.FileSize);
+            Assert.Equal(updated.FileSize, persisted.FileSize);
+            Assert.Equal(updated.FilePath, persisted.FilePath);
+            Assert.Equal(updatedContent, File.ReadAllBytes(persisted.FilePath));
+        }
+
+        [Fact]
+        [Trait("Category", "Security")]
+        [Trait("Category", "Attachments")]
+        public void UpdateAttachmentContent_WhenLeader_ShouldBeDeniedAndKeepOriginalFile()
+        {
+            using var database = new TestDatabase();
+            var originalContent = new byte[] { 8, 6, 4, 2 };
+            var draft = database.NewRecord("edit-attachment-denied");
+            draft.Attachments = new[]
+            {
+                new AttachmentDraft
+                {
+                    FileName = "quyet-dinh.pdf",
+                    FileSize = "1 KB",
+                    Content = originalContent
+                }
+            };
+            var code = database.Service.SaveRecordForm(draft);
+            var storedPath = Assert.Single(database.Service.GetRecordForm(code).Attachments).FilePath;
+            database.SignIn(UserRoles.Leader, "Lãnh đạo");
+
+            Assert.Throws<UnauthorizedAccessException>(() => database.Service.UpdateAttachmentContent(code, "quyet-dinh.pdf", new byte[] { 9, 9, 9 }));
+            Assert.Equal(originalContent, File.ReadAllBytes(storedPath));
+        }
+
+        [Fact]
+        [Trait("Category", "Critical")]
         [Trait("Category", "Backup")]
         public void FullBackupRestore_ShouldRecoverDatabaseAndPhysicalAttachments()
         {

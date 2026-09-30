@@ -92,11 +92,13 @@ namespace QuanLyHoSo.ViewModels
                 Title = title,
                 IconGlyph = iconGlyph,
                 IconFontFamily = iconFontFamily,
-                Command = new RelayCommand(() => NavigateTo(key), () => CanNavigateTo(key))
+                Command = new RelayCommand(
+                    () => NavigateTo(key, resetRecordListFromSidebar: string.Equals(key, "RecordList", StringComparison.Ordinal)),
+                    () => CanNavigateTo(key))
             };
         }
 
-        private void NavigateTo(string key, string selectedNavigationKey = null)
+        private void NavigateTo(string key, string selectedNavigationKey = null, bool resetRecordListFromSidebar = false)
         {
             if (!IsAuthenticated || !CanNavigateTo(key))
             {
@@ -130,6 +132,14 @@ namespace QuanLyHoSo.ViewModels
                 "Settings" => SettingsViewModel,
                 _ => DashboardViewModel
             };
+
+            if (resetRecordListFromSidebar
+                && destinationAlreadyCreated
+                && string.Equals(key, "RecordList", StringComparison.Ordinal))
+            {
+                RecordListViewModel.ResetForSidebarNavigation();
+                destinationAlreadyCreated = false;
+            }
 
             UpdateNavigationSelection(selectedNavigationKey ?? key);
             if (destinationAlreadyCreated)

@@ -167,7 +167,7 @@ namespace QuanLyHoSo.IntegrationTests
 
         [Fact]
         [Trait("Category", "Regression")]
-        public void SameNameWithDifferentPhone_ShouldNotMatchAndNewCaseShouldRemainOpen()
+        public void SameNameWithDifferentPhone_ShouldWarnWithoutConfirmingAndNewCaseShouldRemainOpen()
         {
             using var db = new TestDatabase();
             var draft = db.NewRecord("identity");
@@ -175,7 +175,12 @@ namespace QuanLyHoSo.IntegrationTests
             Resolve(db, firstCode);
             var other = db.NewRecord("identity");
             other.SenderPhone = "0909999999";
-            Assert.Empty(db.Service.GetSenderRecords(other));
+            // Same name with a different phone surfaces an unconfirmed warning row,
+            // but it is never treated as the confirmed same sender.
+            var warning = Assert.Single(db.Service.GetSenderRecords(other));
+            Assert.Equal(firstCode, warning.RecordCode);
+            Assert.False(warning.IsConfirmedSender);
+            Assert.False(warning.CanLinkAsResubmission);
             var newCase = db.NewRecord("identity");
             newCase.Content = "Tình tiết mới, cần xử lý riêng";
             var code = db.Service.SaveRecordForm(newCase);
@@ -250,7 +255,7 @@ namespace QuanLyHoSo.IntegrationTests
 
         [Fact]
         [Trait("Category", "Regression")]
-        public void SenderWithoutPhone_ShouldMatchNormalizedNameAndAddressOnly()
+        public void SenderWithoutPhone_ShouldConfirmByAddressAndWarnByNameOtherwise()
         {
             using var db = new TestDatabase();
             var original = db.NewRecord("address");
@@ -260,11 +265,14 @@ namespace QuanLyHoSo.IntegrationTests
             same.SenderPhone = "";
             same.SenderName = "nguyen van test address";
             same.ContactAddress = "  phuong my binh, an giang ";
-            Assert.Single(db.Service.GetSenderRecords(same));
+            var confirmed = Assert.Single(db.Service.GetSenderRecords(same));
+            Assert.True(confirmed.IsConfirmedSender);
             same.ContactAddress = "Địa chỉ khác";
-            Assert.Empty(db.Service.GetSenderRecords(same));
+            // Same name with a different address still warns, unconfirmed.
+            var warned = Assert.Single(db.Service.GetSenderRecords(same));
+            Assert.False(warned.IsConfirmedSender);
             same.ContactAddress = "";
-            Assert.Empty(db.Service.GetSenderRecords(same));
+            Assert.Single(db.Service.GetSenderRecords(same));
         }
 
         [Fact]

@@ -28,6 +28,9 @@ namespace QuanLyHoSo.ViewModels
         private const int DefaultPageSize = 20;
         private const int MinimumPageSize = 1;
         private const int MaximumPageSize = 20;
+        private const int TableHeaderHeight = 38;
+        private const int TableRowHeight = 34;
+        private const int TableHorizontalScrollBarHeight = 18;
 
         private readonly IApplicationDataService _dataService;
         private readonly Action _goBack;
@@ -47,6 +50,7 @@ namespace QuanLyHoSo.ViewModels
         private bool _isTrashOpen;
         private readonly DispatcherTimer _searchDebounceTimer;
         private readonly Dictionary<string, RecordListColumnOption> _columnOptionsByKey = new();
+        private ObservableCollection<RecordListRowViewModel> _records;
         private string _areaSearchText;
         private DateTime? _fromDate;
         private string _searchText;
@@ -59,6 +63,7 @@ namespace QuanLyHoSo.ViewModels
         private bool _isFilterPanelOpen;
         private bool _isExporting;
         private bool _isLoading;
+        private bool _isRecordTableReady;
         private bool _reloadRequested;
         private int _currentPage = 1;
         private bool _isResettingFilters;
@@ -168,7 +173,27 @@ namespace QuanLyHoSo.ViewModels
         public ObservableCollection<string> Processors { get; }
         public ObservableCollection<string> SortOptions { get; }
         public ObservableCollection<RecordListColumnOption> ColumnOptions { get; }
-        public ObservableCollection<RecordListRowViewModel> Records { get; }
+        public ObservableCollection<RecordListRowViewModel> Records
+        {
+            get => _records;
+            private set
+            {
+                if (ReferenceEquals(_records, value))
+                {
+                    return;
+                }
+
+                if (_records != null)
+                {
+                    _records.CollectionChanged -= Records_CollectionChanged;
+                }
+
+                _records = value ?? new ObservableCollection<RecordListRowViewModel>();
+                _records.CollectionChanged += Records_CollectionChanged;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(TableHeight));
+            }
+        }
         public ICommand PreviousPageCommand => _previousPageCommand;
         public ICommand NextPageCommand => _nextPageCommand;
         public ICommand RefreshCommand => _refreshCommand;
@@ -621,7 +646,15 @@ namespace QuanLyHoSo.ViewModels
             private set => SetProperty(ref _totalRecordsText, value);
         }
 
-        public int TableHeight => 38 + Records.Count * 34;
+        public int TableHeight => TableHeaderHeight
+            + Records.Count * TableRowHeight
+            + TableHorizontalScrollBarHeight;
+
+        public bool IsRecordTableReady
+        {
+            get => _isRecordTableReady;
+            private set => SetProperty(ref _isRecordTableReady, value);
+        }
 
         public RecordFormDraft SelectedRecordDetail
         {
@@ -703,6 +736,13 @@ namespace QuanLyHoSo.ViewModels
                     _reloadRequested = false;
                     Reload();
                 }
+                else
+                {
+                    // Keep the grid hidden through its first complete data/layout
+                    // pass so WPF never paints the temporary filler area before
+                    // star columns settle. Queued reloads finish first as well.
+                    IsRecordTableReady = true;
+                }
             }
         }
 
@@ -782,17 +822,24 @@ namespace QuanLyHoSo.ViewModels
             {
                 row.PropertyChanged -= RowSelectionChanged;
             }
-            Records.Clear();
             foreach (var row in rows)
             {
                 row.IsSelected = _selectedRecordCodes.Contains(row.RecordCode);
                 row.PropertyChanged += RowSelectionChanged;
-                Records.Add(row);
             }
 
-            OnPropertyChanged(nameof(TableHeight));
+            // Swap one completed page into the grid in a single notification.
+            // Clear + Add per row makes WPF repeatedly recalculate star columns,
+            // which briefly renders a blank filler column at the right edge.
+            Records = new ObservableCollection<RecordListRowViewModel>(rows);
+
             NotifySelectionChanged();
             RaisePageCommandStates();
+        }
+
+        private void Records_CollectionChanged(object sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
+        {
+            OnPropertyChanged(nameof(TableHeight));
         }
 
         private bool GetColumnVisibility(string key)
@@ -838,8 +885,8 @@ namespace QuanLyHoSo.ViewModels
             _isResettingFilters = true;
             try
             {
-                FromDate = new DateTime(today.Year, 1, 1);
-                ToDate = today;
+                FromDate = new DateTime(today.Year, today.Month, 1);
+                ToDate = FromDate.Value.AddMonths(1).AddDays(-1);
                 SelectedStatus = GetFirstOrDefault(Statuses);
                 SelectedCaseType = GetFirstOrDefault(CaseTypes);
                 SelectedField = GetFirstOrDefault(Fields);
@@ -855,6 +902,25 @@ namespace QuanLyHoSo.ViewModels
             }
 
             ReloadFromFirstPage();
+        }
+
+        public void ResetForSidebarNavigation()
+        {
+            _searchDebounceTimer.Stop();
+            SelectedRecordDetail = null;
+            IsFilterPanelOpen = false;
+            if (!IsSelectionBusy)
+            {
+                IsSelectionMode = false;
+                ClearSelection();
+            }
+
+            if (!Trash.IsBusy)
+            {
+                IsTrashOpen = false;
+            }
+
+            ResetFilters();
         }
 
         private void DataService_CatalogChanged(string catalogType)

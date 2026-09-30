@@ -30,6 +30,7 @@ namespace QuanLyHoSo.Infrastructure.Data
         private const string AutomaticBackupFilePattern = "quanlyhoso_auto_*.qlhbackup";
         private const int AutomaticBackupIntervalDays = 7;
         private const int AutomaticBackupRetentionCount = 10;
+        private const int MaximumAttachmentBytes = 10 * 1024 * 1024;
         private static readonly Lazy<AppDataService> LazyInstance = new Lazy<AppDataService>(() => new AppDataService());
         private readonly object _automaticBackupSync = new object();
         private readonly string _connectionString;
@@ -133,6 +134,15 @@ namespace QuanLyHoSo.Infrastructure.Data
             AppLogger.Info("Database", "Initialize", $"Initializing database at {DatabasePath}.");
 
             using var connection = OpenConnection();
+            PrepareDatabase(connection, seedSampleRecords);
+            _lanServer?.Start();
+            LogElapsed("Database", "Initialize", stopwatch);
+        }
+
+        // The single preparation sequence every server start and every restore
+        // applies: idempotent schema migrations, seeds, and data normalizations.
+        private void PrepareDatabase(SqliteConnection connection, bool seedSampleRecords)
+        {
             CreateSchema(connection);
             MigrateLegacyPriorityColumnIfNeeded(connection);
             EnsureRecordTrashSchema(connection);
@@ -152,8 +162,6 @@ namespace QuanLyHoSo.Infrastructure.Data
             }
             NormalizeFutureRecordDates(connection);
             SyncProcessorCatalogFromRecords(connection);
-            _lanServer?.Start();
-            LogElapsed("Database", "Initialize", stopwatch);
         }
 
         public IReadOnlyList<string> GetAreaNames(bool includeAll = false)
@@ -1696,8 +1704,9 @@ VALUES ($createdAt, $senderName, $scope, $targetName, $kpiTarget, $message);";
         {
             if (AppPathSettings.Current.IsClientMode)
                 return _lanClient.Call<IReadOnlyList<SenderRecordHistory>>("records/sender-history", record) ?? Array.Empty<SenderRecordHistory>();
-            if (record == null || string.IsNullOrWhiteSpace(record.SenderName) ||
-                (string.IsNullOrWhiteSpace(record.SenderPhone) && string.IsNullOrWhiteSpace(record.ContactAddress)))
+            // A sender name alone now triggers the comparison; identity confirmation
+            // still requires the strict rules below.
+            if (record == null || string.IsNullOrWhiteSpace(record.SenderName))
                 return Array.Empty<SenderRecordHistory>();
             using var connection = OpenConnection();
             using var command = connection.CreateCommand();
@@ -1718,13 +1727,46 @@ VALUES ($createdAt, $senderName, $scope, $targetName, $kpiTarget, $message);";
                 }
             }
             ApplyUserRecordScope(command, conditions);
-            command.CommandText = @"
+            command.CommandText = SenderHistorySelectSql
+                + " WHERE " + string.Join(" AND ", conditions)
+                + " ORDER BY ReceivedDate DESC, Id DESC;";
+            List<SenderRecordHistory> result;
+            using (var reader = command.ExecuteReader())
+            {
+                result = ReadSenderHistoryRows(reader, record, confirmedSender: true);
+            }
+
+            if (result.Count > 0)
+            {
+                return result;
+            }
+
+            // Strict identity rules found nothing. Surface name-only matches as
+            // warnings: they are never confirmed senders and can never be linked
+            // as resubmissions; identity still requires phone/address confirmation.
+            using var fallback = connection.CreateCommand();
+            var fallbackConditions = new List<string> { "normalize_sender(SenderName) = $fallbackSenderNameKey" };
+            fallback.Parameters.AddWithValue("$fallbackSenderNameKey", NormalizeSenderText(record.SenderName));
+            ApplyUserRecordScope(fallback, fallbackConditions);
+            fallback.CommandText = SenderHistorySelectSql
+                + " WHERE " + string.Join(" AND ", fallbackConditions)
+                + " ORDER BY ReceivedDate DESC, Id DESC;";
+            using (var fallbackReader = fallback.ExecuteReader())
+            {
+                result = ReadSenderHistoryRows(fallbackReader, record, confirmedSender: false);
+            }
+
+            return result;
+        }
+
+        private const string SenderHistorySelectSql = @"
 SELECT RecordCode, ReceivedDate, SenderName, SenderPhone, ContactAddress, AreaName, CaseType, Content, Status, OriginalRecordCode,
        COALESCE((SELECT group_concat(strftime('%d/%m/%Y', ProcessedAt) || ' — ' || Title || ': ' || Content, char(10)) FROM (SELECT ProcessedAt, Title, Content FROM ProcessHistories WHERE RecordId = Records.Id ORDER BY ProcessedAt, Id)), ''),
        ResubmissionReason
-FROM (SELECT * FROM Records WHERE DeletedAt = '') AS Records
-WHERE " + string.Join(" AND ", conditions) + " ORDER BY ReceivedDate DESC, Id DESC;";
-            using var reader = command.ExecuteReader();
+FROM (SELECT * FROM Records WHERE DeletedAt = '') AS Records";
+
+        private static List<SenderRecordHistory> ReadSenderHistoryRows(SqliteDataReader reader, RecordFormDraft record, bool confirmedSender)
+        {
             var result = new List<SenderRecordHistory>();
             while (reader.Read()) result.Add(new SenderRecordHistory
             {
@@ -1734,7 +1776,8 @@ WHERE " + string.Join(" AND ", conditions) + " ORDER BY ReceivedDate DESC, Id DE
                 Status = reader.GetString(8), OriginalRecordCode = reader.GetString(9), ResolutionSummary = reader.GetString(10),
                 ResubmissionReason = reader.IsDBNull(11) ? string.Empty : reader.GetString(11),
                 IsSameCase = NormalizeSenderText(reader.GetString(5)) == NormalizeSenderText(record.AreaName)
-                    && NormalizeSenderText(reader.GetString(6)) == NormalizeSenderText(record.CaseType)
+                    && NormalizeSenderText(reader.GetString(6)) == NormalizeSenderText(record.CaseType),
+                IsConfirmedSender = confirmedSender
             });
             return result;
         }
@@ -2736,6 +2779,187 @@ ORDER BY a.Id DESC LIMIT 1;";
             {
                 File.Copy(sourcePath, destinationPath, true);
             }
+        }
+
+        public AttachmentDraft UpdateAttachmentContent(string recordCode, string fileName, byte[] content)
+        {
+            if (AppPathSettings.Current.IsClientMode)
+            {
+                return _lanClient.Call<AttachmentDraft>("attachments/update", new AttachmentUpdateRequest
+                {
+                    RecordCode = recordCode,
+                    FileName = Path.GetFileName(fileName ?? string.Empty),
+                    Content = content
+                });
+            }
+
+            EnsureCanWriteRecords();
+            var safeFileName = Path.GetFileName(fileName ?? string.Empty);
+            if (string.IsNullOrWhiteSpace(recordCode) || string.IsNullOrWhiteSpace(safeFileName))
+            {
+                throw new InvalidDataException("Tài liệu cần cập nhật không hợp lệ.");
+            }
+
+            if (content == null)
+            {
+                throw new InvalidDataException("Không nhận được nội dung tài liệu cần cập nhật.");
+            }
+
+            if (content.Length > MaximumAttachmentBytes)
+            {
+                throw new InvalidDataException("Tài liệu vượt quá dung lượng tối đa 10 MB.");
+            }
+
+            var supportedExtensions = new[] { ".pdf", ".doc", ".docx", ".jpg", ".jpeg", ".png" };
+            if (!supportedExtensions.Contains(Path.GetExtension(safeFileName), StringComparer.OrdinalIgnoreCase))
+            {
+                throw new InvalidDataException("Định dạng tài liệu không được hỗ trợ.");
+            }
+
+            string destinationPath = null;
+            string temporaryPath = null;
+            string backupPath = null;
+            var destinationExisted = false;
+            var fileWasReplaced = false;
+
+            try
+            {
+                using var connection = OpenConnection();
+                using var transaction = connection.BeginTransaction();
+                var recordId = GetRecordId(connection, transaction, recordCode);
+                if (!recordId.HasValue)
+                {
+                    throw new InvalidOperationException("Hồ sơ không còn trong danh sách làm việc.");
+                }
+
+                EnsureCanEditRecord(connection, transaction, recordId.Value);
+                using (var statusCommand = connection.CreateCommand())
+                {
+                    statusCommand.Transaction = transaction;
+                    statusCommand.CommandText = "SELECT Status FROM Records WHERE Id = $recordId LIMIT 1;";
+                    statusCommand.Parameters.AddWithValue("$recordId", recordId.Value);
+                    if (string.Equals(Convert.ToString(statusCommand.ExecuteScalar(), CultureInfo.InvariantCulture), RecordStatuses.ResubmittedResolved, StringComparison.Ordinal))
+                    {
+                        throw new InvalidOperationException("Hồ sơ gửi lại đã tham chiếu kết quả giải quyết; không được sửa tài liệu.");
+                    }
+                }
+
+                int attachmentId;
+                string storedPath;
+                using (var attachmentCommand = connection.CreateCommand())
+                {
+                    attachmentCommand.Transaction = transaction;
+                    attachmentCommand.CommandText = @"
+SELECT Id, FilePath
+FROM RecordAttachments
+WHERE RecordId = $recordId AND FileName = $fileName
+ORDER BY Id DESC LIMIT 1;";
+                    attachmentCommand.Parameters.AddWithValue("$recordId", recordId.Value);
+                    attachmentCommand.Parameters.AddWithValue("$fileName", safeFileName);
+                    using var reader = attachmentCommand.ExecuteReader();
+                    if (!reader.Read())
+                    {
+                        throw new FileNotFoundException("Tài liệu không còn tồn tại trong hồ sơ.", safeFileName);
+                    }
+
+                    attachmentId = reader.GetInt32(0);
+                    storedPath = reader.GetString(1);
+                }
+
+                var managedRoot = Path.GetFullPath(_storageRoot).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+                var fullStoredPath = string.IsNullOrWhiteSpace(storedPath) ? string.Empty : Path.GetFullPath(storedPath);
+                destinationPath = fullStoredPath.StartsWith(managedRoot, StringComparison.OrdinalIgnoreCase)
+                    ? fullStoredPath
+                    : Path.Combine(_attachmentsRoot, SanitizePathSegment(recordCode, "record"), safeFileName);
+                Directory.CreateDirectory(Path.GetDirectoryName(destinationPath));
+
+                temporaryPath = destinationPath + "." + Guid.NewGuid().ToString("N") + ".tmp";
+                backupPath = destinationPath + "." + Guid.NewGuid().ToString("N") + ".bak";
+                File.WriteAllBytes(temporaryPath, content);
+                destinationExisted = File.Exists(destinationPath);
+                if (destinationExisted)
+                {
+                    File.Replace(temporaryPath, destinationPath, backupPath, true);
+                }
+                else
+                {
+                    File.Move(temporaryPath, destinationPath);
+                }
+                fileWasReplaced = true;
+
+                var fileSize = FormatAttachmentFileSize(content.LongLength);
+                using (var updateAttachment = connection.CreateCommand())
+                {
+                    updateAttachment.Transaction = transaction;
+                    updateAttachment.CommandText = "UPDATE RecordAttachments SET FileSize = $fileSize, FilePath = $filePath WHERE Id = $id;";
+                    updateAttachment.Parameters.AddWithValue("$fileSize", fileSize);
+                    updateAttachment.Parameters.AddWithValue("$filePath", destinationPath);
+                    updateAttachment.Parameters.AddWithValue("$id", attachmentId);
+                    updateAttachment.ExecuteNonQuery();
+                }
+
+                using (var updateRecord = connection.CreateCommand())
+                {
+                    updateRecord.Transaction = transaction;
+                    updateRecord.CommandText = "UPDATE Records SET UpdatedAt = $updatedAt WHERE Id = $recordId;";
+                    updateRecord.Parameters.AddWithValue("$updatedAt", DateTime.Now.ToString("O", CultureInfo.InvariantCulture));
+                    updateRecord.Parameters.AddWithValue("$recordId", recordId.Value);
+                    updateRecord.ExecuteNonQuery();
+                }
+
+                WriteDatabaseLog(connection, transaction, "Tài liệu hồ sơ", "Sửa", recordCode, $"Cập nhật nội dung tài liệu {safeFileName}.");
+                transaction.Commit();
+                fileWasReplaced = false;
+
+                return new AttachmentDraft
+                {
+                    FileName = safeFileName,
+                    FileSize = fileSize,
+                    FilePath = destinationPath
+                };
+            }
+            catch
+            {
+                if (fileWasReplaced && !string.IsNullOrWhiteSpace(destinationPath))
+                {
+                    try
+                    {
+                        if (destinationExisted && !string.IsNullOrWhiteSpace(backupPath) && File.Exists(backupPath))
+                        {
+                            File.Copy(backupPath, destinationPath, true);
+                        }
+                        else if (!destinationExisted && File.Exists(destinationPath))
+                        {
+                            File.Delete(destinationPath);
+                        }
+                    }
+                    catch (Exception restoreException)
+                    {
+                        AppLogger.Error("Attachments", "RestoreAfterUpdateFailure", restoreException, "Could not restore attachment after update failure.", recordCode);
+                    }
+                }
+
+                throw;
+            }
+            finally
+            {
+                foreach (var cleanupPath in new[] { temporaryPath, backupPath })
+                {
+                    if (string.IsNullOrWhiteSpace(cleanupPath) || !File.Exists(cleanupPath)) continue;
+                    try { File.Delete(cleanupPath); }
+                    catch (Exception cleanupException)
+                    {
+                        AppLogger.Warning("Attachments", "CleanupUpdateFile", "Could not remove a temporary attachment update file.", cleanupException, recordCode);
+                    }
+                }
+            }
+        }
+
+        private static string FormatAttachmentFileSize(long bytes)
+        {
+            return bytes < 1024 * 1024
+                ? $"{Math.Max(1, bytes / 1024)} KB"
+                : $"{bytes / (1024d * 1024d):0.0} MB";
         }
 
         private static string SanitizePathSegment(string value, string fallback)
@@ -3923,9 +4147,56 @@ LIMIT $take;";
 
             using var source = OpenDatabaseFile(sourcePath);
             using var destination = OpenConnection();
+            // The built-in admin keeps the credentials in use before the restore;
+            // every other account comes from the restored database.
+            var preservedAdmin = ReadAdminCredentialSnapshot(destination);
             source.BackupDatabase(destination);
             ValidateDatabaseConnection(destination);
+            // Bring the restored database up to the current schema and rules so a
+            // restore never depends on a later server restart to migrate.
+            PrepareDatabase(destination, seedSampleRecords: false);
+            ApplyAdminCredentialSnapshot(destination, preservedAdmin);
             WriteDatabaseLog(destination, null, "Sao lưu", "Khôi phục", DatabasePath, $"Khôi phục dữ liệu từ {sourcePath}.");
+        }
+
+        private static AdminCredentialSnapshot ReadAdminCredentialSnapshot(SqliteConnection connection)
+        {
+            using var command = connection.CreateCommand();
+            command.CommandText = "SELECT PasswordHash, MustChangePassword FROM Users WHERE UserName = 'admin' AND IsActive = 1 LIMIT 1;";
+            using var reader = command.ExecuteReader();
+            if (!reader.Read())
+            {
+                return null;
+            }
+
+            return new AdminCredentialSnapshot(reader.GetString(0), reader.GetInt32(1) != 0);
+        }
+
+        private static void ApplyAdminCredentialSnapshot(SqliteConnection connection, AdminCredentialSnapshot snapshot)
+        {
+            if (snapshot == null)
+            {
+                return;
+            }
+
+            using var command = connection.CreateCommand();
+            command.CommandText = "UPDATE Users SET PasswordHash = $hash, MustChangePassword = $mustChange, UpdatedAt = $now WHERE UserName = 'admin';";
+            command.Parameters.AddWithValue("$hash", snapshot.PasswordHash);
+            command.Parameters.AddWithValue("$mustChange", snapshot.MustChangePassword ? 1 : 0);
+            command.Parameters.AddWithValue("$now", DateTime.Now.ToString("O", CultureInfo.InvariantCulture));
+            command.ExecuteNonQuery();
+        }
+
+        private sealed class AdminCredentialSnapshot
+        {
+            public AdminCredentialSnapshot(string passwordHash, bool mustChangePassword)
+            {
+                PasswordHash = passwordHash;
+                MustChangePassword = mustChangePassword;
+            }
+
+            public string PasswordHash { get; }
+            public bool MustChangePassword { get; }
         }
 
         public static void ValidateDatabaseFile(string databasePath)

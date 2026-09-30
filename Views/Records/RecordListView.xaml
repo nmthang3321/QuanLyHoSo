@@ -502,11 +502,13 @@
 
                     <DataGrid Grid.Row="1"
                               ItemsSource="{Binding Records}"
+                              Visibility="{Binding IsRecordTableReady, Converter={StaticResource BooleanToVisibilityConverter}}"
                               MaxHeight="{Binding TableHeight}"
                               VerticalAlignment="Top"
                               CanUserResizeColumns="True"
+                              EnableColumnVirtualization="False"
                               HorizontalScrollBarVisibility="Auto"
-                              VerticalScrollBarVisibility="Auto"
+                              VerticalScrollBarVisibility="Hidden"
                               PreviewMouseWheel="RecordListDataGrid_PreviewMouseWheel"
                               GridLinesVisibility="All"
                               VerticalGridLinesBrush="#ECF1F8"
@@ -538,7 +540,7 @@
                         </DataGrid.CellStyle>
                         <DataGrid.Columns>
                             <DataGridTemplateColumn Header="Chọn" Width="58" CanUserResize="False"
-                                                    Visibility="{Binding Data.IsSelectionMode, Source={StaticResource ViewModelProxy}, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                    Visibility="{Binding Data.IsSelectionMode, Source={StaticResource ViewModelProxy}, Converter={StaticResource BooleanToVisibilityConverter}, FallbackValue=Collapsed}">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
@@ -677,7 +679,7 @@
                                                 Width="1.0*"
                                                 MinWidth="120"
                                                 MaxWidth="200"
-                                                Visibility="{Binding Data.IsCommanderApproverColumnVisible, Source={StaticResource ViewModelProxy}, Converter={StaticResource BooleanToVisibilityConverter}}"  ClipboardContentBinding="{Binding CommanderApproverName}" SortMemberPath="CommanderApproverName">
+                                                Visibility="{Binding Data.IsCommanderApproverColumnVisible, Source={StaticResource ViewModelProxy}, Converter={StaticResource BooleanToVisibilityConverter}, FallbackValue=Collapsed}"  ClipboardContentBinding="{Binding CommanderApproverName}" SortMemberPath="CommanderApproverName">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <TextBox Style="{StaticResource SelectableRecordCellText}" Text="{Binding CommanderApproverName, Mode=OneWay}" />
@@ -688,7 +690,7 @@
                                                 Width="1.0*"
                                                 MinWidth="120"
                                                 MaxWidth="200"
-                                                Visibility="{Binding Data.IsLeaderApproverColumnVisible, Source={StaticResource ViewModelProxy}, Converter={StaticResource BooleanToVisibilityConverter}}"  ClipboardContentBinding="{Binding LeaderApproverName}" SortMemberPath="LeaderApproverName">
+                                                Visibility="{Binding Data.IsLeaderApproverColumnVisible, Source={StaticResource ViewModelProxy}, Converter={StaticResource BooleanToVisibilityConverter}, FallbackValue=Collapsed}"  ClipboardContentBinding="{Binding LeaderApproverName}" SortMemberPath="LeaderApproverName">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <TextBox Style="{StaticResource SelectableRecordCellText}" Text="{Binding LeaderApproverName, Mode=OneWay}" />
@@ -699,7 +701,7 @@
                                                 Width="0.9*"
                                                 MinWidth="110"
                                                 MaxWidth="170"
-                                                Visibility="{Binding Data.IsTransferDocumentNumberColumnVisible, Source={StaticResource ViewModelProxy}, Converter={StaticResource BooleanToVisibilityConverter}}"  ClipboardContentBinding="{Binding TransferDocumentNumber}" SortMemberPath="TransferDocumentNumber">
+                                                Visibility="{Binding Data.IsTransferDocumentNumberColumnVisible, Source={StaticResource ViewModelProxy}, Converter={StaticResource BooleanToVisibilityConverter}, FallbackValue=Collapsed}"  ClipboardContentBinding="{Binding TransferDocumentNumber}" SortMemberPath="TransferDocumentNumber">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <TextBox Style="{StaticResource SelectableRecordCellText}" Text="{Binding TransferDocumentNumber, Mode=OneWay}" />
@@ -710,7 +712,7 @@
                                                 Width="0.85*"
                                                 MinWidth="105"
                                                 MaxWidth="150"
-                                                Visibility="{Binding Data.IsTransferDocumentDateColumnVisible, Source={StaticResource ViewModelProxy}, Converter={StaticResource BooleanToVisibilityConverter}}"  ClipboardContentBinding="{Binding TransferDocumentDate}" SortMemberPath="TransferDocumentDate">
+                                                Visibility="{Binding Data.IsTransferDocumentDateColumnVisible, Source={StaticResource ViewModelProxy}, Converter={StaticResource BooleanToVisibilityConverter}, FallbackValue=Collapsed}"  ClipboardContentBinding="{Binding TransferDocumentDate}" SortMemberPath="TransferDocumentDate">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <TextBox Style="{StaticResource SelectableRecordCellText}" Text="{Binding TransferDocumentDate, Mode=OneWay}" />
@@ -721,7 +723,7 @@
                                                 Width="1.05*"
                                                 MinWidth="130"
                                                 MaxWidth="280"
-                                                Visibility="{Binding Data.IsTransferredToAgencyColumnVisible, Source={StaticResource ViewModelProxy}, Converter={StaticResource BooleanToVisibilityConverter}}"  ClipboardContentBinding="{Binding TransferredToAgency}" SortMemberPath="TransferredToAgency">
+                                                Visibility="{Binding Data.IsTransferredToAgencyColumnVisible, Source={StaticResource ViewModelProxy}, Converter={StaticResource BooleanToVisibilityConverter}, FallbackValue=Collapsed}"  ClipboardContentBinding="{Binding TransferredToAgency}" SortMemberPath="TransferredToAgency">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <TextBox Style="{StaticResource SelectableRecordCellText}" Text="{Binding TransferredToAgency, Mode=OneWay}" />
@@ -732,7 +734,7 @@
                                                 Width="1.3*"
                                                 MinWidth="160"
                                                 MaxWidth="420"
-                                                Visibility="{Binding Data.IsAgencyResultColumnVisible, Source={StaticResource ViewModelProxy}, Converter={StaticResource BooleanToVisibilityConverter}}"  ClipboardContentBinding="{Binding AgencyResult}" SortMemberPath="AgencyResult">
+                                                Visibility="{Binding Data.IsAgencyResultColumnVisible, Source={StaticResource ViewModelProxy}, Converter={StaticResource BooleanToVisibilityConverter}, FallbackValue=Collapsed}"  ClipboardContentBinding="{Binding AgencyResult}" SortMemberPath="AgencyResult">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <TextBox Style="{StaticResource SelectableRecordCellText}" Text="{Binding AgencyResult, Mode=OneWay}" ToolTip="{Binding AgencyResult}" />

@@ -6,6 +6,9 @@ obj/
 .verify-builds/
 .verify-testbin/
 .lan-test-build/
+/.codex-build/
+/.codex-test/
+/.codex-test-all/
 artifacts/
 /output/
 /tmp/

@@ -11,6 +11,8 @@ Behavior:
 - The Admin-only Settings card lets the operator choose a local destination for a downloaded backup and a source file for restore.
 - Backup flow: the client calls `settings/backup/create`; the server builds the package; the client downloads it through `settings/backup/download`.
 - Restore validates and stages the package before replacing live data. The server creates a full pre-restore safety package, restores the database and managed files, runs `PRAGMA quick_check`, and removes temporary restore data in `finally`.
+- After the database swap, restore runs the same idempotent preparation sequence a fresh server start would run (schema migrations, seeds, normalizations — minus sample seeding). A restored older-schema backup is usable immediately; no server restart is required for migrations.
+- The built-in `admin` account keeps the password (and must-change flag) in use before the restore; every other account comes from the restored database.
 - Legacy `.db` files remain accepted for backward compatibility. A `.db` backup/restore contains the database only and cannot recover attachments or generated documents.
 - Server backup folder: `%LocalAppData%\QuanLyHoSo\Backup` unless server path configuration overrides the base location.
 - Automatic backup is checked at server startup and hourly. A new `quanlyhoso_auto_yyyyMMdd_HHmmss.qlhbackup` is created when the newest automatic backup is at least seven days old.
