@@ -63,9 +63,9 @@ namespace QuanLyHoSo.ApplicationServices.Abstractions
         bool RestoreRecord(string recordCode, string deletionBatchId);
         ProcessingRecordDetail GetProcessingRecordDetail(string recordCode = null);
         void UpdateProcessingRecord(string recordCode, string status, DateTime processedAt, string processorName, string content, string note, string transferAreaName, IReadOnlyList<AttachmentDraft> attachments, bool generateInitialResultDocuments = false, InitialResultDocumentDetails documentDetails = null);
-        IReadOnlyList<DashboardMetric> GetProcessingQueueMetrics();
-        IReadOnlyList<ProcessingQueueRecord> GetProcessingQueueRecords(string searchText, string status, string areaName, string severityLevel, string cardFilterKey, int skip = 0, int take = 20);
-        int CountProcessingQueueRecords(string searchText, string status, string areaName, string severityLevel, string cardFilterKey);
+        IReadOnlyList<DashboardMetric> GetProcessingQueueMetrics(DateTime? fromDate = null, DateTime? toDate = null);
+        IReadOnlyList<ProcessingQueueRecord> GetProcessingQueueRecords(string searchText, string status, string areaName, string severityLevel, string cardFilterKey, int skip = 0, int take = 20, DateTime? fromDate = null, DateTime? toDate = null);
+        int CountProcessingQueueRecords(string searchText, string status, string areaName, string severityLevel, string cardFilterKey, DateTime? fromDate = null, DateTime? toDate = null);
         IReadOnlyList<ExportRecordPreview> GetExportPreview(DateTime? fromDate, DateTime? toDate, string status, string caseType, string field, string areaName, string processorName, string searchText, string sortOption, int take = 5000);
         int CountExportRecords(DateTime? fromDate, DateTime? toDate, string status, string caseType, string field, string areaName, string processorName, string searchText);
         int CountFilteredRecords(DateTime? fromDate, DateTime? toDate, string status, string caseType, string field, string areaName, string processorName, string searchText);

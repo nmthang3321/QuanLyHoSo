@@ -40,7 +40,7 @@ namespace QuanLyHoSo.UnitTests
         [Fact]
         [Trait("Category", "Unit")]
         [Trait("Category", "Regression")]
-        public void RecordListSidebarNavigation_ShouldResetFiltersAndOpenDetail()
+        public void RecordListSidebarNavigation_ShouldPreserveFiltersAndColumnsButCloseDetail()
         {
             var service = CreateService();
             using var shell = new ShellViewModel(service.Object);
@@ -53,6 +53,8 @@ namespace QuanLyHoSo.UnitTests
             records.SelectedStatus = "Đã giải quyết";
             records.SearchText = "không giữ lại";
             records.IsFilterPanelOpen = true;
+            records.IsAreaColumnVisible = false;
+            records.IsCommanderApproverColumnVisible = true;
             typeof(RecordListViewModel)
                 .GetMethod("ViewRecord", BindingFlags.Instance | BindingFlags.NonPublic)
                 ?.Invoke(records, new object[] { "HS-2026-000001" });
@@ -60,11 +62,12 @@ namespace QuanLyHoSo.UnitTests
             shell.NavigationItems.Single(item => item.Key == "Dashboard").Command.Execute(null);
             recordListItem.Command.Execute(null);
 
-            var expectedFrom = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
-            Assert.Equal(expectedFrom, records.FromDate);
-            Assert.Equal(expectedFrom.AddMonths(1).AddDays(-1), records.ToDate);
-            Assert.Equal("Tất cả", records.SelectedStatus);
-            Assert.Equal(string.Empty, records.SearchText);
+            Assert.Equal(new DateTime(2020, 1, 1), records.FromDate);
+            Assert.Equal(new DateTime(2020, 12, 31), records.ToDate);
+            Assert.Equal("Đã giải quyết", records.SelectedStatus);
+            Assert.Equal("không giữ lại", records.SearchText);
+            Assert.False(records.IsAreaColumnVisible);
+            Assert.True(records.IsCommanderApproverColumnVisible);
             Assert.False(records.IsFilterPanelOpen);
             Assert.Null(records.SelectedRecordDetail);
         }

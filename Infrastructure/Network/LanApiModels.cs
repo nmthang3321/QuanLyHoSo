@@ -163,7 +163,7 @@ namespace QuanLyHoSo.Infrastructure.Network
         public int DateRangeDays { get; set; }
     }
 
-    public sealed class ProcessingQueueRequest
+    public sealed class ProcessingQueueRequest : DateRangeRequest
     {
         public string SearchText { get; set; }
         public string Status { get; set; }

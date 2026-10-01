@@ -3364,15 +3364,15 @@ WHERE Id = $recordId;";
             NotifyCatalogChanged("ProcessorName");
         }
 
-        private static IReadOnlyList<DashboardMetric> BuildProcessingQueueMetrics(SqliteConnection connection)
+        private static IReadOnlyList<DashboardMetric> BuildProcessingQueueMetrics(SqliteConnection connection, DateTime? fromDate, DateTime? toDate)
         {
-            var allOpen = CountOpenProcessingRecords(connection);
-            var needClassify = CountRecordsByStatuses(connection, null, null, "Mới tiếp nhận", "Đang phân loại");
-            var processing = CountRecordsByStatuses(connection, null, null, "Đã phân công", "Đang xác minh");
-            var waiting = CountRecordsByStatuses(connection, null, null, "Kết quả xử lý ban đầu", "Chuyển cơ quan khác", "Chờ kết quả");
-            var dueSoon = CountDueSoonOpenRecords(connection);
-            var overdue = CountOverdueOpenRecords(connection);
-            var highPriority = CountHighPriorityOpenRecords(connection);
+            var allOpen = CountOpenProcessingRecords(connection, fromDate, toDate);
+            var needClassify = CountRecordsByStatuses(connection, fromDate, toDate, "Mới tiếp nhận", "Đang phân loại");
+            var processing = CountRecordsByStatuses(connection, fromDate, toDate, "Đã phân công", "Đang xác minh");
+            var waiting = CountRecordsByStatuses(connection, fromDate, toDate, "Kết quả xử lý ban đầu", "Chuyển cơ quan khác", "Chờ kết quả");
+            var dueSoon = CountDueSoonOpenRecords(connection, fromDate, toDate);
+            var overdue = CountOverdueOpenRecords(connection, fromDate, toDate);
+            var highPriority = CountHighPriorityOpenRecords(connection, fromDate, toDate);
             var culture = CultureInfo.GetCultureInfo("vi-VN");
 
             return new List<DashboardMetric>
@@ -3387,15 +3387,15 @@ WHERE Id = $recordId;";
             };
         }
 
-        public IReadOnlyList<DashboardMetric> GetProcessingQueueMetrics()
+        public IReadOnlyList<DashboardMetric> GetProcessingQueueMetrics(DateTime? fromDate = null, DateTime? toDate = null)
         {
             if (AppPathSettings.Current.IsClientMode)
             {
-                return _lanClient.Call<IReadOnlyList<DashboardMetric>>("processing/metrics", new { });
+                return _lanClient.Call<IReadOnlyList<DashboardMetric>>("processing/metrics", new DateRangeRequest { FromDate = fromDate, ToDate = toDate });
             }
 
             using var connection = OpenConnection();
-            return BuildProcessingQueueMetrics(connection);
+            return BuildProcessingQueueMetrics(connection, fromDate, toDate);
         }
 
         public IReadOnlyList<ProcessingQueueRecord> GetProcessingQueueRecords(
@@ -3405,7 +3405,9 @@ WHERE Id = $recordId;";
             string severityLevel = null,
             string cardFilterKey = null,
             int skip = 0,
-            int take = 20)
+            int take = 20,
+            DateTime? fromDate = null,
+            DateTime? toDate = null)
         {
             if (AppPathSettings.Current.IsClientMode)
             {
@@ -3417,7 +3419,9 @@ WHERE Id = $recordId;";
                     SeverityLevel = severityLevel,
                     CardFilterKey = cardFilterKey,
                     Skip = skip,
-                    Take = take
+                    Take = take,
+                    FromDate = fromDate,
+                    ToDate = toDate
                 });
             }
 
@@ -3428,6 +3432,7 @@ WHERE Id = $recordId;";
             var conditions = new List<string> { "Status NOT IN ('Đã giải quyết', 'Đã giải quyết — hồ sơ gửi lại')" };
             ApplyUserRecordScope(command, conditions);
             AddProcessingCardFilter(command, conditions, cardFilterKey);
+            AddOptionalDateRange(command, conditions, fromDate, toDate);
 
             if (!string.IsNullOrWhiteSpace(searchText))
             {
@@ -3502,7 +3507,9 @@ LIMIT $take OFFSET $skip;";
             string status = null,
             string areaName = null,
             string severityLevel = null,
-            string cardFilterKey = null)
+            string cardFilterKey = null,
+            DateTime? fromDate = null,
+            DateTime? toDate = null)
         {
             if (AppPathSettings.Current.IsClientMode)
             {
@@ -3512,7 +3519,9 @@ LIMIT $take OFFSET $skip;";
                     Status = status,
                     AreaName = areaName,
                     SeverityLevel = severityLevel,
-                    CardFilterKey = cardFilterKey
+                    CardFilterKey = cardFilterKey,
+                    FromDate = fromDate,
+                    ToDate = toDate
                 });
             }
 
@@ -3521,6 +3530,7 @@ LIMIT $take OFFSET $skip;";
             var conditions = new List<string> { "Status NOT IN ('Đã giải quyết', 'Đã giải quyết — hồ sơ gửi lại')" };
             ApplyUserRecordScope(command, conditions);
             AddProcessingCardFilter(command, conditions, cardFilterKey);
+            AddOptionalDateRange(command, conditions, fromDate, toDate);
 
             if (!string.IsNullOrWhiteSpace(searchText))
             {
@@ -5781,6 +5791,25 @@ WHERE RecordCode LIKE $prefixLike;";
                 : $"WHERE {string.Join(" AND ", conditions)}";
         }
 
+        private static void AddOptionalDateRange(
+            SqliteCommand command,
+            ICollection<string> conditions,
+            DateTime? fromDate,
+            DateTime? toDate)
+        {
+            if (fromDate.HasValue)
+            {
+                conditions.Add("ReceivedDate >= $fromDate");
+                command.Parameters.AddWithValue("$fromDate", fromDate.Value.Date.ToString("O", CultureInfo.InvariantCulture));
+            }
+
+            if (toDate.HasValue)
+            {
+                conditions.Add("ReceivedDate <= $toDate");
+                command.Parameters.AddWithValue("$toDate", toDate.Value.Date.AddDays(1).AddTicks(-1).ToString("O", CultureInfo.InvariantCulture));
+            }
+        }
+
         private static void ApplyUserRecordScope(SqliteCommand command, List<string> conditions)
         {
             if (!AuthContext.IsOfficer)
@@ -6042,14 +6071,15 @@ AreaName IN (
             return DateTime.TryParse(value, CultureInfo.GetCultureInfo("vi-VN"), DateTimeStyles.None, out date);
         }
 
-        private static int CountOpenProcessingRecords(SqliteConnection connection)
+        private static int CountOpenProcessingRecords(SqliteConnection connection, DateTime? fromDate, DateTime? toDate)
         {
             using var command = connection.CreateCommand();
-            command.CommandText = $"SELECT COUNT(*) FROM (SELECT * FROM Records WHERE DeletedAt = '') AS Records WHERE Status NOT IN ('Đã giải quyết', 'Đã giải quyết — hồ sơ gửi lại'){BuildUserRecordCondition(command)};";
+            command.CommandText = $"SELECT COUNT(*) FROM (SELECT * FROM Records WHERE DeletedAt = '') AS Records WHERE Status NOT IN ('Đã giải quyết', 'Đã giải quyết — hồ sơ gửi lại'){BuildScopedDateCondition(command, fromDate, toDate)};";
+            AddDateParameters(command, fromDate, toDate);
             return Convert.ToInt32(command.ExecuteScalar(), CultureInfo.InvariantCulture);
         }
 
-        private static int CountDueSoonOpenRecords(SqliteConnection connection)
+        private static int CountDueSoonOpenRecords(SqliteConnection connection, DateTime? fromDate, DateTime? toDate)
         {
             using var command = connection.CreateCommand();
             command.CommandText = @"
@@ -6058,20 +6088,22 @@ FROM (SELECT * FROM Records WHERE DeletedAt = '') AS Records
 WHERE Status NOT IN ('Đã giải quyết', 'Đã giải quyết — hồ sơ gửi lại')
   AND ExpectedResultDate <> ''
   AND ExpectedResultDate >= $today
-  AND ExpectedResultDate <= $dueSoon" + BuildUserRecordCondition(command) + ";";
+  AND ExpectedResultDate <= $dueSoon" + BuildScopedDateCondition(command, fromDate, toDate) + ";";
             command.Parameters.AddWithValue("$today", DateTime.Today.ToString("O", CultureInfo.InvariantCulture));
             command.Parameters.AddWithValue("$dueSoon", DateTime.Today.AddDays(7).Date.AddDays(1).AddTicks(-1).ToString("O", CultureInfo.InvariantCulture));
+            AddDateParameters(command, fromDate, toDate);
             return Convert.ToInt32(command.ExecuteScalar(), CultureInfo.InvariantCulture);
         }
 
-        private static int CountHighPriorityOpenRecords(SqliteConnection connection)
+        private static int CountHighPriorityOpenRecords(SqliteConnection connection, DateTime? fromDate, DateTime? toDate)
         {
             using var command = connection.CreateCommand();
             command.CommandText = @"
 SELECT COUNT(*)
 FROM (SELECT * FROM Records WHERE DeletedAt = '') AS Records
 WHERE Status NOT IN ('Đã giải quyết', 'Đã giải quyết — hồ sơ gửi lại')
-  AND SeverityLevel IN ('Nghiêm trọng', 'Rất nghiêm trọng', 'Đặc biệt nghiêm trọng')" + BuildUserRecordCondition(command) + ";";
+  AND SeverityLevel IN ('Nghiêm trọng', 'Rất nghiêm trọng', 'Đặc biệt nghiêm trọng')" + BuildScopedDateCondition(command, fromDate, toDate) + ";";
+            AddDateParameters(command, fromDate, toDate);
             return Convert.ToInt32(command.ExecuteScalar(), CultureInfo.InvariantCulture);
         }
 
@@ -6091,7 +6123,7 @@ WHERE Status NOT IN ('Đã giải quyết', 'Đã giải quyết — hồ sơ g�
             return Convert.ToInt32(command.ExecuteScalar(), CultureInfo.InvariantCulture);
         }
 
-        private static int CountOverdueOpenRecords(SqliteConnection connection)
+        private static int CountOverdueOpenRecords(SqliteConnection connection, DateTime? fromDate, DateTime? toDate)
         {
             using var command = connection.CreateCommand();
             command.CommandText = @"
@@ -6099,8 +6131,9 @@ SELECT COUNT(*)
 FROM (SELECT * FROM Records WHERE DeletedAt = '') AS Records
 WHERE Status NOT IN ('Đã giải quyết', 'Đã giải quyết — hồ sơ gửi lại')
   AND ExpectedResultDate <> ''
-  AND ExpectedResultDate < $today" + BuildUserRecordCondition(command) + ";";
+  AND ExpectedResultDate < $today" + BuildScopedDateCondition(command, fromDate, toDate) + ";";
             command.Parameters.AddWithValue("$today", DateTime.Today.ToString("O", CultureInfo.InvariantCulture));
+            AddDateParameters(command, fromDate, toDate);
             return Convert.ToInt32(command.ExecuteScalar(), CultureInfo.InvariantCulture);
         }
 

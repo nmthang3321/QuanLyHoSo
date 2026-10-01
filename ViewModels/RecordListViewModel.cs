@@ -877,6 +877,12 @@ namespace QuanLyHoSo.ViewModels
             OnPropertyChanged(nameof(IsStatusColumnVisible));
             OnPropertyChanged(nameof(IsUpdatedAtColumnVisible));
             OnPropertyChanged(nameof(IsProcessorNameColumnVisible));
+            OnPropertyChanged(nameof(IsCommanderApproverColumnVisible));
+            OnPropertyChanged(nameof(IsLeaderApproverColumnVisible));
+            OnPropertyChanged(nameof(IsTransferDocumentNumberColumnVisible));
+            OnPropertyChanged(nameof(IsTransferDocumentDateColumnVisible));
+            OnPropertyChanged(nameof(IsTransferredToAgencyColumnVisible));
+            OnPropertyChanged(nameof(IsAgencyResultColumnVisible));
         }
 
         private void ResetFilters()
@@ -920,7 +926,10 @@ namespace QuanLyHoSo.ViewModels
                 IsTrashOpen = false;
             }
 
-            ResetFilters();
+            // Returning from another page must preserve the user's active
+            // filters and chosen columns. Only transient page state is cleared,
+            // then the current filter is reapplied from the first page.
+            ReloadFromFirstPage();
         }
 
         private void DataService_CatalogChanged(string catalogType)

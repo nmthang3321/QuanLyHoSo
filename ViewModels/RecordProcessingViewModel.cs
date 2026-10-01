@@ -25,6 +25,10 @@ namespace QuanLyHoSo.ViewModels
         private const int MinimumPageSize = 1;
         private const int MaximumPageSize = 50;
         private const int AssignedProcessStep = 3;
+        private const string ThisWeekFilter = "Tuần này";
+        private const string ThisMonthFilter = "Tháng này";
+        private const string ThisYearFilter = "Năm này";
+        private const string CustomFilter = "Khác";
 
         private readonly IApplicationDataService _dataService;
         private readonly Action _goBackToPreviousPage;
@@ -50,6 +54,10 @@ namespace QuanLyHoSo.ViewModels
         private string _selectedMetricKey = "All";
         private string _selectedSeverity;
         private string _selectedStatus;
+        private DateTime? _fromDate;
+        private DateTime? _toDate;
+        private string _selectedDateFilter;
+        private bool _isCustomCalendarOpen;
         private bool _shouldReturnToPreviousPage;
         private bool _isProcessingUpdateBusy;
         private bool _isLoading;
@@ -76,6 +84,10 @@ namespace QuanLyHoSo.ViewModels
         {
             _dataService = dataService ?? throw new ArgumentNullException(nameof(dataService));
             _goBackToPreviousPage = goBackToPreviousPage ?? (() => { });
+            var today = DateTime.Today;
+            _fromDate = new DateTime(today.Year, 1, 1);
+            _toDate = new DateTime(today.Year, 12, 31);
+            _selectedDateFilter = ThisYearFilter;
             Metrics = new ObservableCollection<DashboardMetric>();
             QueueRecords = new ObservableCollection<ProcessingQueueRecord>();
             ProcessSteps = new ObservableCollection<ProcessStep>();
@@ -104,8 +116,15 @@ namespace QuanLyHoSo.ViewModels
             };
             AreaFilters = AreaSelectionOptions.Build(areaFiltersTask.Result, includeGroupRows: true, groupRowsSelectable: true);
             SeverityFilters = new ObservableCollection<string>(severityFiltersTask.Result);
+            DateFilterOptions = new ObservableCollection<string>
+            {
+                ThisWeekFilter,
+                ThisMonthFilter,
+                ThisYearFilter,
+                CustomFilter
+            };
             _dataService.CatalogChanged += DataService_CatalogChanged;
-            ApplyFilterCommand = new RelayCommand(Reload);
+            ApplyFilterCommand = new RelayCommand(ReloadFromFirstPage);
             ViewRecordCommand = new RelayCommand(ViewRecord);
             ViewProcessingDetailCommand = new RelayCommand(ViewProcessingDetail);
             OpenProcessingDetailCommand = new RelayCommand(OpenProcessingDetail);
@@ -148,6 +167,7 @@ namespace QuanLyHoSo.ViewModels
         public ObservableCollection<string> StatusFilters { get; }
         public ObservableCollection<AreaSelectionOption> AreaFilters { get; }
         public ObservableCollection<string> SeverityFilters { get; }
+        public ObservableCollection<string> DateFilterOptions { get; }
         public ICommand ApplyFilterCommand { get; }
         public ICommand ViewRecordCommand { get; }
         public ICommand ViewProcessingDetailCommand { get; }
@@ -358,6 +378,62 @@ namespace QuanLyHoSo.ViewModels
             }
         }
 
+        public DateTime? FromDate
+        {
+            get => _fromDate;
+            set
+            {
+                if (SetProperty(ref _fromDate, value))
+                {
+                    OnPropertyChanged(nameof(DateRangeText));
+                }
+            }
+        }
+
+        public DateTime? ToDate
+        {
+            get => _toDate;
+            set
+            {
+                if (SetProperty(ref _toDate, value))
+                {
+                    OnPropertyChanged(nameof(DateRangeText));
+                }
+            }
+        }
+
+        public string SelectedDateFilter
+        {
+            get => _selectedDateFilter;
+            set
+            {
+                if (!SetProperty(ref _selectedDateFilter, value))
+                {
+                    return;
+                }
+
+                ApplyPresetDateRange(value);
+                OnPropertyChanged(nameof(DateRangeText));
+            }
+        }
+
+        public string DateRangeText
+        {
+            get
+            {
+                var culture = CultureInfo.GetCultureInfo("vi-VN");
+                var fromText = FromDate?.ToString("dd/MM/yyyy", culture) ?? "--/--/----";
+                var toText = ToDate?.ToString("dd/MM/yyyy", culture) ?? "--/--/----";
+                return $"{SelectedDateFilter} ({fromText} - {toText})";
+            }
+        }
+
+        public bool IsCustomCalendarOpen
+        {
+            get => _isCustomCalendarOpen;
+            set => SetProperty(ref _isCustomCalendarOpen, value);
+        }
+
         public RecordFormDraft SelectedRecordDetail
         {
             get => _selectedRecordDetail;
@@ -441,17 +517,19 @@ namespace QuanLyHoSo.ViewModels
             var area = SelectedArea;
             var severity = SelectedSeverity;
             var metricKey = _selectedMetricKey;
+            var fromDate = FromDate;
+            var toDate = ToDate;
             var pageSize = _pageSize;
             var requestedPage = CurrentPage;
             var requestedSkip = (requestedPage - 1) * pageSize;
 
             try
             {
-                var metricsTask = Task.Run(() => _dataService.GetProcessingQueueMetrics());
+                var metricsTask = Task.Run(() => _dataService.GetProcessingQueueMetrics(fromDate, toDate));
                 var countTask = Task.Run(() => _dataService.CountProcessingQueueRecords(
-                    searchText, status, area, severity, metricKey));
+                    searchText, status, area, severity, metricKey, fromDate, toDate));
                 var recordsTask = Task.Run(() => _dataService.GetProcessingQueueRecords(
-                    searchText, status, area, severity, metricKey, requestedSkip, pageSize));
+                    searchText, status, area, severity, metricKey, requestedSkip, pageSize, fromDate, toDate));
                 await Task.WhenAll(metricsTask, countTask, recordsTask);
 
                 var totalRecords = countTask.Result;
@@ -461,7 +539,7 @@ namespace QuanLyHoSo.ViewModels
                 if (page != requestedPage)
                 {
                     records = await Task.Run(() => _dataService.GetProcessingQueueRecords(
-                        searchText, status, area, severity, metricKey, (page - 1) * pageSize, pageSize));
+                        searchText, status, area, severity, metricKey, (page - 1) * pageSize, pageSize, fromDate, toDate));
                 }
 
                 if (IsDisposed)
@@ -528,7 +606,9 @@ namespace QuanLyHoSo.ViewModels
                 SelectedSeverity,
                 _selectedMetricKey,
                 skip,
-                _pageSize));
+                _pageSize,
+                FromDate,
+                ToDate));
             RaisePageCommandStates();
         }
 
@@ -579,6 +659,35 @@ namespace QuanLyHoSo.ViewModels
             {
                 metric.IsSelected = string.Equals(metric.FilterKey, _selectedMetricKey, StringComparison.Ordinal);
             }
+        }
+
+        private void ApplyPresetDateRange(string filter)
+        {
+            var today = DateTime.Today;
+
+            switch (filter)
+            {
+                case ThisWeekFilter:
+                    var daysSinceMonday = today.DayOfWeek == DayOfWeek.Sunday
+                        ? 6
+                        : (int)today.DayOfWeek - (int)DayOfWeek.Monday;
+                    FromDate = today.AddDays(-daysSinceMonday);
+                    ToDate = FromDate.Value.AddDays(6);
+                    break;
+                case ThisYearFilter:
+                    FromDate = new DateTime(today.Year, 1, 1);
+                    ToDate = new DateTime(today.Year, 12, 31);
+                    break;
+                case CustomFilter:
+                    IsCustomCalendarOpen = true;
+                    return;
+                default:
+                    FromDate = new DateTime(today.Year, today.Month, 1);
+                    ToDate = FromDate.Value.AddMonths(1).AddDays(-1);
+                    break;
+            }
+
+            ReloadFromFirstPage();
         }
 
         private void ViewRecord(object parameter)

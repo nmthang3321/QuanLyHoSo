@@ -25,7 +25,7 @@ namespace QuanLyHoSo.UnitTests
         [Fact]
         [Trait("Category", "Unit")]
         [Trait("Category", "Regression")]
-        public void MainDataPages_ShouldDefaultToCurrentMonth()
+        public void MainDataPages_ShouldUseConfiguredDefaultDateRanges()
         {
             var service = CreateService();
             var expectedFrom = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
@@ -33,6 +33,7 @@ namespace QuanLyHoSo.UnitTests
 
             using var dashboard = new DashboardViewModel(service.Object);
             using var records = new RecordListViewModel(service.Object, () => { }, _ => { }, (_, _) => { });
+            using var processing = new RecordProcessingViewModel(service.Object);
             using var staff = new StaffTrackingViewModel(service.Object);
 
             Assert.Equal("Năm này", dashboard.SelectedDateFilter);
@@ -40,6 +41,9 @@ namespace QuanLyHoSo.UnitTests
             Assert.Equal(new DateTime(DateTime.Today.Year, 12, 31), dashboard.ToDate);
             Assert.Equal(expectedFrom, records.FromDate);
             Assert.Equal(expectedTo, records.ToDate);
+            Assert.Equal("Năm này", processing.SelectedDateFilter);
+            Assert.Equal(new DateTime(DateTime.Today.Year, 1, 1), processing.FromDate);
+            Assert.Equal(new DateTime(DateTime.Today.Year, 12, 31), processing.ToDate);
             Assert.Equal("Tháng này", staff.SelectedDateFilter);
             Assert.Equal(expectedFrom, staff.FromDate);
             Assert.Equal(expectedTo, staff.ToDate);
@@ -56,6 +60,9 @@ namespace QuanLyHoSo.UnitTests
             service.Setup(x => x.GetTopAreas(It.IsAny<int>(), It.IsAny<DateTime?>(), It.IsAny<DateTime?>())).Returns(Array.Empty<AreaStat>());
             service.Setup(x => x.GetReceivedTrendStats(It.IsAny<DateTime?>(), It.IsAny<DateTime?>())).Returns(Array.Empty<TrendStat>());
             service.Setup(x => x.GetRecentRecords(It.IsAny<int>(), It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<int>())).Returns(Array.Empty<RecentRecord>());
+            service.Setup(x => x.GetProcessingQueueMetrics(It.IsAny<DateTime?>(), It.IsAny<DateTime?>())).Returns(Array.Empty<DashboardMetric>());
+            service.Setup(x => x.GetProcessingQueueRecords(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<DateTime?>(), It.IsAny<DateTime?>())).Returns(Array.Empty<ProcessingQueueRecord>());
+            service.Setup(x => x.CountProcessingQueueRecords(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<DateTime?>(), It.IsAny<DateTime?>())).Returns(0);
             service.Setup(x => x.GetFilteredRecords(It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<int>(), It.IsAny<int>())).Returns(Array.Empty<RecentRecord>());
             service.Setup(x => x.GetStaffPerformanceRows(It.IsAny<DateTime?>(), It.IsAny<DateTime?>())).Returns(Array.Empty<StaffPerformanceRow>());
             service.Setup(x => x.GetStaffDeadlineStats(It.IsAny<DateTime?>(), It.IsAny<DateTime?>())).Returns(Array.Empty<StatusStat>());

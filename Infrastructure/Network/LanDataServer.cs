@@ -330,13 +330,14 @@ namespace QuanLyHoSo.Infrastructure.Network
                         var total = ReadData<DateRangeRequest>(body);
                         return _dataService.CountRecords(total.FromDate, total.ToDate);
                     case "processing/metrics":
-                        return _dataService.GetProcessingQueueMetrics();
+                        var processingMetrics = ReadData<DateRangeRequest>(body);
+                        return _dataService.GetProcessingQueueMetrics(processingMetrics.FromDate, processingMetrics.ToDate);
                     case "processing/list":
                         var queue = ReadData<ProcessingQueueRequest>(body);
-                        return _dataService.GetProcessingQueueRecords(queue.SearchText, queue.Status, queue.AreaName, queue.SeverityLevel, queue.CardFilterKey, queue.Skip, queue.Take);
+                        return _dataService.GetProcessingQueueRecords(queue.SearchText, queue.Status, queue.AreaName, queue.SeverityLevel, queue.CardFilterKey, queue.Skip, queue.Take, queue.FromDate, queue.ToDate);
                     case "processing/count":
                         var queueCount = ReadData<ProcessingQueueRequest>(body);
-                        return _dataService.CountProcessingQueueRecords(queueCount.SearchText, queueCount.Status, queueCount.AreaName, queueCount.SeverityLevel, queueCount.CardFilterKey);
+                        return _dataService.CountProcessingQueueRecords(queueCount.SearchText, queueCount.Status, queueCount.AreaName, queueCount.SeverityLevel, queueCount.CardFilterKey, queueCount.FromDate, queueCount.ToDate);
                     case "processing/detail":
                         return _dataService.GetProcessingRecordDetail(ReadData<RecordCodeRequest>(body).RecordCode);
                     case "processing/update":

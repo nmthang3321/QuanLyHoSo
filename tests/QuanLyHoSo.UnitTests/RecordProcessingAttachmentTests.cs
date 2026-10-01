@@ -49,13 +49,14 @@ namespace QuanLyHoSo.UnitTests
             service.Setup(x => x.GetProcessorNames(It.IsAny<bool>())).Returns(Array.Empty<string>());
             service.Setup(x => x.GetAreaNames(It.IsAny<bool>())).Returns(Array.Empty<string>());
             service.Setup(x => x.GetCatalogValues(It.IsAny<string>(), It.IsAny<bool>())).Returns(Array.Empty<string>());
-            service.Setup(x => x.GetProcessingQueueMetrics()).Returns(Array.Empty<DashboardMetric>());
+            service.Setup(x => x.GetProcessingQueueMetrics(It.IsAny<DateTime?>(), It.IsAny<DateTime?>())).Returns(Array.Empty<DashboardMetric>());
             service.Setup(x => x.GetProcessingQueueRecords(
                     It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
-                    It.IsAny<int>(), It.IsAny<int>()))
+                    It.IsAny<int>(), It.IsAny<int>(), It.IsAny<DateTime?>(), It.IsAny<DateTime?>()))
                 .Returns(Array.Empty<ProcessingQueueRecord>());
             service.Setup(x => x.CountProcessingQueueRecords(
-                    It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
+                    It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
+                    It.IsAny<DateTime?>(), It.IsAny<DateTime?>()))
                 .Returns(0);
             return service;
         }

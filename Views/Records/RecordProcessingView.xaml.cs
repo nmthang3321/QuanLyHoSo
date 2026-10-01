@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
@@ -14,11 +15,159 @@ namespace QuanLyHoSo.Views.Records
 {
     public partial class RecordProcessingView : UserControl
     {
+        private const string CustomDateFilter = "Khác";
         private readonly HashSet<string> _expandedTransferAreaGroups = new HashSet<string>(StringComparer.CurrentCultureIgnoreCase);
+        private DateTime? _customRangeStartDate;
+        private DateTime? _customRangeEndDate;
+        private bool _isCustomRangeComplete;
+        private bool _openCustomDatePopupAfterMenuCloses;
 
         public RecordProcessingView()
         {
             InitializeComponent();
+            Unloaded += RecordProcessingView_Unloaded;
+        }
+
+        private void RecordProcessingView_Unloaded(object sender, RoutedEventArgs e)
+        {
+            _openCustomDatePopupAfterMenuCloses = false;
+            CustomDateRangePopup.IsOpen = false;
+        }
+
+        private void DateFilterButton_Click(object sender, RoutedEventArgs e)
+        {
+            _openCustomDatePopupAfterMenuCloses = false;
+            CustomDateRangePopup.IsOpen = false;
+            DateFilterHost.ContextMenu.PlacementTarget = DateFilterHost;
+            DateFilterHost.ContextMenu.Placement = PlacementMode.Bottom;
+            DateFilterHost.ContextMenu.HorizontalOffset = 0;
+            DateFilterHost.ContextMenu.VerticalOffset = 4;
+            DateFilterHost.ContextMenu.IsOpen = true;
+        }
+
+        private void DateFilterMenuItem_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is not MenuItem menuItem || DataContext is not RecordProcessingViewModel viewModel)
+            {
+                return;
+            }
+
+            var selectedFilter = menuItem.Header?.ToString();
+            if (string.IsNullOrWhiteSpace(selectedFilter))
+            {
+                return;
+            }
+
+            if (!string.Equals(selectedFilter, CustomDateFilter, StringComparison.Ordinal))
+            {
+                viewModel.SelectedDateFilter = selectedFilter;
+                return;
+            }
+
+            _openCustomDatePopupAfterMenuCloses = true;
+            viewModel.SelectedDateFilter = CustomDateFilter;
+            DateFilterHost.ContextMenu.IsOpen = false;
+        }
+
+        private void DateFilterContextMenu_Closed(object sender, RoutedEventArgs e)
+        {
+            if (!_openCustomDatePopupAfterMenuCloses)
+            {
+                return;
+            }
+
+            _openCustomDatePopupAfterMenuCloses = false;
+            Dispatcher.BeginInvoke(
+                new Action(() =>
+                {
+                    if (IsLoaded)
+                    {
+                        CustomDateRangePopup.IsOpen = true;
+                    }
+                }),
+                DispatcherPriority.ContextIdle);
+        }
+
+        private void CustomDateRangePopup_Opened(object sender, EventArgs e)
+        {
+            if (DataContext is not RecordProcessingViewModel viewModel)
+            {
+                return;
+            }
+
+            CustomDateRangeCalendar.DisplayDate = (viewModel.FromDate ?? DateTime.Today).Date;
+            _customRangeStartDate = null;
+            _customRangeEndDate = null;
+            _isCustomRangeComplete = false;
+            CustomDateRangeCalendar.SelectedDates.Clear();
+        }
+
+        private void CustomDateRangeCalendar_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            var dayButton = FindAncestor<CalendarDayButton>(e.OriginalSource as DependencyObject);
+            if (dayButton?.DataContext is not DateTime clickedDate || dayButton.IsBlackedOut)
+            {
+                return;
+            }
+
+            clickedDate = clickedDate.Date;
+            if (!_customRangeStartDate.HasValue || _isCustomRangeComplete)
+            {
+                _customRangeStartDate = clickedDate;
+                _customRangeEndDate = clickedDate;
+                _isCustomRangeComplete = false;
+                UpdateCustomCalendarSelection(clickedDate, clickedDate);
+            }
+            else
+            {
+                _customRangeEndDate = clickedDate;
+                _isCustomRangeComplete = true;
+                var fromDate = _customRangeStartDate.Value <= clickedDate ? _customRangeStartDate.Value : clickedDate;
+                var toDate = _customRangeStartDate.Value <= clickedDate ? clickedDate : _customRangeStartDate.Value;
+                UpdateCustomCalendarSelection(fromDate, toDate);
+            }
+
+            e.Handled = true;
+        }
+
+        private void ApplyCustomDateRangeButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is not RecordProcessingViewModel viewModel || !_customRangeStartDate.HasValue)
+            {
+                return;
+            }
+
+            var endDate = _customRangeEndDate ?? _customRangeStartDate.Value;
+            viewModel.FromDate = _customRangeStartDate.Value <= endDate ? _customRangeStartDate.Value : endDate;
+            viewModel.ToDate = _customRangeStartDate.Value <= endDate ? endDate : _customRangeStartDate.Value;
+            if (viewModel.ApplyFilterCommand.CanExecute(null))
+            {
+                viewModel.ApplyFilterCommand.Execute(null);
+            }
+
+            CustomDateRangePopup.IsOpen = false;
+            viewModel.IsCustomCalendarOpen = false;
+        }
+
+        private void UpdateCustomCalendarSelection(DateTime fromDate, DateTime toDate)
+        {
+            CustomDateRangeCalendar.SelectedDates.Clear();
+            CustomDateRangeCalendar.SelectedDates.AddRange(fromDate, toDate);
+        }
+
+        private static T FindAncestor<T>(DependencyObject source) where T : DependencyObject
+        {
+            while (source != null)
+            {
+                if (source is T match)
+                {
+                    return match;
+                }
+
+                source = VisualTreeHelper.GetParent(source);
+            }
+
+            return null;
         }
 
         private void SelectableTaskText_MouseMove(object sender, MouseEventArgs e)
