@@ -52,7 +52,7 @@ jobs:
         shell: pwsh
         run: choco install innosetup --no-progress -y
 
-      - name: Build installers, customer PDF, and checksums
+      - name: Build installers and checksums
         shell: pwsh
         run: ./scripts/build-release.ps1 -Version '${{ steps.version.outputs.value }}'
 
@@ -62,19 +62,18 @@ jobs:
           tag_name: ${{ steps.version.outputs.tag }}
           target_commitish: ${{ github.sha }}
           name: QuanLyHoSo ${{ steps.version.outputs.tag }}
-          prerelease: false
+          prerelease: true
           make_latest: true
           fail_on_unmatched_files: true
           body: |
-            Bộ cài QuanLyHoSo dành cho Windows 64-bit, kèm tài liệu khách hàng và mã SHA-256.
+            Bản thử nghiệm QuanLyHoSo dành cho Windows 64-bit, kèm mã SHA-256.
 
             - Cài Server và Client theo thành phần cần triển khai.
             - Phiên bản Server và Client được quản lý độc lập; không bắt buộc phải trùng nhau.
             - Bộ cài đã kèm .NET Runtime.
             - Chức năng cập nhật trong ứng dụng chỉ cập nhật Client. Sao lưu dữ liệu trước khi nâng cấp Server.
-            - Kiểm tra mã SHA-256 của hai bộ cài và PDF theo file SHA256.txt.
+            - Kiểm tra mã SHA-256 của hai bộ cài theo file SHA256.txt.
           files: |
             artifacts/installer/QuanLyHoSo-Server-Setup-${{ steps.version.outputs.value }}-win-x64.exe
             artifacts/installer/QuanLyHoSo-Client-Setup-${{ steps.version.outputs.value }}-win-x64.exe
-            artifacts/installer/QuanLyHoSo_TaiLieu_KhachHang_${{ steps.version.outputs.value }}.pdf
             artifacts/installer/SHA256.txt

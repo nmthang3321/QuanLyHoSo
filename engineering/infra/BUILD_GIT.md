@@ -32,9 +32,8 @@ Git rules:
 
 Customer releases:
 - Run `scripts/build-release.ps1 -Version 1.0.0` to generate the customer package.
-- `artifacts/installer/` contains exactly two Windows x64 setup EXEs, the matching
-  `doc/QuanLyHoSo_TaiLieu_KhachHang_<version>.pdf`, and `SHA256.txt`.
-- The checksum file covers both installers and the PDF. Update ZIPs are not release assets.
-- The matching-version PDF must exist before building; its visible version must also match.
+- `artifacts/installer/` contains two Windows x64 setup EXEs and `SHA256.txt`.
+- Pass `-AdditionalAssetPath <path>` to copy one additional release asset (for example an encrypted customer-data package) into the output and include it in `SHA256.txt`.
+- Customer PDF files and update ZIPs are not release assets.
 - Pushing a `v<version>` tag runs `.github/workflows/release.yml`, verifies the solution,
-  builds the same package, and publishes these four assets to GitHub Releases.
+  builds the installers, and publishes both installers plus `SHA256.txt` to GitHub Releases.

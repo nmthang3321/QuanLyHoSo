@@ -1,7 +1,9 @@
 param(
     [Parameter(Mandatory = $true)]
     [ValidatePattern('^\d+\.\d+\.\d+$')]
-    [string]$Version
+    [string]$Version,
+
+    [string]$AdditionalAssetPath
 )
 
 $ErrorActionPreference = 'Stop'
@@ -11,8 +13,6 @@ $artifactRoot = Join-Path $repoRoot 'artifacts'
 $clientPublishDir = Join-Path $artifactRoot 'publish-client-win-x64'
 $serverPublishDir = Join-Path $artifactRoot 'publish-server-win-x64'
 $installerDir = Join-Path $artifactRoot 'installer'
-$customerPdfName = "QuanLyHoSo_TaiLieu_KhachHang_$Version.pdf"
-$customerPdf = Join-Path $repoRoot "doc\$customerPdfName"
 $clientIssPath = Join-Path $repoRoot 'installer\QuanLyHoSo.Client.iss'
 $serverIssPath = Join-Path $repoRoot 'installer\QuanLyHoSo.Server.iss'
 $iconPath = Join-Path $repoRoot 'Assets\AppIcon.ico'
@@ -21,8 +21,11 @@ if ([System.IO.Path]::GetFullPath($artifactRoot) -ne [System.IO.Path]::GetFullPa
     throw "Artifact path is outside the repository: $artifactRoot"
 }
 
-if (-not (Test-Path -LiteralPath $customerPdf -PathType Leaf)) {
-    throw "Missing customer PDF for version ${Version}: $customerPdf"
+if (-not [string]::IsNullOrWhiteSpace($AdditionalAssetPath)) {
+    $AdditionalAssetPath = [System.IO.Path]::GetFullPath($AdditionalAssetPath)
+    if (-not (Test-Path -LiteralPath $AdditionalAssetPath -PathType Leaf)) {
+        throw "Additional release asset was not found: $AdditionalAssetPath"
+    }
 }
 
 Remove-Item -LiteralPath $artifactRoot -Recurse -Force -ErrorAction SilentlyContinue
@@ -87,12 +90,15 @@ try {
         throw "Server installer compilation failed with exit code $LASTEXITCODE."
     }
 
-    Copy-Item -LiteralPath $customerPdf -Destination (Join-Path $installerDir $customerPdfName)
     $assetNames = @(
         "QuanLyHoSo-Server-Setup-$Version-win-x64.exe",
-        "QuanLyHoSo-Client-Setup-$Version-win-x64.exe",
-        $customerPdfName
+        "QuanLyHoSo-Client-Setup-$Version-win-x64.exe"
     )
+    if (-not [string]::IsNullOrWhiteSpace($AdditionalAssetPath)) {
+        $additionalAssetName = [System.IO.Path]::GetFileName($AdditionalAssetPath)
+        Copy-Item -LiteralPath $AdditionalAssetPath -Destination (Join-Path $installerDir $additionalAssetName) -Force
+        $assetNames += $additionalAssetName
+    }
     $checksums = foreach ($assetName in $assetNames) {
         $hash = Get-FileHash -LiteralPath (Join-Path $installerDir $assetName) -Algorithm SHA256
         '{0}  {1}' -f $hash.Hash.ToLowerInvariant(), $assetName
