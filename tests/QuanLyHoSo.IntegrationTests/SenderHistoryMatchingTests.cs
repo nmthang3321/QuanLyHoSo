@@ -1,92 +1,74 @@
-using System;
 using QuanLyHoSo.Models;
 using Xunit;
 
 namespace QuanLyHoSo.IntegrationTests
 {
-    // Duplicate complaint detection: a sender name alone must surface the
-    // comparison dialog as a warning, while linking stays gated on the strict
-    // identity rules (name + phone, or name + address when both phones are empty).
     public sealed class SenderHistoryMatchingTests
     {
-        private static RecordFormDraft Draft(TestDatabase db, string senderName, string senderPhone, string contactAddress = "Phường Mỹ Bình, An Giang")
+        private static RecordFormDraft Draft(TestDatabase db, string senderName, string senderPhone)
         {
             var draft = db.NewRecord("sender-match");
             draft.SenderName = senderName;
             draft.SenderPhone = senderPhone;
-            draft.ContactAddress = contactAddress;
             return draft;
         }
 
         [Fact]
         [Trait("Category", "Smoke")]
         [Trait("Category", "Regression")]
-        public void SameNameWithoutPhone_ShouldSurfaceUnconfirmedWarningRow()
+        public void MissingPhone_ShouldMatchBySenderNameAndArea()
         {
             using var db = new TestDatabase();
             var originalCode = db.Service.SaveRecordForm(Draft(db, "Lê Thị Trùng Tên", "0912 345 678"));
 
-            var nameOnly = Draft(db, "Lê Thị Trùng Tên", string.Empty, contactAddress: string.Empty);
-            var row = Assert.Single(db.Service.GetSenderRecords(nameOnly));
+            var row = Assert.Single(db.Service.GetSenderRecords(Draft(db, "Lê Thị Trùng Tên", string.Empty)));
 
             Assert.Equal(originalCode, row.RecordCode);
-            Assert.False(row.IsConfirmedSender);
-            Assert.False(row.CanLinkAsResubmission);
-            Assert.Contains("chưa xác thực", row.SenderMatchDisplay);
+            Assert.True(row.IsConfirmedSender);
+            Assert.True(row.CanLinkAsResubmission);
         }
 
         [Fact]
         [Trait("Category", "Regression")]
-        public void SameNameWithMatchingPhone_ShouldConfirmAndAllowLinking()
+        public void EnteredPhone_ShouldBeNormalizedAndRequiredToMatch()
         {
             using var db = new TestDatabase();
             var originalCode = db.Service.SaveRecordForm(Draft(db, "Lê Thị Trùng Tên", "0912 345 678"));
 
-            var match = Assert.Single(db.Service.GetSenderRecords(Draft(db, "Lê Thị Trùng Tên", "0912345678")));
-
+            var match = Assert.Single(db.Service.GetSenderRecords(Draft(db, "Lê Thị Trùng Tên", "+84 912 345 678")));
             Assert.Equal(originalCode, match.RecordCode);
-            Assert.True(match.IsConfirmedSender);
-            Assert.True(match.IsSameCase);
-            Assert.True(match.CanLinkAsResubmission);
-            Assert.Equal("Đã xác thực", match.SenderMatchDisplay);
+            Assert.Empty(db.Service.GetSenderRecords(Draft(db, "Lê Thị Trùng Tên", "0999 111 222")));
         }
 
         [Fact]
         [Trait("Category", "Regression")]
-        public void SameNameWithDifferentPhone_ShouldWarnNotConfirm()
+        public void DifferentNameOrArea_ShouldReturnNothing()
         {
             using var db = new TestDatabase();
             db.Service.SaveRecordForm(Draft(db, "Lê Thị Trùng Tên", "0912 345 678"));
 
-            var row = Assert.Single(db.Service.GetSenderRecords(Draft(db, "Lê Thị Trùng Tên", "0999 111 222")));
-
-            Assert.False(row.IsConfirmedSender);
-            Assert.False(row.CanLinkAsResubmission);
+            Assert.Empty(db.Service.GetSenderRecords(Draft(db, "Nguyễn Văn Khác", string.Empty)));
+            var otherArea = Draft(db, "Lê Thị Trùng Tên", string.Empty);
+            otherArea.AreaName = "Phường Mỹ Thới";
+            Assert.Empty(db.Service.GetSenderRecords(otherArea));
         }
 
         [Fact]
         [Trait("Category", "Regression")]
-        public void DifferentName_ShouldReturnNothing()
-        {
-            using var db = new TestDatabase();
-            db.Service.SaveRecordForm(Draft(db, "Lê Thị Trùng Tên", "0912 345 678"));
-
-            Assert.Empty(db.Service.GetSenderRecords(Draft(db, "Nguyễn Văn Khác", "0912 345 678")));
-            Assert.Empty(db.Service.GetSenderRecords(Draft(db, "Lê Thị Khác Tên", string.Empty, contactAddress: string.Empty)));
-        }
-
-        [Fact]
-        [Trait("Category", "Regression")]
-        public void SavingResubmissionAgainstUnconfirmedRow_ShouldBeRejectedServerSide()
+        public void ResubmissionValidation_ShouldIgnorePhoneWhenBlankAndIgnoreCaseClassification()
         {
             using var db = new TestDatabase();
             var originalCode = db.Service.SaveRecordForm(Draft(db, "Lê Thị Trùng Tên", "0912 345 678"));
+            var repeat = Draft(db, "Lê Thị Trùng Tên", string.Empty);
+            repeat.CaseType = "Tố cáo";
+            repeat.ContentGroup = "Nhóm khác";
+            repeat.Field = "Lĩnh vực khác";
+            repeat.OriginalRecordCode = originalCode;
+            repeat.ResubmissionReason = "Người dùng đã đối chiếu và xác nhận gửi lại.";
 
-            var unconfirmed = Draft(db, "Lê Thị Trùng Tên", string.Empty, contactAddress: string.Empty);
-            unconfirmed.OriginalRecordCode = originalCode;
-            unconfirmed.ResubmissionReason = "Trùng tên nên thử liên kết dù chưa xác thực.";
+            var repeatCode = db.Service.SaveRecordForm(repeat);
 
-            Assert.Throws<InvalidOperationException>(() => db.Service.SaveRecordForm(unconfirmed));
+            Assert.Equal(originalCode, db.Service.GetRecordForm(repeatCode).OriginalRecordCode);
         }
     }
 }

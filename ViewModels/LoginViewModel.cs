@@ -41,6 +41,8 @@ namespace QuanLyHoSo.ViewModels
 
         public ICommand ForgotPasswordCommand { get; }
 
+        public string VersionText => $"Phiên bản {LanProtocolVersion.Current}";
+
         public string UserName
         {
             get => _userName;

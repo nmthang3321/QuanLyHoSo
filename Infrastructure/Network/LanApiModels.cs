@@ -96,6 +96,11 @@ namespace QuanLyHoSo.Infrastructure.Network
         public string FileName { get; set; }
     }
 
+    public sealed class InternalServerUpdateRequest
+    {
+        public string FileName { get; set; }
+    }
+
     public sealed class DashboardMetricsRequest
     {
         public DateTime? FromDate { get; set; }

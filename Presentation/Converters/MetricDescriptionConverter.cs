@@ -44,6 +44,7 @@ namespace QuanLyHoSo.Presentation.Converters
                         "DueSoon" => "Hồ sơ chưa giải quyết có ngày dự kiến trả kết quả từ hôm nay đến hết 7 ngày tới.",
                         "Overdue" => "Hồ sơ chưa giải quyết đã qua ngày dự kiến trả kết quả.",
                         "HighPriority" => "Hồ sơ chưa giải quyết có mức độ Nghiêm trọng, Rất nghiêm trọng hoặc Đặc biệt nghiêm trọng.",
+                        "Processed" => "Hồ sơ ở trạng thái Đã giải quyết; không tính hồ sơ gửi lại.",
                         _ => string.Empty
                     };
                     return description + " Không tính hồ sơ trong thùng rác. Số trên card không phụ thuộc bộ lọc danh sách bên dưới. Bấm card để lọc hồ sơ.";

@@ -330,5 +330,14 @@ namespace QuanLyHoSo.Server
             Close();
             Application.Current.Shutdown();
         }
+
+        public void ShutdownForUpdate()
+        {
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                _allowClose = true;
+                Application.Current.Shutdown();
+            }));
+        }
     }
 }

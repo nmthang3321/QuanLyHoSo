@@ -75,6 +75,9 @@ namespace QuanLyHoSo.ApplicationServices.Abstractions
         void DownloadBackupFile(string fileName, string destinationPath);
         string RestoreDatabaseFromUpload(string fileName, byte[] content);
         InternalUpdatePackageInfo GetInternalUpdatePackageInfo();
+        InternalUpdateOverview GetInternalUpdateOverview();
         void DownloadInternalUpdatePackage(string fileName, string destinationPath);
+        void StartInternalServerUpdate(string fileName);
+        void PingServer();
     }
 }

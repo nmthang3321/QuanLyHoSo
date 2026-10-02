@@ -266,8 +266,13 @@ namespace QuanLyHoSo.Infrastructure.Network
                         return _dataService.RestoreDatabaseFromUpload(restoreBackup.FileName, restoreBackup.Content);
                     case "settings/update/latest":
                         return _dataService.GetInternalUpdatePackageInfo();
+                    case "settings/update/overview":
+                        return _dataService.GetInternalUpdateOverview();
                     case "settings/update/download":
                         return _dataService.GetInternalUpdatePackagePath(ReadData<InternalUpdateDownloadRequest>(body).FileName);
+                    case "settings/update/server/start":
+                        _dataService.StartInternalServerUpdate(ReadData<InternalServerUpdateRequest>(body).FileName);
+                        return true;
                     case "dashboard/metrics":
                         var metrics = ReadData<DashboardMetricsRequest>(body);
                         return _dataService.GetDashboardMetrics(metrics.FromDate, metrics.ToDate, metrics.PreviousFromDate, metrics.PreviousToDate);
@@ -486,10 +491,31 @@ namespace QuanLyHoSo.Infrastructure.Network
             context.Response.StatusCode = 200;
             context.Response.ContentType = contentType;
             context.Response.ContentLength64 = fileInfo.Length;
-            context.Response.AddHeader("Content-Disposition", $"attachment; filename=\"{fileInfo.Name}\"");
+            context.Response.AddHeader("Content-Disposition", BuildContentDispositionHeader(fileInfo.Name));
             using var fileStream = File.OpenRead(filePath);
             await fileStream.CopyToAsync(context.Response.OutputStream);
             context.Response.OutputStream.Close();
+        }
+
+        internal static string BuildContentDispositionHeader(string fileName)
+        {
+            var safeFileName = Path.GetFileName(fileName ?? string.Empty);
+            if (string.IsNullOrWhiteSpace(safeFileName))
+            {
+                safeFileName = "download";
+            }
+
+            var asciiFallback = new StringBuilder(safeFileName.Length);
+            foreach (var character in safeFileName)
+            {
+                asciiFallback.Append(character >= 0x20 && character <= 0x7e && character != '"' && character != '\\'
+                    ? character
+                    : '_');
+            }
+
+            var fallbackName = asciiFallback.ToString();
+            var encodedName = Uri.EscapeDataString(safeFileName);
+            return $"attachment; filename=\"{fallbackName}\"; filename*=UTF-8''{encodedName}";
         }
 
         private static async Task WriteErrorAsync(HttpListenerContext context, int statusCode, string message)

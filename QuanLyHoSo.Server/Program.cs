@@ -26,8 +26,10 @@ namespace QuanLyHoSo.Server
                     ShutdownMode = ShutdownMode.OnExplicitShutdown
                 };
                 var window = new ServerWindow(AppDataService.Instance);
+                AppDataService.ApplicationShutdownRequested = window.ShutdownForUpdate;
                 application.Run(window);
 
+                AppDataService.ApplicationShutdownRequested = null;
                 AppDataService.Instance.Shutdown();
                 AppLogger.Info("Server", "Shutdown", "QuanLyHoSo server stopped.");
                 return 0;

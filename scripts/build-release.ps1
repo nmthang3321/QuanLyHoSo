@@ -59,6 +59,11 @@ try {
         -o $serverPublishDir
     if ($LASTEXITCODE -ne 0) { throw "Server publish failed: $LASTEXITCODE" }
 
+    $clientUpdatePackage = Join-Path $installerDir "QuanLyHoSo-Client-$Version.zip"
+    $serverUpdatePackage = Join-Path $installerDir "QuanLyHoSo-Server-$Version.zip"
+    Compress-Archive -Path (Join-Path $clientPublishDir '*') -DestinationPath $clientUpdatePackage -Force
+    Compress-Archive -Path (Join-Path $serverPublishDir '*') -DestinationPath $serverUpdatePackage -Force
+
     $innoCandidates = @(
         "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",
         "${env:ProgramFiles}\Inno Setup 6\ISCC.exe",
@@ -92,7 +97,9 @@ try {
 
     $assetNames = @(
         "QuanLyHoSo-Server-Setup-$Version-win-x64.exe",
-        "QuanLyHoSo-Client-Setup-$Version-win-x64.exe"
+        "QuanLyHoSo-Client-Setup-$Version-win-x64.exe",
+        "QuanLyHoSo-Client-$Version.zip",
+        "QuanLyHoSo-Server-$Version.zip"
     )
     if (-not [string]::IsNullOrWhiteSpace($AdditionalAssetPath)) {
         $additionalAssetName = [System.IO.Path]::GetFileName($AdditionalAssetPath)

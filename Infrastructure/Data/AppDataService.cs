@@ -7,6 +7,7 @@ using System.IO.Compression;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using Microsoft.Data.Sqlite;
 using QuanLyHoSo.ApplicationServices.Abstractions;
 using QuanLyHoSo.Infrastructure.Configuration;
@@ -14,6 +15,7 @@ using QuanLyHoSo.Infrastructure.Documents;
 using QuanLyHoSo.Infrastructure.Logging;
 using QuanLyHoSo.Infrastructure.Network;
 using QuanLyHoSo.Infrastructure.Security;
+using QuanLyHoSo.Infrastructure.Updates;
 using QuanLyHoSo.Models;
 
 namespace QuanLyHoSo.Infrastructure.Data
@@ -85,6 +87,8 @@ namespace QuanLyHoSo.Infrastructure.Data
         public static bool IsCreated => LazyInstance.IsValueCreated;
 
         public static Action<Action> UiDispatcher { get; set; }
+
+        public static Action ApplicationShutdownRequested { get; set; }
 
         public event Action<string> CatalogChanged;
 
@@ -1700,32 +1704,33 @@ VALUES ($createdAt, $senderName, $scope, $targetName, $kpiTarget, $message);";
             }
         }
 
+        private static void AddDuplicateComplaintConditions(SqliteCommand command, List<string> conditions, RecordFormDraft record)
+        {
+            conditions.Add("normalize_sender(SenderName) = $duplicateSenderName");
+            conditions.Add("normalize_sender(AreaName) = $duplicateAreaName");
+            command.Parameters.AddWithValue("$duplicateSenderName", NormalizeSenderText(record.SenderName));
+            command.Parameters.AddWithValue("$duplicateAreaName", NormalizeSenderText(record.AreaName));
+
+            var phone = NormalizeSenderPhone(record.SenderPhone);
+            if (phone.Length > 0)
+            {
+                conditions.Add("normalize_phone(SenderPhone) = $duplicateSenderPhone");
+                command.Parameters.AddWithValue("$duplicateSenderPhone", phone);
+            }
+        }
+
         public IReadOnlyList<SenderRecordHistory> GetSenderRecords(RecordFormDraft record)
         {
             if (AppPathSettings.Current.IsClientMode)
                 return _lanClient.Call<IReadOnlyList<SenderRecordHistory>>("records/sender-history", record) ?? Array.Empty<SenderRecordHistory>();
-            // A sender name alone now triggers the comparison; identity confirmation
-            // still requires the strict rules below.
-            if (record == null || string.IsNullOrWhiteSpace(record.SenderName))
+            if (record == null
+                || string.IsNullOrWhiteSpace(record.SenderName)
+                || string.IsNullOrWhiteSpace(record.AreaName))
                 return Array.Empty<SenderRecordHistory>();
             using var connection = OpenConnection();
             using var command = connection.CreateCommand();
             var conditions = new List<string>();
-            AddSenderIdentityConditions(command, conditions, record);
-            // Resolve persisted identity from an authorized record; never trust an arbitrary wire SenderId.
-            if (!string.IsNullOrWhiteSpace(record.RecordCode))
-            {
-                using var identity = connection.CreateCommand();
-                identity.CommandText = "SELECT SenderId FROM Records WHERE RecordCode = $code AND DeletedAt = ''" + BuildUserRecordCondition(identity) + ";";
-                identity.Parameters.AddWithValue("$code", record.RecordCode);
-                var senderId = Convert.ToString(identity.ExecuteScalar());
-                if (!string.IsNullOrWhiteSpace(senderId))
-                {
-                    conditions[0] = "(SenderId = $senderId OR (" + string.Join(" AND ", conditions) + "))";
-                    conditions.RemoveRange(1, conditions.Count - 1);
-                    command.Parameters.AddWithValue("$senderId", senderId);
-                }
-            }
+            AddDuplicateComplaintConditions(command, conditions, record);
             ApplyUserRecordScope(command, conditions);
             command.CommandText = SenderHistorySelectSql
                 + " WHERE " + string.Join(" AND ", conditions)
@@ -1735,27 +1740,6 @@ VALUES ($createdAt, $senderName, $scope, $targetName, $kpiTarget, $message);";
             {
                 result = ReadSenderHistoryRows(reader, record, confirmedSender: true);
             }
-
-            if (result.Count > 0)
-            {
-                return result;
-            }
-
-            // Strict identity rules found nothing. Surface name-only matches as
-            // warnings: they are never confirmed senders and can never be linked
-            // as resubmissions; identity still requires phone/address confirmation.
-            using var fallback = connection.CreateCommand();
-            var fallbackConditions = new List<string> { "normalize_sender(SenderName) = $fallbackSenderNameKey" };
-            fallback.Parameters.AddWithValue("$fallbackSenderNameKey", NormalizeSenderText(record.SenderName));
-            ApplyUserRecordScope(fallback, fallbackConditions);
-            fallback.CommandText = SenderHistorySelectSql
-                + " WHERE " + string.Join(" AND ", fallbackConditions)
-                + " ORDER BY ReceivedDate DESC, Id DESC;";
-            using (var fallbackReader = fallback.ExecuteReader())
-            {
-                result = ReadSenderHistoryRows(fallbackReader, record, confirmedSender: false);
-            }
-
             return result;
         }
 
@@ -1775,8 +1759,7 @@ FROM (SELECT * FROM Records WHERE DeletedAt = '') AS Records";
                 AreaName = reader.GetString(5), CaseType = reader.GetString(6), Content = reader.GetString(7),
                 Status = reader.GetString(8), OriginalRecordCode = reader.GetString(9), ResolutionSummary = reader.GetString(10),
                 ResubmissionReason = reader.IsDBNull(11) ? string.Empty : reader.GetString(11),
-                IsSameCase = NormalizeSenderText(reader.GetString(5)) == NormalizeSenderText(record.AreaName)
-                    && NormalizeSenderText(reader.GetString(6)) == NormalizeSenderText(record.CaseType),
+                IsSameCase = NormalizeSenderText(reader.GetString(5)) == NormalizeSenderText(record.AreaName),
                 IsConfirmedSender = confirmedSender
             });
             return result;
@@ -1817,22 +1800,18 @@ FROM (SELECT * FROM Records WHERE DeletedAt = '') AS Records";
         private static int? ValidateResubmission(SqliteConnection connection, SqliteTransaction transaction, RecordFormDraft record)
         {
             if (string.IsNullOrWhiteSpace(record.OriginalRecordCode)) return null;
-            if (string.IsNullOrWhiteSpace(record.SenderName) ||
-                (NormalizeSenderPhone(record.SenderPhone).Length == 0 && string.IsNullOrWhiteSpace(record.ContactAddress)))
-                throw new InvalidOperationException("Cần tên và số điện thoại hoặc địa chỉ để xác nhận người gửi.");
+            if (string.IsNullOrWhiteSpace(record.SenderName) || string.IsNullOrWhiteSpace(record.AreaName))
+                throw new InvalidOperationException("Cần tên người gửi và địa bàn để xác nhận hồ sơ gửi lại.");
             if (string.IsNullOrWhiteSpace(record.ResubmissionReason))
                 throw new InvalidOperationException("Vui lòng ghi lý do xác nhận hồ sơ gửi lại.");
             using var command = connection.CreateCommand();
             command.Transaction = transaction;
-            var conditions = new List<string> { "RecordCode = $originalCode", "DeletedAt = ''", "OriginalRecordCode = ''",
-                "normalize_sender(AreaName) = $area", "normalize_sender(CaseType) = $case" };
-            AddSenderIdentityConditions(command, conditions, record);
+            var conditions = new List<string> { "RecordCode = $originalCode", "DeletedAt = ''", "OriginalRecordCode = ''" };
+            AddDuplicateComplaintConditions(command, conditions, record);
             command.Parameters.AddWithValue("$originalCode", NormalizeDbText(record.OriginalRecordCode));
-            command.Parameters.AddWithValue("$area", NormalizeSenderText(record.AreaName));
-            command.Parameters.AddWithValue("$case", NormalizeSenderText(record.CaseType));
             command.CommandText = "SELECT Id FROM Records WHERE " + string.Join(" AND ", conditions) + ";";
             var id = command.ExecuteScalar();
-            if (id == null) throw new InvalidOperationException("Hồ sơ tham chiếu phải còn trong danh sách, chưa là hồ sơ gửi lại và cùng người gửi, địa bàn, loại vụ việc. Vui lòng đối chiếu lại.");
+            if (id == null) throw new InvalidOperationException("Hồ sơ tham chiếu phải còn trong danh sách, chưa là hồ sơ gửi lại, cùng người gửi và địa bàn; nếu có nhập số điện thoại thì số điện thoại cũng phải khớp.");
             return Convert.ToInt32(id, CultureInfo.InvariantCulture);
         }
 
@@ -2233,10 +2212,24 @@ LIMIT 1;";
             var record = ReadRecordForm(connection, command);
             if (!AuthContext.CanAccessRecord(GetRecordProcessorName(connection, recordCode))) return new RecordFormDraft();
             var rootCode = string.IsNullOrEmpty(record.OriginalRecordCode) ? record.RecordCode : record.OriginalRecordCode;
-            record.SenderHistory = GetSenderRecords(record)
-                .Where(item => item.RecordCode == rootCode || item.OriginalRecordCode == rootCode)
-                .ToList();
+            record.SenderHistory = GetLinkedRecordHistory(connection, record, rootCode);
             return record;
+        }
+
+        private static IReadOnlyList<SenderRecordHistory> GetLinkedRecordHistory(
+            SqliteConnection connection,
+            RecordFormDraft record,
+            string rootCode)
+        {
+            using var command = connection.CreateCommand();
+            var conditions = new List<string> { "(RecordCode = $rootCode OR OriginalRecordCode = $rootCode)" };
+            command.Parameters.AddWithValue("$rootCode", NormalizeDbText(rootCode));
+            ApplyUserRecordScope(command, conditions);
+            command.CommandText = SenderHistorySelectSql
+                + " WHERE " + string.Join(" AND ", conditions)
+                + " ORDER BY ReceivedDate DESC, Id DESC;";
+            using var reader = command.ExecuteReader();
+            return ReadSenderHistoryRows(reader, record, confirmedSender: true);
         }
 
         public string SaveRecordForm(RecordFormDraft record, string originalRecordCode = null)
@@ -2302,7 +2295,7 @@ LIMIT 1;";
                 ValidateResubmission(connection, transaction, record);
                 using var linked = connection.CreateCommand();
                 linked.Transaction = transaction;
-                linked.CommandText = "SELECT SenderName, SenderPhone, ContactAddress, AreaName, CaseType FROM Records WHERE Id = $id AND EXISTS (SELECT 1 FROM Records r WHERE r.OriginalRecordCode = $code);";
+                linked.CommandText = "SELECT SenderName, SenderPhone, ContactAddress, AreaName FROM Records WHERE Id = $id AND EXISTS (SELECT 1 FROM Records r WHERE r.OriginalRecordCode = $code);";
                 linked.Parameters.AddWithValue("$id", recordId.Value);
                 linked.Parameters.AddWithValue("$code", originalRecordCode);
                 using (var reader = linked.ExecuteReader())
@@ -2310,9 +2303,8 @@ LIMIT 1;";
                     if (reader.Read() && (NormalizeSenderText(reader.GetString(0)) != NormalizeSenderText(record.SenderName)
                         || NormalizeSenderPhone(reader.GetString(1)) != NormalizeSenderPhone(record.SenderPhone)
                         || (NormalizeSenderPhone(record.SenderPhone).Length == 0 && NormalizeSenderText(reader.GetString(2)) != NormalizeSenderText(record.ContactAddress))
-                        || NormalizeSenderText(reader.GetString(3)) != NormalizeSenderText(record.AreaName)
-                        || NormalizeSenderText(reader.GetString(4)) != NormalizeSenderText(record.CaseType)))
-                        throw new InvalidOperationException("Không thể đổi người gửi, địa bàn hoặc loại vụ việc của hồ sơ đang được hồ sơ gửi lại tham chiếu.");
+                        || NormalizeSenderText(reader.GetString(3)) != NormalizeSenderText(record.AreaName)))
+                        throw new InvalidOperationException("Không thể đổi người gửi hoặc địa bàn của hồ sơ đang được hồ sơ gửi lại tham chiếu.");
                 }
                 if (NormalizeDbText(record.RecordCode) != originalRecordCode)
                     EnsureNoLinkedResubmissions(connection, transaction, originalRecordCode);
@@ -2676,23 +2668,29 @@ WHERE a.FilePath <> '';";
             var managedRoot = Path.GetFullPath(_storageRoot).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
             foreach (var item in items)
             {
-                if (string.IsNullOrWhiteSpace(item.FilePath) || !File.Exists(item.FilePath))
-                {
-                    continue;
-                }
-
-                var sourcePath = Path.GetFullPath(item.FilePath);
-                if (sourcePath.StartsWith(managedRoot, StringComparison.OrdinalIgnoreCase))
-                {
-                    continue;
-                }
-
                 try
                 {
                     var recordFolder = Path.Combine(_attachmentsRoot, SanitizePathSegment(item.RecordCode, "record"));
-                    Directory.CreateDirectory(recordFolder);
                     var destinationPath = Path.Combine(recordFolder, Path.GetFileName(item.FileName));
-                    File.Copy(sourcePath, destinationPath, true);
+                    var sourcePath = string.IsNullOrWhiteSpace(item.FilePath)
+                        ? string.Empty
+                        : Path.GetFullPath(item.FilePath);
+
+                    if (File.Exists(sourcePath) &&
+                        !sourcePath.StartsWith(managedRoot, StringComparison.OrdinalIgnoreCase))
+                    {
+                        Directory.CreateDirectory(recordFolder);
+                        File.Copy(sourcePath, destinationPath, true);
+                    }
+                    else if (!File.Exists(destinationPath))
+                    {
+                        continue;
+                    }
+
+                    if (string.Equals(sourcePath, destinationPath, StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
 
                     using var update = connection.CreateCommand();
                     update.CommandText = "UPDATE RecordAttachments SET FilePath = $filePath WHERE Id = $id;";
@@ -2733,22 +2731,51 @@ WHERE a.FilePath <> '';";
                 throw new UnauthorizedAccessException("Bạn không có quyền truy cập tệp đính kèm của hồ sơ này.");
             }
 
-            using var command = connection.CreateCommand();
-            command.CommandText = @"
-SELECT a.FilePath
+            int attachmentId;
+            string path;
+            using (var command = connection.CreateCommand())
+            {
+                command.CommandText = @"
+SELECT a.Id, a.FilePath
 FROM RecordAttachments a
 INNER JOIN Records r ON r.Id = a.RecordId
 WHERE r.RecordCode = $recordCode AND a.FileName = $fileName
 ORDER BY a.Id DESC LIMIT 1;";
-            command.Parameters.AddWithValue("$recordCode", NormalizeDbText(recordCode));
-            command.Parameters.AddWithValue("$fileName", Path.GetFileName(fileName));
-            var path = Convert.ToString(command.ExecuteScalar(), CultureInfo.InvariantCulture);
-            if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
+                command.Parameters.AddWithValue("$recordCode", NormalizeDbText(recordCode));
+                command.Parameters.AddWithValue("$fileName", Path.GetFileName(fileName));
+                using var reader = command.ExecuteReader();
+                if (!reader.Read())
+                {
+                    throw new FileNotFoundException("Không tìm thấy tệp đính kèm trên máy server.");
+                }
+
+                attachmentId = reader.GetInt32(0);
+                path = reader.GetString(1);
+            }
+
+            if (!string.IsNullOrWhiteSpace(path) && File.Exists(path))
+            {
+                return path;
+            }
+
+            var rebasedPath = Path.Combine(
+                _attachmentsRoot,
+                SanitizePathSegment(recordCode, "record"),
+                Path.GetFileName(fileName));
+            if (!File.Exists(rebasedPath))
             {
                 throw new FileNotFoundException("Không tìm thấy tệp đính kèm trên máy server.", path);
             }
 
-            return path;
+            using (var update = connection.CreateCommand())
+            {
+                update.CommandText = "UPDATE RecordAttachments SET FilePath = $filePath WHERE Id = $id;";
+                update.Parameters.AddWithValue("$filePath", rebasedPath);
+                update.Parameters.AddWithValue("$id", attachmentId);
+                update.ExecuteNonQuery();
+            }
+            AppLogger.Info("Attachments", "RebaseStoredPath", $"Attachment path was rebased to the current server storage: {rebasedPath}", recordCode);
+            return rebasedPath;
         }
 
         public void DownloadAttachment(string recordCode, string fileName, string destinationPath)
@@ -3373,6 +3400,7 @@ WHERE Id = $recordId;";
             var dueSoon = CountDueSoonOpenRecords(connection, fromDate, toDate);
             var overdue = CountOverdueOpenRecords(connection, fromDate, toDate);
             var highPriority = CountHighPriorityOpenRecords(connection, fromDate, toDate);
+            var processed = CountRecordsByStatuses(connection, fromDate, toDate, "Đã giải quyết");
             var culture = CultureInfo.GetCultureInfo("vi-VN");
 
             return new List<DashboardMetric>
@@ -3383,7 +3411,8 @@ WHERE Id = $recordId;";
                 new DashboardMetric { Title = "CHỜ BỔ SUNG", Value = waiting.ToString("N0", culture), Delta = "Đang chờ tài liệu/kết quả", IconGlyph = "\uE916", AccentColor = "#7147D8", FilterKey = "Waiting" },
                 new DashboardMetric { Title = "SẮP ĐẾN HẠN", Value = dueSoon.ToString("N0", culture), Delta = "Còn hạn trong 7 ngày", IconGlyph = "\uE8A7", AccentColor = "#008A8A", FilterKey = "DueSoon" },
                 new DashboardMetric { Title = "QUÁ HẠN", Value = overdue.ToString("N0", culture), Delta = "Chưa hoàn tất theo hạn", IconGlyph = "\uE7BA", AccentColor = "#D13438", FilterKey = "Overdue" },
-                new DashboardMetric { Title = "MỨC ĐỘ CAO", Value = highPriority.ToString("N0", culture), Delta = "Ưu tiên/khẩn cần theo dõi", IconGlyph = "\uE7BF", AccentColor = "#B146C2", FilterKey = "HighPriority" }
+                new DashboardMetric { Title = "MỨC ĐỘ CAO", Value = highPriority.ToString("N0", culture), Delta = "Ưu tiên/khẩn cần theo dõi", IconGlyph = "\uE7BF", AccentColor = "#B146C2", FilterKey = "HighPriority" },
+                new DashboardMetric { Title = "ĐÃ XỬ LÝ", Value = processed.ToString("N0", culture), Delta = "Hồ sơ đã giải quyết", IconGlyph = "\uE73E", AccentColor = "#1FA24A", FilterKey = "Processed" }
             };
         }
 
@@ -3429,7 +3458,8 @@ WHERE Id = $recordId;";
             using var connection = OpenConnection();
             var result = new List<ProcessingQueueRecord>();
             using var command = connection.CreateCommand();
-            var conditions = new List<string> { "Status NOT IN ('Đã giải quyết', 'Đã giải quyết — hồ sơ gửi lại')" };
+            var conditions = new List<string>();
+            AddProcessingQueueStatusScope(conditions, cardFilterKey);
             ApplyUserRecordScope(command, conditions);
             AddProcessingCardFilter(command, conditions, cardFilterKey);
             AddOptionalDateRange(command, conditions, fromDate, toDate);
@@ -3527,7 +3557,8 @@ LIMIT $take OFFSET $skip;";
 
             using var connection = OpenConnection();
             using var command = connection.CreateCommand();
-            var conditions = new List<string> { "Status NOT IN ('Đã giải quyết', 'Đã giải quyết — hồ sơ gửi lại')" };
+            var conditions = new List<string>();
+            AddProcessingQueueStatusScope(conditions, cardFilterKey);
             ApplyUserRecordScope(command, conditions);
             AddProcessingCardFilter(command, conditions, cardFilterKey);
             AddOptionalDateRange(command, conditions, fromDate, toDate);
@@ -4007,19 +4038,36 @@ LIMIT $take;";
                 return _lanClient.Call<InternalUpdatePackageInfo>("settings/update/latest", null);
             }
 
-            var package = FindLatestInternalUpdatePackage();
-            if (package == null)
+            return CreateInternalUpdatePackageInfo(FindLatestInternalUpdatePackage("Client"));
+        }
+
+        public InternalUpdateOverview GetInternalUpdateOverview()
+        {
+            if (AppPathSettings.Current.IsClientMode)
             {
-                return new InternalUpdatePackageInfo { HasPackage = false };
+                try
+                {
+                    return _lanClient.Call<InternalUpdateOverview>("settings/update/overview", null);
+                }
+                catch (InvalidOperationException ex) when (
+                    ex.Message.IndexOf("Unknown LAN API route", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    return new InternalUpdateOverview
+                    {
+                        ClientPackage = _lanClient.Call<InternalUpdatePackageInfo>("settings/update/latest", null),
+                        ServerPackage = new InternalUpdatePackageInfo { HasPackage = false },
+                        ServerVersion = _lanClient.GetHealth()?.ServerVersion
+                    };
+                }
             }
 
-            return new InternalUpdatePackageInfo
+            return new InternalUpdateOverview
             {
-                HasPackage = true,
-                Version = package.Version.ToString(),
-                FileName = package.FileInfo.Name,
-                SizeBytes = package.FileInfo.Length,
-                PublishedAt = package.FileInfo.LastWriteTime.ToString("dd/MM/yyyy HH:mm", CultureInfo.CurrentCulture)
+                ClientPackage = CreateInternalUpdatePackageInfo(FindLatestInternalUpdatePackage("Client")),
+                ServerPackage = AuthContext.IsAdmin
+                    ? CreateInternalUpdatePackageInfo(FindLatestInternalUpdatePackage("Server"))
+                    : new InternalUpdatePackageInfo { HasPackage = false },
+                ServerVersion = LanProtocolVersion.Current
             };
         }
 
@@ -4056,6 +4104,44 @@ LIMIT $take;";
             }
 
             File.Copy(GetInternalUpdatePackagePath(fileName), destinationPath, true);
+        }
+
+        public void StartInternalServerUpdate(string fileName)
+        {
+            if (AppPathSettings.Current.IsClientMode)
+            {
+                _lanClient.Call<object>(
+                    "settings/update/server/start",
+                    new InternalServerUpdateRequest { FileName = fileName },
+                    TimeSpan.FromMinutes(2));
+                return;
+            }
+
+            if (!AuthContext.IsAdmin)
+            {
+                throw new UnauthorizedAccessException("Chỉ tài khoản Admin được phép cập nhật Server.");
+            }
+
+            if (ApplicationShutdownRequested == null)
+            {
+                throw new InvalidOperationException("Ứng dụng Server chưa sẵn sàng để tự khởi động lại.");
+            }
+
+            var packagePath = GetInternalUpdatePackagePath(fileName, "Server");
+            var restartArguments = Environment.GetCommandLineArgs().Skip(1).ToArray();
+            ApplicationUpdater.Start(
+                packagePath,
+                requireAdministrator: true,
+                shutdownApplication: () =>
+                {
+                    Task.Delay(1000).ContinueWith(_ => ApplicationShutdownRequested?.Invoke());
+                },
+                restartArguments);
+        }
+
+        public void PingServer()
+        {
+            _lanClient?.Ping();
         }
 
         public void RestoreDatabaseFromFile(string sourcePath, string safetyBackupPath)
@@ -4233,7 +4319,7 @@ LIMIT $take;";
                 "Packages");
         }
 
-        private static InternalUpdatePackage FindLatestInternalUpdatePackage()
+        private static InternalUpdatePackage FindLatestInternalUpdatePackage(string productName)
         {
             var packageFolder = GetInternalUpdatePackageFolder();
             if (!Directory.Exists(packageFolder))
@@ -4241,13 +4327,49 @@ LIMIT $take;";
                 return null;
             }
 
-            return Directory.EnumerateFiles(packageFolder, "QuanLyHoSo-Client-*.zip")
+            return Directory.EnumerateFiles(packageFolder, $"QuanLyHoSo-{productName}-*.zip")
                 .Select(path => new FileInfo(path))
                 .Select(file => new InternalUpdatePackage(file, TryParseVersionFromFileName(file.Name)))
                 .Where(package => package.Version != null)
                 .OrderByDescending(package => package.Version)
                 .ThenByDescending(package => package.FileInfo.LastWriteTime)
                 .FirstOrDefault();
+        }
+
+        private static InternalUpdatePackageInfo CreateInternalUpdatePackageInfo(InternalUpdatePackage package)
+        {
+            if (package == null)
+            {
+                return new InternalUpdatePackageInfo { HasPackage = false };
+            }
+
+            return new InternalUpdatePackageInfo
+            {
+                HasPackage = true,
+                Version = package.Version.ToString(),
+                FileName = package.FileInfo.Name,
+                SizeBytes = package.FileInfo.Length,
+                PublishedAt = package.FileInfo.LastWriteTime.ToString("dd/MM/yyyy HH:mm", CultureInfo.CurrentCulture)
+            };
+        }
+
+        private static string GetInternalUpdatePackagePath(string fileName, string productName)
+        {
+            var safeFileName = Path.GetFileName(fileName ?? string.Empty);
+            if (string.IsNullOrWhiteSpace(safeFileName) ||
+                !safeFileName.StartsWith($"QuanLyHoSo-{productName}-", StringComparison.OrdinalIgnoreCase) ||
+                !safeFileName.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new FileNotFoundException($"Không tìm thấy gói cập nhật {productName}.");
+            }
+
+            var packagePath = Path.Combine(GetInternalUpdatePackageFolder(), safeFileName);
+            if (!File.Exists(packagePath))
+            {
+                throw new FileNotFoundException("Không tìm thấy gói cập nhật.", packagePath);
+            }
+
+            return packagePath;
         }
 
         private static Version TryParseVersionFromFileName(string fileName)
@@ -5996,6 +6118,13 @@ AreaName IN (
                     conditions.Add("SeverityLevel IN ('Nghiêm trọng', 'Rất nghiêm trọng', 'Đặc biệt nghiêm trọng')");
                     break;
             }
+        }
+
+        private static void AddProcessingQueueStatusScope(List<string> conditions, string cardFilterKey)
+        {
+            conditions.Add(string.Equals(cardFilterKey, "Processed", StringComparison.Ordinal)
+                ? "Status = 'Đã giải quyết'"
+                : "Status NOT IN ('Đã giải quyết', 'Đã giải quyết — hồ sơ gửi lại')");
         }
 
         private static string BuildProcessingWorkLabel(string status)

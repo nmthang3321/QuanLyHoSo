@@ -144,6 +144,10 @@ The customer deliverables are created under `artifacts/installer/`:
 
 - `QuanLyHoSo-Server-Setup-<version>-win-x64.exe`: install on one server machine; Administrator rights are required to register the URL and open TCP port 5055 in the firewall.
 - `QuanLyHoSo-Client-Setup-<version>-win-x64.exe`: install on workstations; it does not require Administrator rights and asks for the server URL during setup.
+- `QuanLyHoSo-Server-<version>.zip`: in-app Server update package.
+- `QuanLyHoSo-Client-<version>.zip`: in-app Client update package.
+
+Copy both ZIP packages to `%LocalAppData%\QuanLyHoSo\Updates\Packages` for the Windows account running `QuanLyHoSo.Server.exe`. Admin users can choose a combined Server and Client update; Officer and Leader users can update only their current Client.
 
 Clients must use an address such as `http://SERVER-PC:5055` or `http://192.168.1.10:5055`, never `0.0.0.0`. Silent or scripted client installation can pass:
 

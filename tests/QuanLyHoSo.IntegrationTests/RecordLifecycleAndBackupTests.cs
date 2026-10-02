@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Linq;
+using Microsoft.Data.Sqlite;
 using QuanLyHoSo.Infrastructure.Data;
 using QuanLyHoSo.Models;
 using Xunit;
@@ -109,6 +110,45 @@ namespace QuanLyHoSo.IntegrationTests
             Assert.True(File.Exists(storedAttachment.FilePath));
             Assert.Equal(expectedContent, File.ReadAllBytes(storedAttachment.FilePath));
             Assert.Equal(storedAttachment.FilePath, database.Service.GetAttachmentFilePath(code, storedAttachment.FileName));
+        }
+
+        [Fact]
+        [Trait("Category", "Regression")]
+        [Trait("Category", "Attachments")]
+        public void GetAttachmentFilePath_WhenRestoredMetadataUsesOldServerRoot_ShouldRebaseToCurrentStorage()
+        {
+            using var database = new TestDatabase();
+            var draft = database.NewRecord("rebased-attachment");
+            draft.Attachments = new[]
+            {
+                new AttachmentDraft
+                {
+                    FileName = "restored.pdf",
+                    FileSize = "4 B",
+                    Content = new byte[] { 1, 2, 3, 4 }
+                }
+            };
+            var code = database.Service.SaveRecordForm(draft);
+            var currentPath = Assert.Single(database.Service.GetRecordForm(code).Attachments).FilePath;
+            var oldServerPath = Path.Combine(@"C:\ProgramData\QuanLyHoSo\Data\QuanLyHoSoFiles\Attachments", code, "restored.pdf");
+
+            using (var connection = new SqliteConnection($"Data Source={database.DatabasePath}"))
+            {
+                connection.Open();
+                using var update = connection.CreateCommand();
+                update.CommandText = "UPDATE RecordAttachments SET FilePath = $path;";
+                update.Parameters.AddWithValue("$path", oldServerPath);
+                update.ExecuteNonQuery();
+            }
+
+            var resolvedPath = database.Service.GetAttachmentFilePath(code, "restored.pdf");
+
+            Assert.Equal(currentPath, resolvedPath);
+            using var verifyConnection = new SqliteConnection($"Data Source={database.DatabasePath}");
+            verifyConnection.Open();
+            using var verify = verifyConnection.CreateCommand();
+            verify.CommandText = "SELECT FilePath FROM RecordAttachments LIMIT 1;";
+            Assert.Equal(currentPath, verify.ExecuteScalar());
         }
 
         [Fact]

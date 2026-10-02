@@ -110,4 +110,11 @@ namespace QuanLyHoSo.Models
         public long SizeBytes { get; set; }
         public string PublishedAt { get; set; }
     }
+
+    public sealed class InternalUpdateOverview
+    {
+        public InternalUpdatePackageInfo ClientPackage { get; set; }
+        public InternalUpdatePackageInfo ServerPackage { get; set; }
+        public string ServerVersion { get; set; }
+    }
 }

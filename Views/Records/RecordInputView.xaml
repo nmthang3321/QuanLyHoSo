@@ -62,18 +62,30 @@
                     <TextBlock Text="NHẬP DỮ LIỆU" Style="{StaticResource PageTitleText}" />
                     <TextBlock Text="Tiếp nhận và nhập thông tin hồ sơ" Style="{StaticResource MutedText}" Margin="0,4,0,0" />
                 </StackPanel>
-                <Button HorizontalAlignment="Right"
-                        VerticalAlignment="Center"
-                        Style="{StaticResource SecondaryButton}"
-                        Command="{Binding BackCommand}"
-                        Visibility="{Binding IsEditingExistingRecord, Converter={StaticResource BooleanToVisibilityConverter}}"
-                        MinWidth="150">
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="&#xE72B;" FontFamily="Segoe MDL2 Assets" Margin="0,0,8,0" />
-                        <TextBlock Text="Quay lại danh sách" />
-                    </StackPanel>
-                </Button>
             </Grid>
+
+            <Border Background="#FFF7E6"
+                    BorderBrush="#F4C66A"
+                    BorderThickness="1"
+                    CornerRadius="6"
+                    Padding="12"
+                    Margin="0,0,0,12"
+                    Visibility="{Binding HasPotentialDuplicate, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="{Binding DuplicateSenderNotice}"
+                               Foreground="#8A5A00"
+                               FontWeight="SemiBold"
+                               VerticalAlignment="Center" />
+                    <Button Content="Xem danh sách"
+                            Command="{Binding OpenDetectedSenderHistoryCommand}"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Foreground="{StaticResource PrimaryBrush}"
+                            FontWeight="SemiBold"
+                            Padding="2,0"
+                            Margin="8,0,0,0" />
+                </StackPanel>
+            </Border>
 
             <Border Background="#DDF8E7" Padding="12" CornerRadius="6" Margin="0,0,0,12"
                     Visibility="{Binding IsResubmission, Converter={StaticResource BooleanToVisibilityConverter}}">
@@ -127,7 +139,9 @@
                         <StackPanel Grid.Column="3" Margin="0,0,0,14">
                             <TextBlock Style="{StaticResource InputLabelText}"><Run Text="Người tiếp nhận" /><Run Text=" *" Foreground="#E11414" /></TextBlock>
                             <ComboBox ItemsSource="{Binding ReceiverNames}"
-                                      SelectedItem="{Binding ReceiverName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                      SelectedValue="{Binding ReceiverName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                      SelectedValuePath="."
+                                      IsSynchronizedWithCurrentItem="False"
                                       IsEditable="False"
                                       IsTextSearchEnabled="True" />
                         </StackPanel>
@@ -306,6 +320,7 @@
                                             <ColumnDefinition Width="90" />
                                             <ColumnDefinition Width="32" />
                                             <ColumnDefinition Width="32" />
+                                            <ColumnDefinition Width="32" />
                                         </Grid.ColumnDefinitions>
                                         <TextBlock Text="•" FontSize="16" Foreground="{StaticResource PrimaryBrush}" VerticalAlignment="Center" />
                                         <TextBlock Grid.Column="1" Text="{Binding FileName}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
@@ -318,6 +333,14 @@
                                             <TextBlock Text="&#xE896;" FontFamily="Segoe MDL2 Assets" Foreground="{StaticResource PrimaryBrush}" />
                                         </Button>
                                         <Button Grid.Column="4"
+                                            Style="{StaticResource AttachmentIconButton}"
+                                                Command="{Binding DataContext.SaveAttachmentChangesCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                CommandParameter="{Binding}"
+                                                Visibility="{Binding CanSaveEditedContent, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                                ToolTip="Lưu bản Word đã chỉnh sửa vào hồ sơ">
+                                            <TextBlock Text="&#xE74E;" FontFamily="Segoe MDL2 Assets" Foreground="#0B5CFF" />
+                                        </Button>
+                                        <Button Grid.Column="5"
                                             Style="{StaticResource AttachmentIconButton}"
                                                 Command="{Binding DataContext.RemoveAttachmentCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                 CommandParameter="{Binding}"
@@ -385,25 +408,17 @@
                 </Style>
             </Border.Style>
             <Grid>
-                <Button MinWidth="118"
-                        HorizontalAlignment="Left"
-                        Command="{Binding DeleteCommand}">
-                    <Button.Style>
-                        <Style TargetType="Button" BasedOn="{StaticResource DangerButton}">
-                            <Setter Property="Visibility" Value="Collapsed" />
-                            <Style.Triggers>
-                                <DataTrigger Binding="{Binding CanDelete}" Value="True">
-                                    <Setter Property="Visibility" Value="Visible" />
-                                </DataTrigger>
-                            </Style.Triggers>
-                        </Style>
-                    </Button.Style>
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="&#xE74D;" FontFamily="Segoe MDL2 Assets" Margin="0,0,8,0" />
-                        <TextBlock Text="Xóa" />
-                    </StackPanel>
-                </Button>
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button MinWidth="128"
+                            Margin="0,0,12,0"
+                            Command="{Binding BackCommand}"
+                            Style="{StaticResource SecondaryButton}"
+                            Visibility="{Binding IsEditingExistingRecord, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE72B;" FontFamily="Segoe MDL2 Assets" Margin="0,0,8,0" />
+                            <TextBlock Text="Quay lại" />
+                        </StackPanel>
+                    </Button>
                     <Button MinWidth="138"
                             Margin="0,0,12,0"
                             Command="{Binding SaveCommand}"
@@ -416,7 +431,8 @@
                     <Button Style="{StaticResource SecondaryButton}"
                             MinWidth="128"
                             Content="Hủy bỏ"
-                            Command="{Binding CancelCommand}" />
+                            Command="{Binding CancelCommand}"
+                            Visibility="{Binding IsEditingExistingRecord, Converter={StaticResource InverseBooleanToVisibilityConverter}}" />
                 </StackPanel>
             </Grid>
         </Border>

@@ -26,6 +26,7 @@ namespace QuanLyHoSo.ViewModels
         private readonly Action _goBack;
         private string _editingRecordCode;
         private readonly DispatcherTimer _recordCodeCheckTimer;
+        private readonly DispatcherTimer _senderHistoryCheckTimer;
         private bool _hasDuplicateRecordCode;
         private string _recordCodeWarning = string.Empty;
         private string _recordCode;
@@ -35,6 +36,11 @@ namespace QuanLyHoSo.ViewModels
         private SenderRecordHistory _selectedSenderRecord;
         private string _resubmissionReason = string.Empty;
         private string _senderHistoryError = string.Empty;
+        private bool _hasPotentialDuplicate;
+        private string _selectedResubmissionOriginalCode;
+        private string _selectedResubmissionReason;
+        private readonly System.Collections.Generic.Dictionary<string, string> _editableAttachmentPaths = new System.Collections.Generic.Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        private readonly RelayCommand _saveAttachmentChangesCommand;
         public ObservableCollection<SenderRecordHistory> SenderRecords { get; } = new ObservableCollection<SenderRecordHistory>();
         public bool IsSenderHistoryOpen { get => _isSenderHistoryOpen; private set => SetProperty(ref _isSenderHistoryOpen, value); }
         public SenderRecordHistory SelectedSenderRecord
@@ -50,7 +56,9 @@ namespace QuanLyHoSo.ViewModels
         }
         public string ResubmissionReason { get => _resubmissionReason; set => SetProperty(ref _resubmissionReason, value); }
         public string SenderHistoryError { get => _senderHistoryError; private set => SetProperty(ref _senderHistoryError, value); }
-        public bool CanSaveResubmission => IsSenderHistoryOpen && SelectedSenderRecord?.CanLinkAsResubmission == true;
+        public bool CanSaveResubmission => IsSenderHistoryOpen
+            && SelectedSenderRecord != null
+            && string.IsNullOrWhiteSpace(SelectedSenderRecord.OriginalRecordCode);
         public string ResubmissionAvailability => SelectedSenderRecord == null ? "Chọn hồ sơ để liên kết gửi lại."
             : !string.IsNullOrEmpty(SelectedSenderRecord.OriginalRecordCode) ? "Đây là hồ sơ gửi lại. Hãy chọn hồ sơ gốc."
             : !SelectedSenderRecord.IsConfirmedSender ? "Trùng tên người gửi nhưng chưa xác thực (thiếu hoặc khác số điện thoại/địa chỉ). Hãy nhập đúng số điện thoại của hồ sơ trước rồi lưu lại để xác thực."
@@ -58,7 +66,6 @@ namespace QuanLyHoSo.ViewModels
             : SelectedSenderRecord.Status != "Đã giải quyết" ? "Hồ sơ gốc chưa giải quyết; có thể lưu gửi lại và tiếp tục xử lý trên hồ sơ gốc."
             : "Có thể lưu gửi lại hồ sơ này. Vui lòng ghi lý do xác nhận.";
         public ICommand CloseSenderHistoryCommand { get; }
-        public ICommand SaveAsNewRecordCommand { get; }
         public ICommand SaveResubmissionCommand { get; }
 
         public RecordInputViewModel(Action goBack = null)
@@ -77,6 +84,8 @@ namespace QuanLyHoSo.ViewModels
                 _recordCodeCheckTimer.Stop();
                 RefreshRecordCodeDuplicateCheck();
             };
+            _senderHistoryCheckTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(400) };
+            _senderHistoryCheckTimer.Tick += SenderHistoryCheckTimer_Tick;
             var receiveSourcesTask = Task.Run(() => _dataService.GetCatalogValues("ReceiveSource"));
             var receiverNamesTask = Task.Run(() => _dataService.GetProcessorNames());
             var areasTask = Task.Run(() => _dataService.GetAreaNames());
@@ -108,10 +117,12 @@ namespace QuanLyHoSo.ViewModels
             DeleteCommand = new RelayCommand(DeleteCurrentRecord, () => CanDelete);
             RemoveAttachmentCommand = new RelayCommand(RemoveAttachment);
             OpenAttachmentCommand = new RelayCommand(OpenAttachment);
+            _saveAttachmentChangesCommand = new RelayCommand(SaveAttachmentChanges, CanSaveAttachmentChanges);
+            SaveAttachmentChangesCommand = _saveAttachmentChangesCommand;
 
             CloseSenderHistoryCommand = new RelayCommand(CloseSenderHistory);
-            SaveAsNewRecordCommand = new RelayCommand(() => SavePendingRecord(false));
-            SaveResubmissionCommand = new RelayCommand(() => SavePendingRecord(true), () => CanSaveResubmission);
+            SaveResubmissionCommand = new RelayCommand(StageResubmission, () => CanSaveResubmission);
+            OpenDetectedSenderHistoryCommand = new RelayCommand(OpenDetectedSenderHistory);
             ClearForm(nextRecordCodeTask.Result);
         }
 
@@ -137,6 +148,16 @@ namespace QuanLyHoSo.ViewModels
         public ICommand DeleteCommand { get; }
         public ICommand RemoveAttachmentCommand { get; }
         public ICommand OpenAttachmentCommand { get; }
+        public ICommand SaveAttachmentChangesCommand { get; }
+        public ICommand OpenDetectedSenderHistoryCommand { get; }
+        public bool HasPotentialDuplicate
+        {
+            get => _hasPotentialDuplicate;
+            private set => SetProperty(ref _hasPotentialDuplicate, value);
+        }
+        public string DuplicateSenderNotice => string.IsNullOrWhiteSpace(_selectedResubmissionOriginalCode)
+            ? "Người gửi này đã có hồ sơ trên hệ thống."
+            : $"Đã chọn lưu là hồ sơ gửi lại của {_selectedResubmissionOriginalCode}.";
         public bool CanWrite => CanSave;
         public bool CanCreateRecord => AuthContext.CanCreateRecord;
         public bool CanSave => IsEditingExistingRecord ? AuthContext.CanWrite : AuthContext.CanCreateRecord;
@@ -209,10 +230,70 @@ namespace QuanLyHoSo.ViewModels
                 ? $"Số hồ sơ {code} đã tồn tại trong hệ thống. Vui lòng chọn số hồ sơ khác."
                 : string.Empty;
         }
+
+        private void SenderHistoryCheckTimer_Tick(object sender, EventArgs e)
+        {
+            _senderHistoryCheckTimer.Stop();
+            RefreshPotentialDuplicateCheck();
+        }
+
+        private void RestartSenderHistoryCheck()
+        {
+            _senderHistoryCheckTimer?.Stop();
+            HasPotentialDuplicate = false;
+            _selectedResubmissionOriginalCode = null;
+            _selectedResubmissionReason = null;
+            OnPropertyChanged(nameof(DuplicateSenderNotice));
+
+            if (!IsEditingExistingRecord
+                && !string.IsNullOrWhiteSpace(SenderName)
+                && !string.IsNullOrWhiteSpace(AreaName))
+            {
+                _senderHistoryCheckTimer?.Start();
+            }
+        }
+
+        public void RefreshPotentialDuplicateCheck()
+        {
+            _senderHistoryCheckTimer?.Stop();
+            if (IsEditingExistingRecord
+                || string.IsNullOrWhiteSpace(SenderName)
+                || string.IsNullOrWhiteSpace(AreaName))
+            {
+                HasPotentialDuplicate = false;
+                return;
+            }
+
+            try
+            {
+                var records = _dataService.GetSenderRecords(new RecordFormDraft
+                {
+                    SenderName = SenderName,
+                    SenderPhone = SenderPhone,
+                    AreaName = AreaName
+                });
+                HasPotentialDuplicate = records.Count > 0;
+            }
+            catch (Exception ex)
+            {
+                HasPotentialDuplicate = false;
+                AppLogger.Error("Records", "CheckDuplicateSender", ex, "Failed to check duplicate sender history.");
+            }
+        }
         public string ReceiveSource { get; set; }
         public string ReceiverName { get; set; }
-        public string SenderName { get; set; }
-        public string SenderPhone { get; set; }
+        private string _senderName;
+        public string SenderName
+        {
+            get => _senderName;
+            set { if (SetProperty(ref _senderName, value)) RestartSenderHistoryCheck(); }
+        }
+        private string _senderPhone;
+        public string SenderPhone
+        {
+            get => _senderPhone;
+            set { if (SetProperty(ref _senderPhone, value)) RestartSenderHistoryCheck(); }
+        }
         public string ContactAddress { get; set; }
         public string IncidentAddress { get; set; }
         public string Content { get; set; }
@@ -239,6 +320,7 @@ namespace QuanLyHoSo.ViewModels
 
         private void LoadRecord(RecordFormDraft record)
         {
+            _editableAttachmentPaths.Clear();
             _editingRecordCode = record.RecordCode;
             RecordCode = record.RecordCode;
             ReceivedDate = record.ReceivedDate;
@@ -288,7 +370,11 @@ namespace QuanLyHoSo.ViewModels
 
         private void ClearForm(string nextRecordCode)
         {
+            _editableAttachmentPaths.Clear();
             CloseSenderHistory();
+            _selectedResubmissionOriginalCode = null;
+            _selectedResubmissionReason = null;
+            HasPotentialDuplicate = false;
             _editingRecordCode = null;
             _originalDraft = null;
             RecordCode = nextRecordCode ?? _dataService.GetNextRecordCode();
@@ -316,6 +402,7 @@ namespace QuanLyHoSo.ViewModels
             AdditionalNote = string.Empty;
             Attachments.Clear();
             OnPropertyChanged(nameof(IsEditingExistingRecord));
+            OnPropertyChanged(nameof(DuplicateSenderNotice));
             OnPropertyChanged(nameof(SaveButtonText));
             OnPropertyChanged(nameof(IsResubmission));
             OnPropertyChanged(nameof(ResubmissionSummary));
@@ -417,11 +504,6 @@ namespace QuanLyHoSo.ViewModels
             {
                 var draft = BuildDraft();
                 var isEditing = IsEditingExistingRecord;
-                if (!isEditing && OpenSenderHistory(draft))
-                {
-                    return;
-                }
-
                 PersistRecord(draft, isEditing);
             }
             catch (Exception ex)
@@ -464,6 +546,14 @@ namespace QuanLyHoSo.ViewModels
             return true;
         }
 
+        private void OpenDetectedSenderHistory()
+        {
+            if (!OpenSenderHistory(BuildDraft()))
+            {
+                HasPotentialDuplicate = false;
+            }
+        }
+
         private void CloseSenderHistory()
         {
             IsSenderHistoryOpen = false;
@@ -475,29 +565,20 @@ namespace QuanLyHoSo.ViewModels
             (SaveResubmissionCommand as RelayCommand)?.RaiseCanExecuteChanged();
         }
 
-        private void SavePendingRecord(bool asResubmission)
+        private void StageResubmission()
         {
             if (!IsSenderHistoryOpen || _pendingDraft == null) return;
-            if (!CanSave) { SenderHistoryError = "Tài khoản hiện tại không được lưu hồ sơ."; return; }
-            if (asResubmission && !CanSaveResubmission) { SenderHistoryError = ResubmissionAvailability; return; }
-            if (asResubmission && string.IsNullOrWhiteSpace(ResubmissionReason))
+            if (SelectedSenderRecord == null) { SenderHistoryError = "Vui lòng chọn hồ sơ gốc để liên kết gửi lại."; return; }
+            if (!string.IsNullOrWhiteSpace(SelectedSenderRecord.OriginalRecordCode)) { SenderHistoryError = "Vui lòng chọn hồ sơ gốc, không chọn một hồ sơ gửi lại."; return; }
+            if (string.IsNullOrWhiteSpace(ResubmissionReason))
             {
                 SenderHistoryError = "Vui lòng ghi lý do xác nhận hồ sơ gửi lại.";
                 return;
             }
-            var draft = _pendingDraft;
-            draft.OriginalRecordCode = asResubmission ? SelectedSenderRecord.RecordCode : null;
-            draft.ResubmissionReason = asResubmission ? ResubmissionReason.Trim() : null;
-            try
-            {
-                PersistRecord(draft, false, showConfirmation: false);
-                CloseSenderHistory();
-            }
-            catch (Exception ex)
-            {
-                AppLogger.Error("Records", "SaveRecordForm", ex, "Failed to save record from sender history.", RecordCode);
-                SenderHistoryError = "Không thể lưu hồ sơ. " + ex.Message;
-            }
+            _selectedResubmissionOriginalCode = SelectedSenderRecord.RecordCode;
+            _selectedResubmissionReason = ResubmissionReason.Trim();
+            OnPropertyChanged(nameof(DuplicateSenderNotice));
+            CloseSenderHistory();
         }
 
         private void DeleteCurrentRecord()
@@ -550,8 +631,8 @@ namespace QuanLyHoSo.ViewModels
             return new RecordFormDraft
             {
                 SenderId = _originalDraft?.SenderId,
-                OriginalRecordCode = _originalDraft?.OriginalRecordCode,
-                ResubmissionReason = _originalDraft?.ResubmissionReason,
+                OriginalRecordCode = _originalDraft?.OriginalRecordCode ?? _selectedResubmissionOriginalCode,
+                ResubmissionReason = _originalDraft?.ResubmissionReason ?? _selectedResubmissionReason,
                 RecordCode = RecordCode,
                 ReceivedDate = ReceivedDate,
                 ReceiveSource = ReceiveSource,
@@ -667,7 +748,8 @@ namespace QuanLyHoSo.ViewModels
             {
                 if (!string.Equals(left[index].FileName, right[index].FileName, StringComparison.Ordinal)
                     || !string.Equals(left[index].FileSize, right[index].FileSize, StringComparison.Ordinal)
-                    || !string.Equals(left[index].FilePath, right[index].FilePath, StringComparison.Ordinal))
+                    || !string.Equals(left[index].FilePath, right[index].FilePath, StringComparison.Ordinal)
+                    || !AreAttachmentContentsEqual(left[index].Content, right[index].Content))
                 {
                     return false;
                 }
@@ -676,11 +758,19 @@ namespace QuanLyHoSo.ViewModels
             return true;
         }
 
+        private static bool AreAttachmentContentsEqual(byte[] left, byte[] right)
+        {
+            return ReferenceEquals(left, right)
+                || (left != null && right != null && left.SequenceEqual(right));
+        }
+
         private void RemoveAttachment(object parameter)
         {
             if (parameter is AttachmentDraft attachment)
             {
+                _editableAttachmentPaths.Remove(GetAttachmentEditKey(attachment.FileName));
                 Attachments.Remove(attachment);
+                _saveAttachmentChangesCommand.RaiseCanExecuteChanged();
             }
         }
 
@@ -694,9 +784,38 @@ namespace QuanLyHoSo.ViewModels
 
             try
             {
-                var localPath = attachment.Content != null && System.IO.File.Exists(attachment.FilePath)
-                    ? attachment.FilePath
-                    : _dataService.GetAttachmentFilePath(RecordCode, attachment.FileName);
+                string localPath;
+                if (attachment.Content != null && System.IO.File.Exists(attachment.FilePath))
+                {
+                    localPath = attachment.FilePath;
+                }
+                else if (CanSave && attachment.CanSaveEditedContent)
+                {
+                    var editKey = GetAttachmentEditKey(attachment.FileName);
+                    if (!_editableAttachmentPaths.TryGetValue(editKey, out localPath) || !System.IO.File.Exists(localPath))
+                    {
+                        var editFolder = System.IO.Path.Combine(
+                            System.IO.Path.GetTempPath(),
+                            "QuanLyHoSo",
+                            "AttachmentEdits",
+                            Process.GetCurrentProcess().Id.ToString(CultureInfo.InvariantCulture),
+                            SanitizePathSegment(RecordCode, "record"));
+                        System.IO.Directory.CreateDirectory(editFolder);
+                        localPath = System.IO.Path.Combine(editFolder, System.IO.Path.GetFileName(attachment.FileName));
+                        _dataService.DownloadAttachment(RecordCode, attachment.FileName, localPath);
+                    }
+                }
+                else
+                {
+                    localPath = _dataService.GetAttachmentFilePath(RecordCode, attachment.FileName);
+                }
+
+                if (attachment.CanSaveEditedContent)
+                {
+                    _editableAttachmentPaths[GetAttachmentEditKey(attachment.FileName)] = localPath;
+                    _saveAttachmentChangesCommand.RaiseCanExecuteChanged();
+                }
+
                 Process.Start(new ProcessStartInfo
                 {
                     FileName = localPath,
@@ -707,6 +826,81 @@ namespace QuanLyHoSo.ViewModels
             {
                 MessageBox.Show($"Không thể mở tài liệu.\n{ex.Message}", "Xem tài liệu", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
+        }
+
+        private bool CanSaveAttachmentChanges(object parameter)
+        {
+            if (!CanSave || parameter is not AttachmentDraft attachment || !attachment.CanSaveEditedContent)
+            {
+                return false;
+            }
+
+            return _editableAttachmentPaths.TryGetValue(GetAttachmentEditKey(attachment.FileName), out var localPath)
+                && System.IO.File.Exists(localPath);
+        }
+
+        private void SaveAttachmentChanges(object parameter)
+        {
+            if (parameter is not AttachmentDraft attachment || !CanSaveAttachmentChanges(attachment))
+            {
+                MessageBox.Show("Hãy mở tài liệu Word trước, chỉnh sửa và bấm Save trong Word rồi chọn Lưu bản chỉnh sửa.", "Lưu tài liệu", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var localPath = _editableAttachmentPaths[GetAttachmentEditKey(attachment.FileName)];
+            try
+            {
+                var fileInfo = new System.IO.FileInfo(localPath);
+                if (fileInfo.Length > 10 * 1024 * 1024)
+                {
+                    MessageBox.Show("Tài liệu vượt quá dung lượng tối đa 10 MB.", "Lưu tài liệu", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                var updatedAttachment = new AttachmentDraft
+                {
+                    FileName = attachment.FileName,
+                    FileSize = FormatFileSize(fileInfo.Length),
+                    FilePath = localPath,
+                    Content = System.IO.File.ReadAllBytes(localPath)
+                };
+                var index = Attachments.IndexOf(attachment);
+                if (index >= 0)
+                {
+                    Attachments[index] = updatedAttachment;
+                    _editableAttachmentPaths[GetAttachmentEditKey(updatedAttachment.FileName)] = localPath;
+                }
+
+                MessageBox.Show("Đã cập nhật bản chỉnh sửa trong danh sách đính kèm. Bấm Lưu/Cập nhật để lưu hồ sơ.", "Lưu tài liệu", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (System.IO.IOException ex)
+            {
+                MessageBox.Show($"Không thể đọc tài liệu. Hãy bấm Save và đóng tài liệu trong Word rồi thử lại.\n\nChi tiết: {ex.Message}", "Lưu tài liệu", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Error("Attachments", "StageUpdatedContent", ex, "Failed to stage updated attachment content.", RecordCode);
+                MessageBox.Show($"Không thể lưu bản chỉnh sửa.\n\nChi tiết: {ex.Message}", "Lưu tài liệu", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            finally
+            {
+                _saveAttachmentChangesCommand.RaiseCanExecuteChanged();
+            }
+        }
+
+        private string GetAttachmentEditKey(string fileName)
+        {
+            return System.IO.Path.GetFileName(fileName ?? string.Empty);
+        }
+
+        private static string SanitizePathSegment(string value, string fallback)
+        {
+            var invalidCharacters = System.IO.Path.GetInvalidFileNameChars();
+            var sanitized = new string((value ?? string.Empty)
+                .Trim()
+                .Select(character => invalidCharacters.Contains(character) ? '_' : character)
+                .ToArray());
+            return string.IsNullOrWhiteSpace(sanitized) ? fallback : sanitized;
         }
 
         private string ValidateRequiredFields()
@@ -839,6 +1033,7 @@ namespace QuanLyHoSo.ViewModels
                 }
 
                 OnPropertyChanged(nameof(AreaDisplayName));
+                RestartSenderHistoryCheck();
             }
         }
 
@@ -1027,6 +1222,8 @@ namespace QuanLyHoSo.ViewModels
             if (disposing)
             {
                 _recordCodeCheckTimer?.Stop();
+                _senderHistoryCheckTimer?.Stop();
+                _senderHistoryCheckTimer.Tick -= SenderHistoryCheckTimer_Tick;
                 _dataService.CatalogChanged -= DataService_CatalogChanged;
                 Attachments.CollectionChanged -= Attachments_CollectionChanged;
             }

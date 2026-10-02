@@ -9,6 +9,22 @@ namespace QuanLyHoSo.UnitTests
 {
     public sealed class RecordProcessingAttachmentTests
     {
+        [Theory]
+        [InlineData("bao-cao.doc", true)]
+        [InlineData("bao-cao.DOCX", true)]
+        [InlineData("tai-lieu.pdf", false)]
+        [InlineData("anh.jpg", false)]
+        [InlineData("anh.jpeg", false)]
+        [InlineData("anh.png", false)]
+        [Trait("Category", "Unit")]
+        [Trait("Category", "Regression")]
+        public void CanSaveEditedContent_ShouldOnlyAllowWordDocuments(string fileName, bool expected)
+        {
+            var attachment = new AttachmentDraft { FileName = fileName };
+
+            Assert.Equal(expected, attachment.CanSaveEditedContent);
+        }
+
         [Fact]
         [Trait("Category", "Unit")]
         [Trait("Category", "Regression")]

@@ -496,7 +496,7 @@
             </Border>
             </ScrollViewer>
 
-            <TextBlock Grid.Row="1" Text="Phiên bản 1.0.0"
+            <TextBlock Grid.Row="1" Text="{Binding VersionText}"
                        Foreground="White"
                        FontSize="13"
                        HorizontalAlignment="Right"

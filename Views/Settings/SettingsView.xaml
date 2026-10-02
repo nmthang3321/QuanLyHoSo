@@ -391,10 +391,17 @@
                                         <TextBlock Text="&#xE895;" FontFamily="Segoe MDL2 Assets" FontSize="18" Foreground="#13885A" HorizontalAlignment="Center" VerticalAlignment="Center" />
                                     </Border>
                                     <StackPanel Grid.Column="2" VerticalAlignment="Center">
-                                        <TextBlock Text="CẬP NHẬT PHẦN MỀM CLIENT" Style="{StaticResource SectionTitleText}" Foreground="#13885A" />
-                                        <TextBlock Text="Kiểm tra và cài đặt phiên bản Client mới" Style="{StaticResource MutedText}" Margin="0,3,0,0" />
+                                        <TextBlock Text="CẬP NHẬT PHẦN MỀM" Style="{StaticResource SectionTitleText}" Foreground="#13885A" />
+                                        <TextBlock Text="Kiểm tra và cài đặt phiên bản mới" Style="{StaticResource MutedText}" Margin="0,3,0,0" />
                                     </StackPanel>
                                 </Grid>
+                                <StackPanel Margin="0,0,0,12"
+                                            Visibility="{Binding CanChooseServerUpdate, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                    <TextBlock Text="Phạm vi cập nhật" Style="{StaticResource SettingsLabel}" Margin="0,0,0,6" />
+                                    <ComboBox ItemsSource="{Binding UpdateScopes}"
+                                              SelectedItem="{Binding SelectedUpdateScope, Mode=TwoWay}"
+                                              HorizontalAlignment="Stretch" />
+                                </StackPanel>
                                 <Border Background="#F1FBF6" BorderBrush="#CDEEDF" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,0,12">
                                     <TextBlock Text="{Binding UpdateStatus}" Foreground="{StaticResource TextBrush}" TextWrapping="Wrap" />
                                 </Border>

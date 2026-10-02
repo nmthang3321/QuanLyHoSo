@@ -113,7 +113,7 @@ Có thể truyền URL của Server bằng tham số khi cài đặt tự độn
 
 Server và Client được quản lý phiên bản độc lập. Server không từ chối đăng nhập hoặc API nghiệp vụ chỉ vì số phiên bản Client khác số phiên bản Server. Bước kiểm tra kết nối trong bộ cài Client chỉ xác nhận Server đang hoạt động và có thể truy cập qua mạng.
 
-Chức năng **Cập nhật phần mềm** trong trang Cài đặt chỉ thay thế ứng dụng Client trên máy trạm đang sử dụng. Gói cập nhật nội bộ phải là file ZIP có tên `QuanLyHoSo-Client-<phiên_bản>.zip`, ví dụ `QuanLyHoSo-Client-1.0.1.zip`. Gói này không cập nhật ứng dụng Server và không thay đổi cơ sở dữ liệu trên Server.
+Chức năng **Cập nhật phần mềm** trong trang Cài đặt cho phép Cán bộ và Lãnh đạo cập nhật Client trên máy đang sử dụng. Admin có thể chọn cập nhật riêng Client hoặc cập nhật cả Server và Client. Gói nội bộ phải có tên `QuanLyHoSo-Client-<phiên_bản>.zip` và `QuanLyHoSo-Server-<phiên_bản>.zip`, ví dụ `QuanLyHoSo-Client-1.0.1.zip` và `QuanLyHoSo-Server-1.0.1.zip`. Cập nhật Server sẽ yêu cầu quyền Administrator trên máy Server. Sau cập nhật, ứng dụng tự khởi động lại và hiển thị trang đăng nhập; dữ liệu trên Server không bị thay thế.
 
 Khi triển khai bản Client mới:
 

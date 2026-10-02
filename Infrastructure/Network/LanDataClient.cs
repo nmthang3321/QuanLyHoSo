@@ -20,7 +20,7 @@ namespace QuanLyHoSo.Infrastructure.Network
             _httpClient = new HttpClient
             {
                 BaseAddress = new Uri(AppPathSettings.Current.AdminServerUrl + "/"),
-                Timeout = TimeSpan.FromSeconds(5)
+                Timeout = Timeout.InfiniteTimeSpan
             };
             _httpClient.DefaultRequestHeaders.TryAddWithoutValidation("X-QuanLyHoSo-Client", Environment.MachineName);
             _httpClient.DefaultRequestHeaders.TryAddWithoutValidation(LanProtocolVersion.ClientVersionHeader, LanProtocolVersion.Current);
@@ -34,7 +34,7 @@ namespace QuanLyHoSo.Infrastructure.Network
 
         public void Ping()
         {
-            var health = Call<LanHealthResponse>("health", null);
+            var health = GetHealth();
             if (health?.Ok != true)
             {
                 throw new InvalidOperationException("Máy server không trả về trạng thái sẵn sàng.");
@@ -47,6 +47,11 @@ namespace QuanLyHoSo.Infrastructure.Network
                     LanProtocolVersion.ClientVersionHeader,
                     health.RequiredClientVersion.Trim());
             }
+        }
+
+        public LanHealthResponse GetHealth()
+        {
+            return Call<LanHealthResponse>("health", null);
         }
 
         private void SendHeartbeat()
@@ -63,6 +68,11 @@ namespace QuanLyHoSo.Infrastructure.Network
 
         public T Call<T>(string route, object data)
         {
+            return Call<T>(route, data, TimeSpan.FromSeconds(5));
+        }
+
+        public T Call<T>(string route, object data, TimeSpan timeout)
+        {
             try
             {
                 var envelope = new LanApiEnvelope<object>
@@ -72,7 +82,8 @@ namespace QuanLyHoSo.Infrastructure.Network
                 };
                 var json = JsonSerializer.Serialize(envelope, _jsonOptions);
                 using var content = new StringContent(json, Encoding.UTF8, "application/json");
-                using var response = _httpClient.PostAsync($"api/{route}", content).GetAwaiter().GetResult();
+                using var timeoutSource = new CancellationTokenSource(timeout);
+                using var response = _httpClient.PostAsync($"api/{route}", content, timeoutSource.Token).GetAwaiter().GetResult();
                 var responseBody = response.Content.ReadAsStringAsync().GetAwaiter().GetResult();
 
                 if (!response.IsSuccessStatusCode)
@@ -115,7 +126,8 @@ namespace QuanLyHoSo.Infrastructure.Network
                 };
                 var json = JsonSerializer.Serialize(envelope, _jsonOptions);
                 using var content = new StringContent(json, Encoding.UTF8, "application/json");
-                using var response = _httpClient.PostAsync($"api/{route}", content).GetAwaiter().GetResult();
+                using var timeoutSource = new CancellationTokenSource(TimeSpan.FromMinutes(5));
+                using var response = _httpClient.PostAsync($"api/{route}", content, timeoutSource.Token).GetAwaiter().GetResult();
                 if (!response.IsSuccessStatusCode)
                 {
                     var responseBody = response.Content.ReadAsStringAsync().GetAwaiter().GetResult();

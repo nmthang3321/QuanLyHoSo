@@ -1037,8 +1037,13 @@ namespace QuanLyHoSo.ViewModels
                 if (attachment.Content != null && File.Exists(attachment.FilePath))
                 {
                     localPath = attachment.FilePath;
+                    if (attachment.CanSaveEditedContent)
+                    {
+                        _editableAttachmentPaths[GetAttachmentEditKey(attachment.FileName)] = localPath;
+                        _saveAttachmentChangesCommand.RaiseCanExecuteChanged();
+                    }
                 }
-                else if (CanUpdateProcessing)
+                else if (CanUpdateProcessing && attachment.CanSaveEditedContent)
                 {
                     var editKey = GetAttachmentEditKey(attachment.FileName);
                     if (!_editableAttachmentPaths.TryGetValue(editKey, out localPath) || !File.Exists(localPath))
@@ -1075,7 +1080,7 @@ namespace QuanLyHoSo.ViewModels
 
         private bool CanSaveAttachmentChanges(object parameter)
         {
-            if (!CanUpdateProcessing || IsProcessingUpdateBusy || parameter is not AttachmentDraft attachment || attachment.Content != null)
+            if (!CanUpdateProcessing || IsProcessingUpdateBusy || parameter is not AttachmentDraft attachment || !attachment.CanSaveEditedContent)
             {
                 return false;
             }
@@ -1106,7 +1111,15 @@ namespace QuanLyHoSo.ViewModels
 
                 IsProcessingUpdateBusy = true;
                 var content = await Task.Run(() => File.ReadAllBytes(localPath));
-                var updatedAttachment = await Task.Run(() => _dataService.UpdateAttachmentContent(recordCode, attachment.FileName, content));
+                var updatedAttachment = attachment.Content != null
+                    ? new AttachmentDraft
+                    {
+                        FileName = attachment.FileName,
+                        FileSize = FormatFileSize(fileInfo.Length),
+                        FilePath = localPath,
+                        Content = content
+                    }
+                    : await Task.Run(() => _dataService.UpdateAttachmentContent(recordCode, attachment.FileName, content));
                 var index = Attachments.IndexOf(attachment);
                 if (index >= 0)
                 {
@@ -1120,7 +1133,10 @@ namespace QuanLyHoSo.ViewModels
                 }
 
                 AppLogger.Info("Attachments", "UpdateContent", "Attachment content updated.", recordCode);
-                MessageBox.Show("Đã lưu bản chỉnh sửa lên hệ thống.", "Lưu tài liệu", MessageBoxButton.OK, MessageBoxImage.Information);
+                var successMessage = attachment.Content == null
+                    ? "Đã lưu bản chỉnh sửa lên hệ thống."
+                    : "Đã cập nhật bản chỉnh sửa trong danh sách tài liệu. Bấm Cập nhật để lưu xử lý hồ sơ.";
+                MessageBox.Show(successMessage, "Lưu tài liệu", MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (IOException ex)
             {

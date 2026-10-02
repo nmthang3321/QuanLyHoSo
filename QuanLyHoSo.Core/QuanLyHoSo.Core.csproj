@@ -24,6 +24,7 @@
     <Compile Include="..\Infrastructure\Network\LanServerUnavailableException.cs" Link="Network\LanServerUnavailableException.cs" />
     <Compile Include="..\Infrastructure\Security\AuthContext.cs" Link="Security\AuthContext.cs" />
     <Compile Include="..\Infrastructure\Security\PasswordHasher.cs" Link="Security\PasswordHasher.cs" />
+    <Compile Include="..\Infrastructure\Updates\ApplicationUpdater.cs" Link="Updates\ApplicationUpdater.cs" />
   </ItemGroup>
 
 </Project>

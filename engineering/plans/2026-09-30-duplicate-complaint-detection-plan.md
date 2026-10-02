@@ -1,5 +1,7 @@
 # Duplicate complaint detection hardening — 2026-09-30
 
+> Superseded on 2026-10-02 by the proactive sender-name + area (+ optional entered phone) intake warning documented in `engineering/features/RECORD_RESUBMISSION.md`. This remains the historical plan for the earlier behavior.
+
 Branch: `main` (direct fix on main, as agreed with user)
 
 ## Problem

@@ -6,7 +6,6 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
-using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
@@ -18,7 +17,9 @@ using QuanLyHoSo.ApplicationServices.Abstractions;
 using QuanLyHoSo.Infrastructure.Configuration;
 using QuanLyHoSo.Infrastructure.Data;
 using QuanLyHoSo.Infrastructure.Logging;
+using QuanLyHoSo.Infrastructure.Network;
 using QuanLyHoSo.Infrastructure.Security;
+using QuanLyHoSo.Infrastructure.Updates;
 using QuanLyHoSo.Models;
 using Forms = System.Windows.Forms;
 
@@ -30,6 +31,8 @@ namespace QuanLyHoSo.ViewModels
         private const string GitHubReleasesApiUrl = "https://api.github.com/repos/nmthang3321/QuanLyHoSo/releases";
         private const string GitHubReleasesPageUrl = "https://github.com/nmthang3321/QuanLyHoSo/releases/latest";
         private const int CatalogDialogPageSize = 6;
+        private const string ClientOnlyUpdateScope = "Chỉ cập nhật Client";
+        private const string ServerAndClientUpdateScope = "Cập nhật Server và Client";
 
         private readonly IApplicationDataService _dataService;
         private readonly Action _openGuide;
@@ -47,9 +50,13 @@ namespace QuanLyHoSo.ViewModels
         private string _latestReleaseUrl;
         private string _latestReleaseDownloadUrl;
         private string _latestReleaseVersion;
-        private bool _latestUpdateIsInternalPackage;
         private bool _isCheckingUpdate;
         private bool _hasAvailableUpdate;
+        private bool _clientUpdateAvailable;
+        private bool _serverUpdateAvailable;
+        private string _latestServerFileName;
+        private string _latestServerVersion;
+        private string _selectedUpdateScope;
         private bool _isCatalogDialogOpen;
         private bool _isSystemLogDialogOpen;
         private bool _isGeneralSettingsDialogOpen;
@@ -108,6 +115,11 @@ namespace QuanLyHoSo.ViewModels
             UserProcessorNames = new ObservableCollection<string>();
             UserRoles = new ObservableCollection<string> { Models.UserRoles.Admin, Models.UserRoles.Officer, Models.UserRoles.Leader };
             DataAccessModes = new ObservableCollection<string> { "AdminHost", "Client" };
+            UpdateScopes = new ObservableCollection<string>
+            {
+                ClientOnlyUpdateScope,
+                ServerAndClientUpdateScope
+            };
 
             SelectCatalogGroupCommand = new RelayCommand(SelectCatalogGroup);
             OpenCatalogDialogCommand = new RelayCommand(OpenCatalogDialog, _ => CanEditSettings);
@@ -167,6 +179,7 @@ namespace QuanLyHoSo.ViewModels
             UpdateStatus = "Chưa kiểm tra cập nhật";
             _latestReleaseUrl = GitHubReleasesPageUrl;
             SelectedUserRole = UserRoles[1];
+            SelectedUpdateScope = ClientOnlyUpdateScope;
 
             RefreshSoftwareInfos();
             RefreshCatalogGroupCounts();
@@ -181,6 +194,7 @@ namespace QuanLyHoSo.ViewModels
         public ObservableCollection<string> UserProcessorNames { get; }
         public ObservableCollection<string> UserRoles { get; }
         public ObservableCollection<string> DataAccessModes { get; }
+        public ObservableCollection<string> UpdateScopes { get; }
 
         public ICommand SelectCatalogGroupCommand { get; }
         public ICommand OpenCatalogDialogCommand { get; }
@@ -311,6 +325,9 @@ namespace QuanLyHoSo.ViewModels
 
         public bool CanManageUsers => AuthContext.CanManageUsers;
         public bool CanEditSettings => AuthContext.IsAdmin;
+        public bool CanChooseServerUpdate => AuthContext.IsAdmin && AppPathSettings.Current.IsClientMode;
+        public bool IsServerAndClientUpdateSelected => CanChooseServerUpdate &&
+            string.Equals(SelectedUpdateScope, ServerAndClientUpdateScope, StringComparison.Ordinal);
         public string SystemLogScopeText => AuthContext.IsAdmin
             ? "Ghi nhận các thao tác thêm, sửa, xóa và cập nhật dữ liệu"
             : "Chỉ hiển thị nhật ký hoạt động của tài khoản hiện tại";
@@ -527,6 +544,22 @@ namespace QuanLyHoSo.ViewModels
             set => SetProperty(ref _updateStatus, value);
         }
 
+        public string SelectedUpdateScope
+        {
+            get => _selectedUpdateScope;
+            set
+            {
+                if (SetProperty(ref _selectedUpdateScope, value))
+                {
+                    HasAvailableUpdate = false;
+                    _clientUpdateAvailable = false;
+                    _serverUpdateAvailable = false;
+                    UpdateStatus = "Chưa kiểm tra cập nhật";
+                    OnPropertyChanged(nameof(IsServerAndClientUpdateSelected));
+                }
+            }
+        }
+
         public bool IsCheckingUpdate
         {
             get => _isCheckingUpdate;
@@ -554,11 +587,7 @@ namespace QuanLyHoSo.ViewModels
 
         public string VersionText
         {
-            get
-            {
-                var version = Assembly.GetExecutingAssembly().GetName().Version;
-                return version == null ? "1.0.0" : $"{version.Major}.{version.Minor}.{version.Build}";
-            }
+            get => LanProtocolVersion.Current;
         }
 
         private void OpenChangePasswordDialog()
@@ -1447,40 +1476,57 @@ namespace QuanLyHoSo.ViewModels
         {
             IsCheckingUpdate = true;
             HasAvailableUpdate = false;
-            _latestUpdateIsInternalPackage = false;
+            _clientUpdateAvailable = false;
+            _serverUpdateAvailable = false;
             _latestReleaseDownloadUrl = null;
             _latestReleaseVersion = null;
+            _latestServerFileName = null;
+            _latestServerVersion = null;
             UpdateStatus = "Đang kiểm tra gói cập nhật nội bộ trên máy server...";
 
             try
             {
-                var internalUpdate = await Task.Run(() => _dataService.GetInternalUpdatePackageInfo());
-                var currentVersion = NormalizeVersionText(VersionText);
-                if (internalUpdate?.HasPackage != true)
+                var overview = await Task.Run(() => _dataService.GetInternalUpdateOverview());
+                var currentClientVersion = NormalizeVersionText(VersionText);
+                _clientUpdateAvailable = IsNewerPackage(
+                    overview?.ClientPackage,
+                    currentClientVersion,
+                    out _latestReleaseVersion);
+                if (_clientUpdateAvailable)
                 {
-                    UpdateStatus = "Chưa có gói cập nhật nội bộ trên máy server.";
+                    _latestReleaseDownloadUrl = overview.ClientPackage.FileName;
+                }
+
+                var clientStatus = DescribePackageStatus(
+                    "Client",
+                    overview?.ClientPackage,
+                    currentClientVersion,
+                    _clientUpdateAvailable);
+
+                if (IsServerAndClientUpdateSelected)
+                {
+                    var currentServerVersion = NormalizeVersionText(overview?.ServerVersion);
+                    _serverUpdateAvailable = IsNewerPackage(
+                        overview?.ServerPackage,
+                        currentServerVersion,
+                        out _latestServerVersion);
+                    if (_serverUpdateAvailable)
+                    {
+                        _latestServerFileName = overview.ServerPackage.FileName;
+                    }
+
+                    var serverStatus = DescribePackageStatus(
+                        "Server",
+                        overview?.ServerPackage,
+                        currentServerVersion,
+                        _serverUpdateAvailable);
+                    HasAvailableUpdate = _clientUpdateAvailable || _serverUpdateAvailable;
+                    UpdateStatus = $"{clientStatus}\n{serverStatus}";
                     return;
                 }
 
-                var latestVersion = NormalizeVersionText(internalUpdate.Version);
-                if (!Version.TryParse(latestVersion, out var latest) ||
-                    !Version.TryParse(currentVersion, out var current))
-                {
-                    UpdateStatus = "Không đọc được số phiên bản từ gói cập nhật Client. Tên file nên có dạng QuanLyHoSo-Client-1.0.1.zip.";
-                    return;
-                }
-
-                if (latest > current)
-                {
-                    _latestUpdateIsInternalPackage = true;
-                    _latestReleaseDownloadUrl = internalUpdate.FileName;
-                    _latestReleaseVersion = latestVersion;
-                    HasAvailableUpdate = true;
-                    UpdateStatus = $"Có gói cập nhật nội bộ {latestVersion}. Phiên bản hiện tại là {currentVersion}. Bấm Cập nhật để tải từ máy server.";
-                    return;
-                }
-
-                UpdateStatus = $"Phiên bản {currentVersion} đang là bản mới nhất theo gói cập nhật nội bộ.";
+                HasAvailableUpdate = _clientUpdateAvailable;
+                UpdateStatus = clientStatus;
             }
             catch (Exception ex)
             {
@@ -1497,7 +1543,6 @@ namespace QuanLyHoSo.ViewModels
         {
             IsCheckingUpdate = true;
             HasAvailableUpdate = false;
-            _latestUpdateIsInternalPackage = false;
             UpdateStatus = "Đang kiểm tra phiên bản mới trên GitHub...";
 
             try
@@ -1570,14 +1615,24 @@ namespace QuanLyHoSo.ViewModels
 
         private async Task UpdateSoftwareAsync()
         {
-            if (!HasAvailableUpdate || string.IsNullOrWhiteSpace(_latestReleaseDownloadUrl))
+            if (!HasAvailableUpdate)
             {
                 MessageBox.Show("Chưa có bản cập nhật mới. Vui lòng bấm Kiểm tra cập nhật để kiểm tra lại.", "Cập nhật phần mềm", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
 
+            var updateServer = IsServerAndClientUpdateSelected && _serverUpdateAvailable;
+            var updateClient = _clientUpdateAvailable;
+            var targets = updateServer && updateClient
+                ? $"Server lên {_latestServerVersion} và Client lên {_latestReleaseVersion}"
+                : updateServer
+                    ? $"Server lên {_latestServerVersion}"
+                    : $"Client lên {_latestReleaseVersion}";
+            var elevationNotice = updateServer
+                ? "\n\nWindows sẽ yêu cầu quyền Administrator trên máy Server."
+                : string.Empty;
             var confirm = MessageBox.Show(
-                $"App sẽ tải bản {_latestReleaseVersion}, đóng chương trình, cài bản mới rồi mở lại.\n\nBạn có muốn cập nhật ngay không?",
+                $"Ứng dụng sẽ cập nhật {targets}, sau đó tự khởi động lại về trang đăng nhập.{elevationNotice}\n\nBạn có muốn cập nhật ngay không?",
                 "Cập nhật phần mềm",
                 MessageBoxButton.YesNo,
                 MessageBoxImage.Question);
@@ -1587,42 +1642,47 @@ namespace QuanLyHoSo.ViewModels
             }
 
             IsCheckingUpdate = true;
-            UpdateStatus = _latestUpdateIsInternalPackage
-                ? $"Đang tải gói cập nhật {_latestReleaseVersion} từ máy server..."
-                : $"Đang tải bản cập nhật {_latestReleaseVersion}...";
 
             try
             {
-                var updateFolder = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                    "QuanLyHoSo",
-                    "Updates");
-                Directory.CreateDirectory(updateFolder);
-
-                var packagePath = Path.Combine(updateFolder, $"QuanLyHoSo-Client-{_latestReleaseVersion}.zip");
-                if (_latestUpdateIsInternalPackage)
+                string clientPackagePath = null;
+                if (updateClient)
                 {
-                    await Task.Run(() => _dataService.DownloadInternalUpdatePackage(_latestReleaseDownloadUrl, packagePath));
+                    UpdateStatus = $"Đang tải gói cập nhật Client {_latestReleaseVersion} từ máy server...";
+                    var updateFolder = Path.Combine(
+                        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                        "QuanLyHoSo",
+                        "Updates");
+                    Directory.CreateDirectory(updateFolder);
+                    clientPackagePath = Path.Combine(updateFolder, $"QuanLyHoSo-Client-{_latestReleaseVersion}.zip");
+                    await Task.Run(() => _dataService.DownloadInternalUpdatePackage(_latestReleaseDownloadUrl, clientPackagePath));
+                }
+
+                if (updateServer)
+                {
+                    UpdateStatus = $"Đang yêu cầu cập nhật Server {_latestServerVersion}...";
+                    await Task.Run(() => _dataService.StartInternalServerUpdate(_latestServerFileName));
+                    UpdateStatus = "Server đang cập nhật và khởi động lại...";
+                    await WaitForServerRestartAsync();
+                }
+
+                UpdateStatus = "Đang khởi động lại ứng dụng...";
+                if (updateClient)
+                {
+                    ApplicationUpdater.Start(
+                        clientPackagePath,
+                        requireAdministrator: false,
+                        shutdownApplication: () => Application.Current.Shutdown());
                 }
                 else
                 {
-                    using var client = new HttpClient();
-                    client.DefaultRequestHeaders.UserAgent.ParseAdd("QuanLyHoSo-Updater/1.0");
-                    using var response = await client.GetAsync(_latestReleaseDownloadUrl);
-                    response.EnsureSuccessStatusCode();
-
-                    await using var remoteStream = await response.Content.ReadAsStreamAsync();
-                    await using var fileStream = File.Create(packagePath);
-                    await remoteStream.CopyToAsync(fileStream);
+                    RestartCurrentApplication();
                 }
-
-                UpdateStatus = "Đã tải bản cập nhật. Đang khởi động trình cài đặt...";
-                StartUpdaterAndShutdown(packagePath);
             }
             catch (Exception ex)
             {
                 AppLogger.Error("Settings", "UpdateSoftware", ex, "Failed to download or start update package.");
-                UpdateStatus = "Không thể tải hoặc cài bản cập nhật. Vui lòng thử lại hoặc tải thủ công từ GitHub Release.";
+                UpdateStatus = "Không thể hoàn tất cập nhật. Ứng dụng chưa bị đóng; vui lòng kiểm tra log và thử lại.";
                 MessageBox.Show($"Không thể cập nhật tự động.\n\n{ex.Message}", "Cập nhật phần mềm", MessageBoxButton.OK, MessageBoxImage.Error);
             }
             finally
@@ -1631,68 +1691,65 @@ namespace QuanLyHoSo.ViewModels
             }
         }
 
-        private static void StartUpdaterAndShutdown(string packagePath)
+        private async Task WaitForServerRestartAsync()
         {
-            var currentProcess = Process.GetCurrentProcess();
-            var exePath = currentProcess.MainModule?.FileName ?? Path.Combine(AppContext.BaseDirectory, "QuanLyHoSo.exe");
-            var installDir = AppDomain.CurrentDomain.BaseDirectory;
-            var scriptPath = Path.Combine(Path.GetTempPath(), $"QuanLyHoSo_Update_{Guid.NewGuid():N}.ps1");
-
-            var script = BuildUpdaterScript(
-                currentProcess.Id,
-                packagePath,
-                installDir,
-                exePath);
-            File.WriteAllText(scriptPath, script, Encoding.UTF8);
-
-            Process.Start(new ProcessStartInfo
+            await Task.Delay(2000);
+            for (var attempt = 0; attempt < 60; attempt++)
             {
-                FileName = "powershell.exe",
-                Arguments = $"-NoProfile -ExecutionPolicy Bypass -File {QuoteProcessArgument(scriptPath)}",
-                UseShellExecute = false,
-                CreateNoWindow = true
-            });
+                try
+                {
+                    await Task.Run(() => _dataService.PingServer());
+                    return;
+                }
+                catch
+                {
+                    await Task.Delay(1000);
+                }
+            }
 
+            throw new TimeoutException("Server chưa hoạt động trở lại sau 60 giây.");
+        }
+
+        private static void RestartCurrentApplication()
+        {
+            var executablePath = Process.GetCurrentProcess().MainModule?.FileName
+                ?? Path.Combine(AppContext.BaseDirectory, "QuanLyHoSo.exe");
+            Process.Start(new ProcessStartInfo(executablePath) { UseShellExecute = true });
             Application.Current.Shutdown();
         }
 
-        private static string BuildUpdaterScript(int processId, string packagePath, string installDir, string exePath)
+        private static bool IsNewerPackage(
+            InternalUpdatePackageInfo package,
+            string currentVersionText,
+            out string packageVersionText)
         {
-            return $@"
-$ErrorActionPreference = 'Stop'
-$processId = {processId}
-$packagePath = {QuotePowerShellString(packagePath)}
-$installDir = {QuotePowerShellString(installDir)}
-$exePath = {QuotePowerShellString(exePath)}
-$extractDir = Join-Path ([System.IO.Path]::GetTempPath()) ('QuanLyHoSo_Update_' + [System.Guid]::NewGuid().ToString('N'))
-
-Wait-Process -Id $processId -ErrorAction SilentlyContinue
-Start-Sleep -Milliseconds 700
-New-Item -ItemType Directory -Path $extractDir -Force | Out-Null
-Expand-Archive -LiteralPath $packagePath -DestinationPath $extractDir -Force
-
-$sourceDir = $extractDir
-$children = @(Get-ChildItem -LiteralPath $extractDir)
-$directories = @($children | Where-Object {{ $_.PSIsContainer }})
-$files = @($children | Where-Object {{ -not $_.PSIsContainer }})
-if ($directories.Count -eq 1 -and $files.Count -eq 0) {{
-    $sourceDir = $directories[0].FullName
-}}
-
-Copy-Item -Path (Join-Path $sourceDir '*') -Destination $installDir -Recurse -Force
-Start-Process -FilePath $exePath
-Remove-Item -LiteralPath $extractDir -Recurse -Force -ErrorAction SilentlyContinue
-";
+            packageVersionText = NormalizeVersionText(package?.Version);
+            return package?.HasPackage == true &&
+                Version.TryParse(packageVersionText, out var packageVersion) &&
+                Version.TryParse(currentVersionText, out var currentVersion) &&
+                packageVersion > currentVersion;
         }
 
-        private static string QuotePowerShellString(string value)
+        private static string DescribePackageStatus(
+            string productName,
+            InternalUpdatePackageInfo package,
+            string currentVersionText,
+            bool hasNewerPackage)
         {
-            return $"'{value.Replace("'", "''")}'";
-        }
+            if (package?.HasPackage != true)
+            {
+                return $"{productName}: chưa có gói cập nhật trên máy server.";
+            }
 
-        private static string QuoteProcessArgument(string value)
-        {
-            return $"\"{value.Replace("\"", "\\\"")}\"";
+            var packageVersionText = NormalizeVersionText(package.Version);
+            if (!Version.TryParse(packageVersionText, out _) || !Version.TryParse(currentVersionText, out _))
+            {
+                return $"{productName}: không đọc được số phiên bản từ tên gói cập nhật.";
+            }
+
+            return hasNewerPackage
+                ? $"{productName}: có bản {packageVersionText}; hiện tại là {currentVersionText}."
+                : $"{productName}: phiên bản {currentVersionText} đang là bản mới nhất.";
         }
 
         private static string NormalizeVersionText(string versionText)

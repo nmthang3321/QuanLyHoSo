@@ -7,4 +7,5 @@ Service methods: `GetProcessingQueueMetrics`, `GetProcessingQueueRecords`, and `
 - Officer edits only records assigned to their display name; Leader is read-only.
 - Area filters are `ObservableCollection<AreaSelectionOption>`.
 - The `HighPriority` card and filter match the protected `Priority` values `Nghiêm trọng`, `Rất nghiêm trọng`, and `Đặc biệt nghiêm trọng`. This internal catalog is seeded but is not editable from Settings.
+- The `Processed` card counts and filters records whose stored status is `Đã giải quyết`. Resubmission rows (`Đã giải quyết — hồ sơ gửi lại`) are excluded because they are not processed independently.
 - See `engineering/pages/PROCESSING_DETAIL.md` for detail/update behavior.

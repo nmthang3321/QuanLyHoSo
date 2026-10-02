@@ -20,6 +20,15 @@ namespace QuanLyHoSo.Models
         public string FileSize { get; set; }
         public string FilePath { get; set; }
         public byte[] Content { get; set; }
+        public bool CanSaveEditedContent
+        {
+            get
+            {
+                var extension = System.IO.Path.GetExtension(FileName ?? string.Empty);
+                return string.Equals(extension, ".doc", System.StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(extension, ".docx", System.StringComparison.OrdinalIgnoreCase);
+            }
+        }
     }
 
     public static class RecordStatuses
@@ -50,9 +59,8 @@ namespace QuanLyHoSo.Models
         public string ResolutionSummary { get; set; }
         public string ResubmissionReason { get; set; }
         public bool IsSameCase { get; set; }
-        // True only when the identity rules matched (name + phone, or name + address
-        // when both phones are empty). Name-only fallback rows are warnings, never
-        // confirmed senders.
+        // Retained for additive wire compatibility. Current duplicate candidates
+        // already satisfy sender + area and, when entered, phone matching.
         public bool IsConfirmedSender { get; set; } = true;
         public bool CanLinkAsResubmission => IsSameCase && IsConfirmedSender && string.IsNullOrEmpty(OriginalRecordCode);
         public string SenderMatchDisplay => IsConfirmedSender ? "Đã xác thực" : "Trùng tên, chưa xác thực";
