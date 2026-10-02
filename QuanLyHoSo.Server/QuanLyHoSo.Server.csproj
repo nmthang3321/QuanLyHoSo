@@ -5,9 +5,9 @@
     <TargetFramework>net5.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>
-    <Version>1.1.0</Version>
-    <AssemblyVersion>1.1.0.0</AssemblyVersion>
-    <FileVersion>1.1.0.0</FileVersion>
+    <Version>1.2.0</Version>
+    <AssemblyVersion>1.2.0.0</AssemblyVersion>
+    <FileVersion>1.2.0.0</FileVersion>
     <ApplicationIcon>..\Assets\AppIcon.ico</ApplicationIcon>
   </PropertyGroup>
 
@@ -21,7 +21,10 @@
     <Content Include="..\doc\templates\phieu_de_xuat.docx" Link="doc\templates\phieu_de_xuat.docx" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="..\doc\templates\phieu_huong_dan.docx" Link="doc\templates\phieu_huong_dan.docx" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="..\doc\templates\thong_bao.docx" Link="doc\templates\thong_bao.docx" CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="..\SampleData\quanlyhoso-demo.db" Link="SampleData\quanlyhoso-demo.db" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\SampleData\quanlyhoso-demo.db"
+             Link="SampleData\quanlyhoso-demo.db"
+             CopyToOutputDirectory="PreserveNewest"
+             CopyToPublishDirectory="Never" />
   </ItemGroup>
 
 </Project>

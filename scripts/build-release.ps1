@@ -59,6 +59,13 @@ try {
         -o $serverPublishDir
     if ($LASTEXITCODE -ne 0) { throw "Server publish failed: $LASTEXITCODE" }
 
+    $packagedDatabases = @(
+        Get-ChildItem -LiteralPath $clientPublishDir, $serverPublishDir -Filter '*.db' -File -Recurse -ErrorAction SilentlyContinue
+    )
+    if ($packagedDatabases.Count -gt 0) {
+        throw "Release publish output must not contain database files: $($packagedDatabases.FullName -join ', ')"
+    }
+
     $clientUpdatePackage = Join-Path $installerDir "QuanLyHoSo-Client-$Version.zip"
     $serverUpdatePackage = Join-Path $installerDir "QuanLyHoSo-Server-$Version.zip"
     Compress-Archive -Path (Join-Path $clientPublishDir '*') -DestinationPath $clientUpdatePackage -Force

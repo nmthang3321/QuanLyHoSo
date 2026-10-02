@@ -32,8 +32,9 @@ Git rules:
 
 Customer releases:
 - Run `scripts/build-release.ps1 -Version 1.0.0` to generate the customer package.
-- `artifacts/installer/` contains two Windows x64 setup EXEs and `SHA256.txt`.
+- `artifacts/installer/` contains two Windows x64 setup EXEs, the Client/Server binary update ZIPs, and `SHA256.txt`.
 - Pass `-AdditionalAssetPath <path>` to copy one additional release asset (for example an encrypted customer-data package) into the output and include it in `SHA256.txt`.
-- Customer PDF files and update ZIPs are not release assets.
+- Customer PDF files and databases are not release assets.
+- Published Client/Server binaries and installers must not contain `.db` files; the release script rejects the package if one is found.
 - Pushing a `v<version>` tag runs `.github/workflows/release.yml`, verifies the solution,
-  builds the installers, and publishes both installers plus `SHA256.txt` to GitHub Releases.
+  builds the installers, and publishes both installers, both binary update ZIPs, and `SHA256.txt` to GitHub Releases.

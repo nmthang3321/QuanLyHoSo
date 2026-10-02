@@ -62,18 +62,20 @@ jobs:
           tag_name: ${{ steps.version.outputs.tag }}
           target_commitish: ${{ github.sha }}
           name: QuanLyHoSo ${{ steps.version.outputs.tag }}
-          prerelease: true
+          prerelease: false
           make_latest: true
           fail_on_unmatched_files: true
           body: |
-            Bản thử nghiệm QuanLyHoSo dành cho Windows 64-bit, kèm mã SHA-256.
+            Bản phát hành QuanLyHoSo dành cho Windows 64-bit.
 
-            - Cài Server và Client theo thành phần cần triển khai.
-            - Phiên bản Server và Client được quản lý độc lập; không bắt buộc phải trùng nhau.
+            - Dùng file Setup để cài mới hoặc nâng cấp thủ công Client/Server.
+            - Các gói ZIP được ứng dụng sử dụng cho chức năng cập nhật tự động.
             - Bộ cài đã kèm .NET Runtime.
-            - Chức năng cập nhật trong ứng dụng chỉ cập nhật Client. Sao lưu dữ liệu trước khi nâng cấp Server.
-            - Kiểm tra mã SHA-256 của hai bộ cài theo file SHA256.txt.
+            - Không kèm cơ sở dữ liệu hay dữ liệu hồ sơ.
+            - Kiểm tra mã SHA-256 theo file SHA256.txt.
           files: |
             artifacts/installer/QuanLyHoSo-Server-Setup-${{ steps.version.outputs.value }}-win-x64.exe
             artifacts/installer/QuanLyHoSo-Client-Setup-${{ steps.version.outputs.value }}-win-x64.exe
+            artifacts/installer/QuanLyHoSo-Client-${{ steps.version.outputs.value }}.zip
+            artifacts/installer/QuanLyHoSo-Server-${{ steps.version.outputs.value }}.zip
             artifacts/installer/SHA256.txt

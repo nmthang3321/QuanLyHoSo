@@ -2,6 +2,8 @@
 
 `quanlyhoso-demo.db` is a SQLite database for application demonstrations and development. It contains 105 records distributed evenly across seven officers, with 15 records per officer and varied processing statuses and deadlines for exercising the Staff Tracking page.
 
+The sample database is available in development build output only and is excluded from published release packages and installers.
+
 Normal production initialization does not create demo records. A fresh customer database starts with the built-in administrator, standard areas, and default catalogs, but with zero records. Demo records are enabled only by the explicit `--sample-data` server option.
 
 ## Run the server with sample data

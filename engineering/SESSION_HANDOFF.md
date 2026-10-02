@@ -171,7 +171,7 @@ See `engineering/features/RECORD_RESUBMISSION.md`.
 
 ## Customer documentation
 
-- Development builds now default both Client and Server assembly/product versions to `1.1.0`, matching the latest repository tag. Login and Settings display the running assembly version instead of a hard-coded `1.0.0` string.
+- Development builds default both Client and Server assembly/product versions to `1.2.0`. Login and Settings display the running assembly version instead of a hard-coded version string.
 
 - Release `v1.0.0` was published at `https://github.com/nmthang3321/QuanLyHoSo/releases/tag/v1.0.0`, from tagged commit `89d9c4b`. It contains exactly four uploaded assets: Server setup, Client setup, the 58-page portrait customer PDF, and `SHA256.txt`. Both installers compiled locally with product version 1.0.0; all four uploaded assets were downloaded and SHA-256 verified before publication. GitHub Actions run `35236552104` could not start because the account was locked due to a billing issue, so publication used the verified local build and GitHub Releases API. Resolve billing before relying on future tag-triggered builds. The Client installer compile error was fixed by assigning COM `ResponseText` to a Pascal string before calling `Pos`.
 - Customer release assets are limited to the Server setup EXE, Client setup EXE, matching-version customer PDF, and `SHA256.txt` (hashing the first three files). `scripts/build-release.ps1` and `.github/workflows/release.yml` share this packaging flow; update ZIPs are not attached. A `v<version>` tag triggers verification, build, and publication.
