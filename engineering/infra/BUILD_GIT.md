@@ -38,3 +38,4 @@ Customer releases:
 - Published Client/Server binaries and installers must not contain `.db` files; the release script rejects the package if one is found.
 - Pushing a `v<version>` tag runs `.github/workflows/release.yml`, verifies the solution,
   builds the installers, and publishes both installers, both binary update ZIPs, and `SHA256.txt` to GitHub Releases.
+- When publishing through the GitHub Releases API from Windows PowerShell 5, read UTF-8 source explicitly and send JSON as UTF-8 bytes. A raw UTF-8-without-BOM `.ps1` file or string request body can corrupt Vietnamese release notes.
