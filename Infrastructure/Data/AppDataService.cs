@@ -22,8 +22,6 @@ namespace QuanLyHoSo.Infrastructure.Data
 {
     public sealed class AppDataService : IApplicationDataService
     {
-        private const string RecordCodePrefix = "HS";
-        private const int RecordCodeSequenceWidth = 6;
         private const int PerformanceBarMaxWidth = 270;
         private const int TopOfficerCount = 5;
         private const int ProcessStepCount = 8;
@@ -1661,13 +1659,9 @@ VALUES ($createdAt, $senderName, $scope, $targetName, $kpiTarget, $message);";
 
         public string GetNextRecordCode()
         {
-            if (AppPathSettings.Current.IsClientMode)
-            {
-                return _lanClient.Call<string>("records/next-code", null) ?? string.Empty;
-            }
-
-            using var connection = OpenConnection();
-            return GenerateNextRecordCode(connection, null, DateTime.Today.Year);
+            // Retained for wire compatibility with older clients. Record codes are
+            // now entered entirely by the user and are never generated automatically.
+            return string.Empty;
         }
 
         private static string NormalizeSenderText(string value)
@@ -2264,17 +2258,9 @@ LIMIT 1;";
             }
 
             var requestedRecordCode = RecordCodeRules.Normalize(record.RecordCode);
-            if (!recordId.HasValue && requestedRecordCode.Length == 0)
+            if (requestedRecordCode.Length == 0)
             {
-                requestedRecordCode = GenerateNextRecordCode(connection, transaction, DateTime.Today.Year);
-            }
-
-            var recordCodeWasChanged = !recordId.HasValue ||
-                !string.Equals(requestedRecordCode, NormalizeDbText(originalRecordCode), StringComparison.Ordinal);
-            if (recordCodeWasChanged && !RecordCodeRules.IsValid(requestedRecordCode))
-            {
-                throw new InvalidOperationException(
-                    $"Số hồ sơ / Số đơn phải đúng định dạng HS-<năm>-<6 chữ số>. Ví dụ: {RecordCodeRules.FormatExample}.");
+                throw new InvalidOperationException("Số hồ sơ / Số đơn không được để trống.");
             }
 
             EnsureRecordCodeAvailable(connection, transaction, requestedRecordCode, recordId);
@@ -2991,12 +2977,17 @@ ORDER BY Id DESC LIMIT 1;";
 
         private static string SanitizePathSegment(string value, string fallback)
         {
-            var invalidCharacters = Path.GetInvalidFileNameChars();
-            var sanitized = new string((value ?? string.Empty)
-                .Trim()
-                .Select(character => invalidCharacters.Contains(character) ? '_' : character)
-                .ToArray());
-            return string.IsNullOrWhiteSpace(sanitized) ? fallback : sanitized;
+            var normalized = RecordCodeRules.Normalize(value);
+            if (Regex.IsMatch(normalized, @"^HS-\d{4}-\d{6}$", RegexOptions.CultureInvariant))
+            {
+                // Preserve the established storage layout for existing records.
+                return normalized;
+            }
+
+            if (normalized.Length == 0) return fallback;
+            using var sha256 = SHA256.Create();
+            var hash = sha256.ComputeHash(System.Text.Encoding.UTF8.GetBytes(normalized));
+            return fallback + "-" + BitConverter.ToString(hash, 0, 12).Replace("-", string.Empty).ToLowerInvariant();
         }
 
         private IReadOnlyList<AttachmentDraft> MergeInitialResultDocuments(
@@ -5734,26 +5725,6 @@ WHERE CatalogType = $catalogType
             command.CommandText = $"SELECT COUNT(*) FROM (SELECT * FROM Records WHERE DeletedAt = '') AS Records {BuildScopedDateWhere(command, fromDate, toDate)};";
             AddDateParameters(command, fromDate, toDate);
             return Convert.ToInt32(command.ExecuteScalar(), CultureInfo.InvariantCulture);
-        }
-
-        private static string GenerateNextRecordCode(SqliteConnection connection, SqliteTransaction transaction, int year)
-        {
-            var prefix = $"{RecordCodePrefix}-{year}-";
-            using var command = connection.CreateCommand();
-            command.Transaction = transaction;
-            command.CommandText = @"
-SELECT COALESCE(MAX(CAST(SUBSTR(RecordCode, $sequenceStart) AS INTEGER)), 0)
-FROM Records
-WHERE RecordCode LIKE $prefixLike;";
-            command.Parameters.AddWithValue("$sequenceStart", prefix.Length + 1);
-            command.Parameters.AddWithValue("$prefixLike", prefix + "%");
-
-            var maxSequence = Convert.ToInt32(command.ExecuteScalar(), CultureInfo.InvariantCulture);
-            var nextSequence = maxSequence + 1;
-            var sequenceText = nextSequence.ToString(
-                new string('0', RecordCodeSequenceWidth),
-                CultureInfo.InvariantCulture);
-            return prefix + sequenceText;
         }
 
         private static IReadOnlyList<TrendStat> BuildDailyTrend(IReadOnlyList<(DateTime ReceivedDate, bool IsResolved)> records, DateTime startDate, DateTime endDate)

@@ -1,6 +1,12 @@
 # Session handoff - QuanLyHoSo
 
-Last updated: 2026-09-30
+Last updated: 2026-11-04
+
+## Current application changes - 2026-11-04
+
+- New record intake no longer generates or pre-fills a record code. `Số hồ sơ / Số đơn` starts blank and the user must enter it. Any non-whitespace code is accepted without a fixed format, length limit, or forced uppercase conversion; leading/trailing whitespace is trimmed and the user's casing/content is preserved. The existing 400 ms duplicate check, disabled Save state, save-time recheck, service-side duplicate guard, and database unique constraint remain. The legacy `records/next-code` route returns an empty string for older-client wire compatibility.
+- Arbitrary record codes are mapped to stable hashed storage-folder names for attachments and generated documents, while legacy `HS-<year>-<6 digits>` records keep their existing folder layout. Verification: Release build passed with zero errors; smoke 10/10, unit 68/68, and integration 72/72.
+- The local production database was replaced from `data.xls` (`Cấp số đơn`, 5,017 source rows) using `tools/import_lay_so_don_2026.py`. The importer keeps the first row for each normalized record code, dropped 66 later duplicates and one blank-code row, and loaded 4,950 records. It maps only record code, received date, sender extracted from the abstract (last name when several are listed), and abstract plus `. Chuyển <recipient>`; every other business field is blank, while required system status/timestamps are populated. Twelve source abstracts contain no sender name and therefore remain blank. Two visibly malformed source dates were deterministically repaired from adjacent sequential entries (Excel row 1222 to 20/04/2026; row 4501 to 08/10/2026). The old 6,325 records, 7 attachments, 15 histories, and managed files were removed from the live dataset; Users (17), Areas (119), CatalogItems (98), and SystemLogs (137) were preserved. Full pre-change database/managed-file snapshot: `%LocalAppData%\QuanLyHoSo\Backup\pre_replace_records_20261104_203240` (database SHA-256 `A8DFD5946F39A2A10EABBFDBFCA1844E193BC20E9218D0E7725233020C3401A1`). Trial and live imports passed SQLite integrity, zero duplicate/blank codes, exact record count, and field-scope checks.
 
 ## Current application changes - 2026-09-30
 
@@ -32,7 +38,7 @@ Last updated: 2026-09-30
 - The `Chuyển cơ quan khác` processing-history milestone now records the destination agency (`Chuyển đến: <agency>.`); re-transfers update the existing milestone, and older milestones fall back to the record's current destination agency at read time. Covered by the eight-step-workflow integration test.
 - The record-list table adjusts its maximum height to the number of rows currently loaded (`38 + row count × 34`). Short result sets contract vertically; longer sets remain constrained by the available page height and scroll internally. Wheel over the table still closes the area filter popup.
 - The processing-detail page keeps `Quay lại`, `Hủy xử lý`, and `Cập nhật` in a fixed bottom action bar that stays visible while scrolling; the old header back button and the in-card button pair were removed. `Hủy xử lý`/`Cập nhật` remain gated by `CanUpdateProcessing`.
-- Record code is editable at intake and accepts externally supplied values only in the form `HS-<year>-<6 digits>`; duplicate codes are rejected. Automatic next-code generation remains the default convenience value.
+- Record code is editable at intake; this older fixed-format/automatic-generation behavior was superseded by the 2026-11-04 change above.
 - A fresh production database no longer seeds processor names. Sample-data mode still contains named processors for demonstrations.
 - All new attachment bytes are uploaded to the Server and stored below `QuanLyHoSoFiles\Attachments`; generated Word files are stored below `QuanLyHoSoFiles\GeneratedDocuments`. Clients download files through the authenticated API and use local copies only as cache. Accessible legacy paths migrate into managed storage during initialization.
 - The normal `.qlhbackup` format includes SQLite plus all server-managed attachments and generated documents. Restore stages and validates the package and creates a complete pre-restore safety package. Legacy `.db` files remain supported but are database-only.
@@ -140,7 +146,7 @@ See `engineering/features/BACKUP_RESTORE.md` and `engineering/pages/SETTINGS_HOM
 - The workflow has eight Vietnamese guidance icons in business order. `Chuyển cơ quan khác` is step 6, `Chờ kết quả` is step 7, and `Lưu hồ sơ` is step 8; no leadership-approval icon is displayed.
 - Destination agency is required when forwarding to another agency.
 - The record-input action bar is fixed below the scrollable content and is disabled while the comparison overlay is open.
-- Phone number and incident address are optional. The other General Information fields remain required, including contact address and record code. New records default severity to `Ít nghiêm trọng`; record code is editable but must match `HS-<year>-<6 digits>` and be unique, and whitespace-only required values are rejected.
+- Phone number and incident address are optional. The other General Information fields remain required, including contact address and record code. New records default severity to `Ít nghiêm trọng`; record codes must be nonblank and unique, with no fixed format, and whitespace-only required values are rejected.
 - Leaders can open processing details in read-only mode but cannot save, delete, or otherwise update processing.
 - All roles land on Dashboard after sign-in, including after mandatory password changes.
 - Processing details now fall back to the record-form attachment list when the processing payload contains no attachments, preventing persisted files from being shown as missing. A ViewModel regression test covers this case.

@@ -155,7 +155,7 @@ Cho phép tiếp nhận hồ sơ mới với các nhóm thông tin:
 - Mức độ vụ việc và ngày hẹn trả kết quả.
 - Tài liệu liên quan.
 
-Hệ thống kiểm tra các trường bắt buộc, gợi ý mã hồ sơ và ghi nhận người tạo. Người dùng có thể nhập mã từ nguồn bên ngoài theo định dạng `HS-<năm>-<6 chữ số>`; hệ thống từ chối mã sai định dạng hoặc bị trùng. Khi phát hiện lịch sử của cùng người gửi, người dùng có thể đối chiếu trước khi quyết định tạo hồ sơ độc lập hoặc ghi nhận hồ sơ gửi lại.
+Hệ thống kiểm tra các trường bắt buộc và ghi nhận người tạo. Mã hồ sơ do người dùng tự nhập, không bị giới hạn bởi một định dạng hoặc độ dài cố định; hệ thống từ chối mã trống hoặc bị trùng. Khi phát hiện lịch sử của cùng người gửi, người dùng có thể đối chiếu trước khi quyết định tạo hồ sơ độc lập hoặc ghi nhận hồ sơ gửi lại.
 
 ### 6.3 Danh sách hồ sơ
 

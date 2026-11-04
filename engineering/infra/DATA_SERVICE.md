@@ -12,7 +12,7 @@ Important areas:
 - Schema/init: `Initialize`, `CreateSchema`, `TryAddColumn`, `CreateIndexes`
 - Authentication/users: `AuthenticateUser`, `GetUsers`, `SaveUser`, `DeleteUser`
 - Catalogs: `GetCatalogValues`, `GetCatalogItems`, catalog CRUD
-- Intake: `GetNextRecordCode`, `FindSimilarRecord`, `SaveRecordForm`, `DeleteRecord`
+- Intake: `FindSimilarRecord`, `SaveRecordForm`, `DeleteRecord` (`GetNextRecordCode` is a deprecated wire-compatibility contract that returns empty)
 - List/filter/export: `GetFilteredRecords`, `CountFilteredRecords`, `GetExportPreview`, `BuildExportWhere`
 - Processing: queue metrics/list/detail and `UpdateProcessingRecord`
 - Areas: `GetAreaNames`, `EnsureStandardOrganizationAreas`, `AddOptionalAreaFilter`

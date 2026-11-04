@@ -55,6 +55,7 @@ namespace QuanLyHoSo.IntegrationTests
             marker ??= Guid.NewGuid().ToString("N");
             return new RecordFormDraft
             {
+                RecordCode = $"TEST-{Guid.NewGuid():N}",
                 ReceivedDate = "12/09/2026",
                 ReceiveSource = "Trực tiếp",
                 ReceiverName = "Integration Admin",

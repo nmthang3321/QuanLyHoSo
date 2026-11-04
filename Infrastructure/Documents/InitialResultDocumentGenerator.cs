@@ -4,6 +4,9 @@ using System.Globalization;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using QuanLyHoSo.Models;
 
@@ -441,8 +444,16 @@ namespace QuanLyHoSo.Infrastructure.Documents
 
         private static string SanitizeFileName(string value)
         {
-            var invalidChars = Path.GetInvalidFileNameChars();
-            return string.Concat((value ?? string.Empty).Select(ch => invalidChars.Contains(ch) ? '_' : ch));
+            var normalized = RecordCodeRules.Normalize(value);
+            if (Regex.IsMatch(normalized, @"^HS-\d{4}-\d{6}$", RegexOptions.CultureInvariant))
+            {
+                // Preserve the established storage layout for existing records.
+                return normalized;
+            }
+
+            using var sha256 = SHA256.Create();
+            var hash = sha256.ComputeHash(Encoding.UTF8.GetBytes(normalized));
+            return "record-" + BitConverter.ToString(hash, 0, 12).Replace("-", string.Empty).ToLowerInvariant();
         }
 
         private enum TemplateKind

@@ -172,10 +172,24 @@ namespace QuanLyHoSo.UnitTests
                 && draft.AreaName == "Phường Long Xuyên")), Times.Once);
         }
 
+        [Fact]
+        [Trait("Category", "Unit")]
+        [Trait("Category", "Regression")]
+        public void NewForm_ShouldLeaveRecordCodeBlankAndNotRequestGeneratedCode()
+        {
+            using var authScope = QuanLyHoSo.Infrastructure.Security.AuthContext.BeginRequestScope(new AppUser
+                { Id = 1, UserName = "test-admin", DisplayName = "Test Admin", Role = UserRoles.Admin, IsActive = true });
+            var service = NewService();
+
+            using var vm = new RecordInputViewModel(service.Object);
+
+            Assert.Equal(string.Empty, vm.RecordCode);
+            service.Verify(x => x.GetNextRecordCode(), Times.Never);
+        }
+
         private static Mock<IApplicationDataService> NewService()
         {
             var service = new Mock<IApplicationDataService>();
-            service.Setup(x => x.GetNextRecordCode()).Returns("HS-2026-000001");
             service.Setup(x => x.GetCatalogValues(It.IsAny<string>(), It.IsAny<bool>())).Returns(Array.Empty<string>());
             service.Setup(x => x.GetProcessorNames(It.IsAny<bool>())).Returns(Array.Empty<string>());
             service.Setup(x => x.GetAreaNames(It.IsAny<bool>())).Returns(Array.Empty<string>());
@@ -186,6 +200,7 @@ namespace QuanLyHoSo.UnitTests
         {
             return new RecordInputViewModel(service.Object)
             {
+                RecordCode = "Mã hồ sơ kiểm thử",
                 SelectedReceivedDate = new DateTime(2026, 9, 13), ReceiveSource = "Trực tiếp", ReceiverName = "Test Admin",
                 SenderName = "Nguyễn Văn An", SenderPhone = "0909123456", AreaName = "Phường Long Xuyên",
                 ContactAddress = "Phường Long Xuyên", IncidentAddress = "Đường Trần Hưng Đạo",

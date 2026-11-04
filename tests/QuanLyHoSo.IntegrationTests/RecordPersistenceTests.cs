@@ -77,33 +77,49 @@ namespace QuanLyHoSo.IntegrationTests
         [Fact]
         [Trait("Category", "Integration")]
         [Trait("Category", "Regression")]
-        public void CreateRecord_WhenRecordCodeIsEntered_ShouldPreserveNormalizedCode()
+        public void CreateRecord_WhenRecordCodeIsEntered_ShouldTrimAndPreserveCode()
         {
             using var database = new TestDatabase();
             var draft = database.NewRecord("manual-code");
-            draft.RecordCode = "  hs-2031-123456  ";
+            draft.RecordCode = "  Công văn 42/UBND-ĐC  ";
 
             var savedCode = database.Service.SaveRecordForm(draft);
 
-            Assert.Equal("HS-2031-123456", savedCode);
+            Assert.Equal("Công văn 42/UBND-ĐC", savedCode);
             Assert.Equal(savedCode, database.Service.GetRecordForm(savedCode).RecordCode);
         }
 
         [Theory]
-        [InlineData("HS-31-123456")]
-        [InlineData("HS-2031-12345")]
-        [InlineData("OTHER-2031-123456")]
+        [InlineData("A")]
+        [InlineData("hs-31-12345")]
+        [InlineData("Mã hồ sơ nội bộ 2026/11/04 - bản bổ sung")]
         [Trait("Category", "Integration")]
-        [Trait("Category", "Negative")]
-        public void CreateRecord_WhenRecordCodeFormatIsInvalid_ShouldReject(string recordCode)
+        [Trait("Category", "Regression")]
+        public void CreateRecord_ShouldAcceptArbitraryNonEmptyRecordCode(string recordCode)
         {
             using var database = new TestDatabase();
-            var draft = database.NewRecord("invalid-code");
+            var draft = database.NewRecord("arbitrary-code");
             draft.RecordCode = recordCode;
+
+            var savedCode = database.Service.SaveRecordForm(draft);
+
+            Assert.Equal(recordCode, savedCode);
+            Assert.Equal(recordCode, database.Service.GetRecordForm(recordCode).RecordCode);
+        }
+
+        [Fact]
+        [Trait("Category", "Integration")]
+        [Trait("Category", "Negative")]
+        public void CreateRecord_WhenRecordCodeIsBlank_ShouldRejectInsteadOfGeneratingCode()
+        {
+            using var database = new TestDatabase();
+            var draft = database.NewRecord("blank-code");
+            draft.RecordCode = "   ";
 
             var error = Assert.Throws<InvalidOperationException>(() => database.Service.SaveRecordForm(draft));
 
-            Assert.Contains("HS-<năm>-<6 chữ số>", error.Message);
+            Assert.Contains("không được để trống", error.Message);
+            Assert.Equal(string.Empty, database.Service.GetNextRecordCode());
         }
 
         [Fact]

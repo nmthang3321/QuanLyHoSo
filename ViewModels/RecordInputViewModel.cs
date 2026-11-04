@@ -94,9 +94,8 @@ namespace QuanLyHoSo.ViewModels
             var contentGroupsTask = Task.Run(() => _dataService.GetCatalogValues("ContentGroup"));
             var prioritiesTask = Task.Run(() => _dataService.GetCatalogValues("Priority"));
             var handlingMethodsTask = Task.Run(() => _dataService.GetCatalogValues("ExpectedHandlingMethod"));
-            var nextRecordCodeTask = Task.Run(() => _dataService.GetNextRecordCode());
             Task.WhenAll(receiveSourcesTask, receiverNamesTask, areasTask, caseTypesTask, fieldsTask,
-                contentGroupsTask, prioritiesTask, handlingMethodsTask, nextRecordCodeTask).GetAwaiter().GetResult();
+                contentGroupsTask, prioritiesTask, handlingMethodsTask).GetAwaiter().GetResult();
 
             ReceiveSources = new ObservableCollection<string>(receiveSourcesTask.Result);
             ReceiverNames = new ObservableCollection<string>(receiverNamesTask.Result);
@@ -123,7 +122,7 @@ namespace QuanLyHoSo.ViewModels
             CloseSenderHistoryCommand = new RelayCommand(CloseSenderHistory);
             SaveResubmissionCommand = new RelayCommand(StageResubmission, () => CanSaveResubmission);
             OpenDetectedSenderHistoryCommand = new RelayCommand(OpenDetectedSenderHistory);
-            ClearForm(nextRecordCodeTask.Result);
+            ClearForm();
         }
 
         public ObservableCollection<string> ReceiveSources { get; }
@@ -365,11 +364,6 @@ namespace QuanLyHoSo.ViewModels
 
         private void ClearForm()
         {
-            ClearForm(null);
-        }
-
-        private void ClearForm(string nextRecordCode)
-        {
             _editableAttachmentPaths.Clear();
             CloseSenderHistory();
             _selectedResubmissionOriginalCode = null;
@@ -377,7 +371,7 @@ namespace QuanLyHoSo.ViewModels
             HasPotentialDuplicate = false;
             _editingRecordCode = null;
             _originalDraft = null;
-            RecordCode = nextRecordCode ?? _dataService.GetNextRecordCode();
+            RecordCode = string.Empty;
             ReceivedDate = string.Empty;
             SelectedReceivedDate = null;
             ReceiveSource = null;
@@ -923,18 +917,7 @@ namespace QuanLyHoSo.ViewModels
             .Select(field => field.Name)
             .ToList();
 
-            if (missingFields.Count == 0)
-            {
-                var normalizedRecordCode = RecordCodeRules.Normalize(RecordCode);
-                var recordCodeWasChanged = !IsEditingExistingRecord ||
-                    !string.Equals(normalizedRecordCode, RecordCodeRules.Normalize(_editingRecordCode), StringComparison.Ordinal);
-                if (recordCodeWasChanged && !RecordCodeRules.IsValid(normalizedRecordCode))
-                {
-                    return $"Số hồ sơ / Số đơn phải đúng định dạng HS-<năm>-<6 chữ số>.\n\nVí dụ: {RecordCodeRules.FormatExample}";
-                }
-
-                return string.Empty;
-            }
+            if (missingFields.Count == 0) return string.Empty;
 
             return "Vui lòng nhập đầy đủ các thông tin bắt buộc:\n\n- " + string.Join("\n- ", missingFields);
         }

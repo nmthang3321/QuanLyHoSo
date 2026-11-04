@@ -112,9 +112,7 @@
                         <StackPanel Grid.Column="0" Margin="0,0,14,14">
                             <TextBlock Style="{StaticResource InputLabelText}"><Run Text="Số hồ sơ / Số đơn" /><Run Text=" *" Foreground="#E11414" /></TextBlock>
                             <TextBox Text="{Binding RecordCode, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                     CharacterCasing="Upper"
-                                     MaxLength="14"
-                                     ToolTip="Định dạng: HS-&lt;năm&gt;-&lt;6 chữ số&gt;. Ví dụ: HS-2026-000123" />
+                                     ToolTip="Mã hồ sơ không được trùng với hồ sơ đã có trong hệ thống." />
                             <TextBlock Text="{Binding RecordCodeWarning}"
                                        Foreground="#D42D16"
                                        FontSize="12"

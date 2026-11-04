@@ -205,7 +205,7 @@ Trang này chỉ hiển thị cho Admin, dùng để tạo hồ sơ mới hoặc
 
 Điền các trường có dấu `*`:
 
-1. **Số hồ sơ/Số đơn:** hệ thống gợi ý sẵn nhưng người dùng có thể nhập mã từ nguồn bên ngoài. Mã phải đúng dạng `HS-<năm>-<6 chữ số>`, ví dụ `HS-2026-000001`, và không được trùng hồ sơ đã có.
+1. **Số hồ sơ/Số đơn:** người dùng tự nhập mã hồ sơ. Hệ thống không tự sinh mã và không giới hạn định dạng hoặc độ dài; mã không được để trống hoặc trùng với hồ sơ đã có.
 2. **Ngày tiếp nhận**.
 3. **Nguồn tiếp nhận**.
 4. **Người tiếp nhận**.
