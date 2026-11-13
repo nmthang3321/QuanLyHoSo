@@ -62,7 +62,7 @@ namespace QuanLyHoSo.ViewModels
         public string ResubmissionAvailability => SelectedSenderRecord == null ? "Chọn hồ sơ để liên kết gửi lại."
             : !string.IsNullOrEmpty(SelectedSenderRecord.OriginalRecordCode) ? "Đây là hồ sơ gửi lại. Hãy chọn hồ sơ gốc."
             : !SelectedSenderRecord.IsConfirmedSender ? "Trùng tên người gửi nhưng chưa xác thực (thiếu hoặc khác số điện thoại/địa chỉ). Hãy nhập đúng số điện thoại của hồ sơ trước rồi lưu lại để xác thực."
-            : !SelectedSenderRecord.IsSameCase ? "Hồ sơ được chọn khác địa bàn hoặc loại vụ việc. Hãy đối chiếu lại thông tin đang nhập."
+            : !SelectedSenderRecord.IsSameCase ? "Hồ sơ được chọn không khớp địa bàn đã nhập. Hãy đối chiếu lại thông tin."
             : SelectedSenderRecord.Status != "Đã giải quyết" ? "Hồ sơ gốc chưa giải quyết; có thể lưu gửi lại và tiếp tục xử lý trên hồ sơ gốc."
             : "Có thể lưu gửi lại hồ sơ này. Vui lòng ghi lý do xác nhận.";
         public ICommand CloseSenderHistoryCommand { get; }
@@ -245,8 +245,7 @@ namespace QuanLyHoSo.ViewModels
             OnPropertyChanged(nameof(DuplicateSenderNotice));
 
             if (!IsEditingExistingRecord
-                && !string.IsNullOrWhiteSpace(SenderName)
-                && !string.IsNullOrWhiteSpace(AreaName))
+                && !string.IsNullOrWhiteSpace(SenderName))
             {
                 _senderHistoryCheckTimer?.Start();
             }
@@ -256,8 +255,7 @@ namespace QuanLyHoSo.ViewModels
         {
             _senderHistoryCheckTimer?.Stop();
             if (IsEditingExistingRecord
-                || string.IsNullOrWhiteSpace(SenderName)
-                || string.IsNullOrWhiteSpace(AreaName))
+                || string.IsNullOrWhiteSpace(SenderName))
             {
                 HasPotentialDuplicate = false;
                 return;
@@ -1043,6 +1041,7 @@ namespace QuanLyHoSo.ViewModels
                     _areaName = exactMatch.FilterValue;
                     OnPropertyChanged(nameof(AreaName));
                     OnPropertyChanged(nameof(AreaDisplayName));
+                    RestartSenderHistoryCheck();
                 }
             }
         }

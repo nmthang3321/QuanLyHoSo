@@ -175,6 +175,30 @@ namespace QuanLyHoSo.UnitTests
         [Fact]
         [Trait("Category", "Unit")]
         [Trait("Category", "Regression")]
+        public void DuplicateHistoryCheck_ShouldRunWithSenderNameOnly()
+        {
+            using var authScope = QuanLyHoSo.Infrastructure.Security.AuthContext.BeginRequestScope(new AppUser
+                { Id = 1, UserName = "test-admin", DisplayName = "Test Admin", Role = UserRoles.Admin, IsActive = true });
+            var service = NewService();
+            service.Setup(x => x.GetSenderRecords(It.IsAny<RecordFormDraft>())).Returns(new[]
+                { new SenderRecordHistory { RecordCode = "original", Status = "Đã giải quyết", IsSameCase = true } });
+
+            using var vm = NewFilledForm(service);
+            vm.AreaName = string.Empty;
+            vm.SenderPhone = string.Empty;
+
+            vm.RefreshPotentialDuplicateCheck();
+
+            Assert.True(vm.HasPotentialDuplicate);
+            service.Verify(x => x.GetSenderRecords(It.Is<RecordFormDraft>(draft =>
+                draft.SenderName == "Nguyễn Văn An"
+                && draft.AreaName == string.Empty
+                && draft.SenderPhone == string.Empty)), Times.Once);
+        }
+
+        [Fact]
+        [Trait("Category", "Unit")]
+        [Trait("Category", "Regression")]
         public void NewForm_ShouldLeaveRecordCodeBlankAndNotRequestGeneratedCode()
         {
             using var authScope = QuanLyHoSo.Infrastructure.Security.AuthContext.BeginRequestScope(new AppUser

@@ -1,6 +1,10 @@
 # Session handoff - QuanLyHoSo
 
-Last updated: 2026-11-04
+Last updated: 2026-11-13
+
+## Current application changes - 2026-11-13
+
+- Intake duplicate-history matching now requires only the normalized sender name. Area and phone are optional filters: each must match when entered and is ignored when blank. The 400 ms proactive warning begins as soon as a sender name is present, and server-side resubmission validation applies the same rule. Case type, content group, field, and related person remain outside duplicate matching.
 
 ## Current application changes - 2026-11-04
 

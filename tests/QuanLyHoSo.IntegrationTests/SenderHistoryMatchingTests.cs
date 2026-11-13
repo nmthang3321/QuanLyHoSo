@@ -16,12 +16,14 @@ namespace QuanLyHoSo.IntegrationTests
         [Fact]
         [Trait("Category", "Smoke")]
         [Trait("Category", "Regression")]
-        public void MissingPhone_ShouldMatchBySenderNameAndArea()
+        public void MissingOptionalFilters_ShouldMatchBySenderName()
         {
             using var db = new TestDatabase();
             var originalCode = db.Service.SaveRecordForm(Draft(db, "Lê Thị Trùng Tên", "0912 345 678"));
 
-            var row = Assert.Single(db.Service.GetSenderRecords(Draft(db, "Lê Thị Trùng Tên", string.Empty)));
+            var lookup = Draft(db, "Lê Thị Trùng Tên", string.Empty);
+            lookup.AreaName = string.Empty;
+            var row = Assert.Single(db.Service.GetSenderRecords(lookup));
 
             Assert.Equal(originalCode, row.RecordCode);
             Assert.True(row.IsConfirmedSender);
@@ -51,6 +53,22 @@ namespace QuanLyHoSo.IntegrationTests
             var otherArea = Draft(db, "Lê Thị Trùng Tên", string.Empty);
             otherArea.AreaName = "Phường Mỹ Thới";
             Assert.Empty(db.Service.GetSenderRecords(otherArea));
+        }
+
+        [Fact]
+        [Trait("Category", "Regression")]
+        public void MissingArea_ShouldIgnoreAreaButEnteredAreaMustMatch()
+        {
+            using var db = new TestDatabase();
+            var originalCode = db.Service.SaveRecordForm(Draft(db, "Lê Thị Trùng Tên", "0912 345 678"));
+
+            var withoutArea = Draft(db, "Lê Thị Trùng Tên", "+84 912 345 678");
+            withoutArea.AreaName = string.Empty;
+            Assert.Equal(originalCode, Assert.Single(db.Service.GetSenderRecords(withoutArea)).RecordCode);
+
+            var wrongArea = Draft(db, "Lê Thị Trùng Tên", "+84 912 345 678");
+            wrongArea.AreaName = "Phường Mỹ Thới";
+            Assert.Empty(db.Service.GetSenderRecords(wrongArea));
         }
 
         [Fact]

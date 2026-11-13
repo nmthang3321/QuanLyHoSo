@@ -1701,9 +1701,13 @@ VALUES ($createdAt, $senderName, $scope, $targetName, $kpiTarget, $message);";
         private static void AddDuplicateComplaintConditions(SqliteCommand command, List<string> conditions, RecordFormDraft record)
         {
             conditions.Add("normalize_sender(SenderName) = $duplicateSenderName");
-            conditions.Add("normalize_sender(AreaName) = $duplicateAreaName");
             command.Parameters.AddWithValue("$duplicateSenderName", NormalizeSenderText(record.SenderName));
-            command.Parameters.AddWithValue("$duplicateAreaName", NormalizeSenderText(record.AreaName));
+
+            if (!string.IsNullOrWhiteSpace(record.AreaName))
+            {
+                conditions.Add("normalize_sender(AreaName) = $duplicateAreaName");
+                command.Parameters.AddWithValue("$duplicateAreaName", NormalizeSenderText(record.AreaName));
+            }
 
             var phone = NormalizeSenderPhone(record.SenderPhone);
             if (phone.Length > 0)
@@ -1718,8 +1722,7 @@ VALUES ($createdAt, $senderName, $scope, $targetName, $kpiTarget, $message);";
             if (AppPathSettings.Current.IsClientMode)
                 return _lanClient.Call<IReadOnlyList<SenderRecordHistory>>("records/sender-history", record) ?? Array.Empty<SenderRecordHistory>();
             if (record == null
-                || string.IsNullOrWhiteSpace(record.SenderName)
-                || string.IsNullOrWhiteSpace(record.AreaName))
+                || string.IsNullOrWhiteSpace(record.SenderName))
                 return Array.Empty<SenderRecordHistory>();
             using var connection = OpenConnection();
             using var command = connection.CreateCommand();
@@ -1753,7 +1756,8 @@ FROM (SELECT * FROM Records WHERE DeletedAt = '') AS Records";
                 AreaName = reader.GetString(5), CaseType = reader.GetString(6), Content = reader.GetString(7),
                 Status = reader.GetString(8), OriginalRecordCode = reader.GetString(9), ResolutionSummary = reader.GetString(10),
                 ResubmissionReason = reader.IsDBNull(11) ? string.Empty : reader.GetString(11),
-                IsSameCase = NormalizeSenderText(reader.GetString(5)) == NormalizeSenderText(record.AreaName),
+                IsSameCase = string.IsNullOrWhiteSpace(record.AreaName)
+                    || NormalizeSenderText(reader.GetString(5)) == NormalizeSenderText(record.AreaName),
                 IsConfirmedSender = confirmedSender
             });
             return result;
@@ -1794,8 +1798,8 @@ FROM (SELECT * FROM Records WHERE DeletedAt = '') AS Records";
         private static int? ValidateResubmission(SqliteConnection connection, SqliteTransaction transaction, RecordFormDraft record)
         {
             if (string.IsNullOrWhiteSpace(record.OriginalRecordCode)) return null;
-            if (string.IsNullOrWhiteSpace(record.SenderName) || string.IsNullOrWhiteSpace(record.AreaName))
-                throw new InvalidOperationException("Cần tên người gửi và địa bàn để xác nhận hồ sơ gửi lại.");
+            if (string.IsNullOrWhiteSpace(record.SenderName))
+                throw new InvalidOperationException("Cần tên người gửi để xác nhận hồ sơ gửi lại.");
             if (string.IsNullOrWhiteSpace(record.ResubmissionReason))
                 throw new InvalidOperationException("Vui lòng ghi lý do xác nhận hồ sơ gửi lại.");
             using var command = connection.CreateCommand();
@@ -1805,7 +1809,7 @@ FROM (SELECT * FROM Records WHERE DeletedAt = '') AS Records";
             command.Parameters.AddWithValue("$originalCode", NormalizeDbText(record.OriginalRecordCode));
             command.CommandText = "SELECT Id FROM Records WHERE " + string.Join(" AND ", conditions) + ";";
             var id = command.ExecuteScalar();
-            if (id == null) throw new InvalidOperationException("Hồ sơ tham chiếu phải còn trong danh sách, chưa là hồ sơ gửi lại, cùng người gửi và địa bàn; nếu có nhập số điện thoại thì số điện thoại cũng phải khớp.");
+            if (id == null) throw new InvalidOperationException("Hồ sơ tham chiếu phải còn trong danh sách, chưa là hồ sơ gửi lại và cùng người gửi; nếu có nhập địa bàn hoặc số điện thoại thì các thông tin đó cũng phải khớp.");
             return Convert.ToInt32(id, CultureInfo.InvariantCulture);
         }
 

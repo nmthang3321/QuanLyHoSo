@@ -5,7 +5,7 @@ Files: `RecordInputView.xaml[.cs]`, `RecordInputViewModel.cs`, `RecordModels.cs`
 Service methods: current `GetSenderRecords` matching, legacy `FindSimilarRecord`, `SaveRecordForm`, and `DeleteRecord`. `GetNextRecordCode` remains only as an older-client compatibility endpoint and returns an empty string.
 
 - See `engineering/features/RECORD_RESUBMISSION.md` for sender-history review before a new save.
-- New intake performs a 400 ms duplicate-history check when sender name and area are present. If phone is entered it must also match; if blank it is ignored. Matching shows a small inline notice linked to the history overlay. Changing any check field hides the notice immediately and clears a staged resubmission choice.
+- New intake performs a 400 ms duplicate-history check when sender name is present. Sender name is the only required lookup key; area and phone are optional filters, so each must match when entered and is ignored when blank. Matching shows a small inline notice linked to the history overlay. Changing any check field hides the notice immediately and clears a staged resubmission choice.
 - WPF defaults to Client; Admin intake/edit/delete operations go through LAN APIs.
 - Officers do not see Intake and operate only within processing authorization.
 - The record-code field starts blank and must be entered by the user. Accept any non-whitespace value, trim only leading/trailing whitespace, preserve casing/content, and reject duplicates at both the ViewModel and service boundary. There is no automatic generation, fixed format, forced uppercase conversion, or length limit.
